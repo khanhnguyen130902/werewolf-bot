@@ -1,3 +1,4 @@
+import { createServer } from 'http';
 import { Telegraf } from 'telegraf';
 import { config } from './config/config';
 import { logger } from './infrastructure/logging/logger';
@@ -85,9 +86,25 @@ async function main(): Promise<void> {
     logger.error('Error while resuming overdue rooms on startup', { err });
   }
 
+  const httpServer = createServer((req, res) => {
+    if (req.url === '/health') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok' }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Werewolf bot is running');
+  });
+
+  httpServer.listen(config.httpPort, () => {
+    logger.info(`HTTP server listening on port ${config.httpPort}`);
+  });
+
   // --- Graceful shutdown ---
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}, shutting down gracefully...`);
+    httpServer.close();
     bot.stop(signal);
     await services.shutdown();
     process.exit(0);
