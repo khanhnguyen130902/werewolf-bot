@@ -47,7 +47,9 @@ function groupByType(
  *      the chain at depth 1 (no domino of Hunter-kills-Hunter-kills-Hunter).
  */
 export class NightResolver {
-  constructor(private readonly random: RandomPort) {}
+  constructor(private readonly random: RandomPort) {
+    void this.random;
+  }
 
   /**
    * Step 1 of the split resolution flow (see DeathQueue's class doc for the
