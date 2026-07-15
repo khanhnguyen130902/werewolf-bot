@@ -52,8 +52,10 @@ export const WinnerNames: Record<string, string> = {
 };
 
 export const Messages = {
-  roomCreated: (roomId: string) =>
-    `🎮 Đã tạo phòng chơi Ma Sói!\n\nMọi người gõ /join để tham gia. Khi đủ người, Host gõ /startgame để bắt đầu.\n\nMã phòng: ${roomId}`,
+  roomCreated: (roomId: string) => {
+    const safeRoomId = String(roomId).replace(/^-/, '');
+    return `🎮 Đã tạo phòng chơi Ma Sói!\n\nMọi người gõ /join để tham gia. Khi đủ người, Host gõ /startgame để bắt đầu.\n\nMã phòng: ${safeRoomId}`;
+  },
   needDmFirst: (botUsername: string) =>
     `⚠️ Bạn cần nhắn /start cho bot ở tin nhắn riêng trước khi tham gia, để bot có thể gửi vai trò và hành động riêng cho bạn.\n\n👉 Nhấn vào đây: https://t.me/${botUsername}?start=join`,
   joined: (nickname: string, count: number) => `✅ ${nickname} đã tham gia! (${count} người chơi)`,
@@ -64,8 +66,14 @@ export const Messages = {
   notEnoughPlayers: (current: number, min: number) =>
     `❌ Cần tối thiểu ${min} người chơi để bắt đầu (hiện có ${current}).`,
   notHost: () => `❌ Chỉ Host mới có thể thực hiện hành động này.`,
-  gameStarting: (playerCount: number) =>
+  gameStarting: (playerCount: number) =>  
     `🌙 Bắt đầu ván chơi với ${playerCount} người! Vai trò đã được gửi riêng cho từng người qua tin nhắn riêng. Đêm đầu tiên bắt đầu...`,
+  roleDistributionSummary: (playerCount: number, roleCounts: Array<{ roleId: RoleId; count: number }>) => {
+    const lines = roleCounts
+      .map((entry) => `- ${RoleNames[entry.roleId]}: ${entry.count}`)
+      .join('\n');
+    return `📋 Phân bổ vai trò cho ván này (${playerCount} người):\n${lines}`;
+  },
   roleAssigned: (roleId: RoleId) =>
     `🎭 Vai trò của bạn là: **${RoleNames[roleId]}**\n\n${RoleDescriptions[roleId]}`,
   nightBegins: (round: number) =>
@@ -97,6 +105,27 @@ export const Messages = {
     `🔮 Kết quả soi: **${targetNickname}** thuộc **${teamName}**.`,
   gameOver: (winner: string) =>
     `🏆 Ván đấu kết thúc! Chiến thắng thuộc về **${WinnerNames[winner] ?? winner}**!`,
+  finalRoleSummary: (entries: Array<{ nickname: string; roleId: RoleId }>) => {
+    const groupedByRole = entries.reduce<Record<RoleId, string[]>>((acc, entry) => {
+      if (!acc[entry.roleId]) acc[entry.roleId] = [];
+      acc[entry.roleId].push(entry.nickname);
+      return acc;
+    }, {} as Record<RoleId, string[]>);
+
+    const roleSections = Object.entries(groupedByRole)
+      .map(([roleId, nicknames]) => {
+        const roleName = RoleNames[roleId as RoleId];
+        const names = nicknames.join(' & ');
+        return `• ${roleName}: ${names}`;
+      })
+      .join('\n');
+
+    return `🎭 Vai trò sau ván:\n\n${roleSections}`;
+  },
+  werewolfTeammates: (teammates: string[]) => {
+    if (teammates.length === 0) return '';
+    return `🧠 Bạn là Sói. Những Sói khác trong ván là: ${teammates.join(', ')}.`;
+  },
   hostKicked: (nickname: string) => `🚫 ${nickname} đã bị Host mời ra khỏi phòng.`,
   invalidTarget: () => `❌ Mục tiêu không hợp lệ. Vui lòng chọn lại.`,
   genericError: (message: string) => `❌ Đã xảy ra lỗi: ${message}`,

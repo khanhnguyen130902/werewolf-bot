@@ -65,7 +65,7 @@ async function createRoomWithPlayers(
     hostTelegramId: 'p0',
     hostNickname: 'Host',
     chatId: 'chat1',
-    settingsOverride: { minPlayers: 6, maxPlayers: 20, ...settingsOverride },
+    settingsOverride: { minPlayers: 6, maxPlayers: 20, enabledRoles: [], ...settingsOverride },
   });
   for (let i = 1; i < count; i++) {
     await roomService.joinRoom({
@@ -94,7 +94,7 @@ describe('GameService.startGame', () => {
 
     const roles = Object.values(room.players).map((p) => p.role);
     expect(roles.every((r) => r !== null)).toBe(true);
-    expect(roles.filter((r) => r === RoleId.WEREWOLF)).toHaveLength(1);
+    expect(roles.filter((r) => r === RoleId.WEREWOLF)).toHaveLength(2);
   });
 
   it('initializes witch potions when Witch role is in play', async () => {

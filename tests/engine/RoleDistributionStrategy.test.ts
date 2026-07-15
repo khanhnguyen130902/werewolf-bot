@@ -8,10 +8,10 @@ import {
 describe('DefaultPhase1DistributionStrategy', () => {
   const strategy = new DefaultPhase1DistributionStrategy();
 
-  it('computes 1 werewolf for 6 players (floor(6/4)=1)', () => {
+  it('computes 2 werewolves for 6 players when 5+ players are required to have at least 2 wolves', () => {
     const plan = strategy.computeDistribution(6, []);
-    expect(plan[RoleId.WEREWOLF]).toBe(1);
-    expect(plan[RoleId.VILLAGER]).toBe(5);
+    expect(plan[RoleId.WEREWOLF]).toBe(2);
+    expect(plan[RoleId.VILLAGER]).toBe(4);
   });
 
   it('computes floor(playerCount/4) werewolves, minimum 1', () => {
@@ -57,16 +57,15 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(plan[RoleId.VILLAGER]).toBe(4); // 10-2-4=4
   });
 
-  it('omits Villager entirely when werewolves + specials exactly fill all slots', () => {
-    // 6 players, 1 wolf minimum, 4 specials enabled but only if it fits: 1+4=5 <= 6
-    const plan = strategy.computeDistribution(5, [
-      RoleId.SEER,
-      RoleId.BODYGUARD,
-      RoleId.HUNTER,
-      RoleId.WITCH,
-    ]);
-    expect(plan[RoleId.WEREWOLF]).toBe(1);
-    expect(plan[RoleId.VILLAGER]).toBeUndefined();
+  it('throws when 5-player games need 2 wolves but also have 4 specials enabled', () => {
+    expect(() =>
+      strategy.computeDistribution(5, [
+        RoleId.SEER,
+        RoleId.BODYGUARD,
+        RoleId.HUNTER,
+        RoleId.WITCH,
+      ]),
+    ).toThrow(TooManyPlayersForRolesError);
   });
 
   it('throws TooManyPlayersForRolesError when enabled specials do not fit', () => {
@@ -93,7 +92,7 @@ describe('DefaultPhase1DistributionStrategy', () => {
     const plan = strategy.computeDistribution(6, [RoleId.WEREWOLF, RoleId.VILLAGER]);
     // Werewolf/Villager aren't in SPECIAL_ROLES so they should be filtered out,
     // leaving werewolf count computed normally and no accidental double-counting.
-    expect(plan[RoleId.WEREWOLF]).toBe(1);
-    expect(plan[RoleId.VILLAGER]).toBe(5);
+    expect(plan[RoleId.WEREWOLF]).toBe(2);
+    expect(plan[RoleId.VILLAGER]).toBe(4);
   });
 });

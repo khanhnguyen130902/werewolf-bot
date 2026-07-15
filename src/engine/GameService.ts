@@ -89,11 +89,18 @@ export class GameService {
       }
 
       const playerIds = Object.keys(room.players);
-      if (playerIds.length < room.settings.minPlayers) {
-        throw new NotEnoughPlayersError(playerIds.length, room.settings.minPlayers);
+      const minPlayers = Number.isFinite(room.settings?.minPlayers)
+        ? Math.max(1, room.settings.minPlayers)
+        : 3;
+      const maxPlayers = Number.isFinite(room.settings?.maxPlayers)
+        ? Math.max(minPlayers, room.settings.maxPlayers)
+        : 20;
+
+      if (playerIds.length < minPlayers) {
+        throw new NotEnoughPlayersError(playerIds.length, minPlayers);
       }
-      if (playerIds.length > room.settings.maxPlayers) {
-        throw new TooManyPlayersForRolesError(playerIds.length, room.settings.maxPlayers);
+      if (playerIds.length > maxPlayers) {
+        throw new TooManyPlayersForRolesError(playerIds.length, maxPlayers);
       }
 
       const strategy = this.distributionRegistry.get(room.settings.roleDistributionStrategy);

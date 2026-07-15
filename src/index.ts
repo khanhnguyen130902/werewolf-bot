@@ -10,6 +10,8 @@ import { registerJoinCommand } from './telegram/commands/join';
 import { registerLeaveCommand } from './telegram/commands/leave';
 import { registerStartGameCommand } from './telegram/commands/startgame';
 import { registerStatusCommand } from './telegram/commands/status';
+import { registerVoteCommand } from './telegram/commands/vote';
+import { registerEndCommand } from './telegram/commands/end';
 import { registerActionCallbackHandler } from './telegram/handlers/actionCallbackHandler';
 import { GameState } from './engine/domain/enums';
 
@@ -27,6 +29,8 @@ async function main(): Promise<void> {
   registerLeaveCommand(services, bot);
   registerStartGameCommand(services, flowController, bot);
   registerStatusCommand(services, bot);
+  registerVoteCommand(services, flowController, bot);
+  registerEndCommand(services, bot);
 
   // --- Register callback query handlers ---
   // Order matters: the Hunter-revenge handler (registered inside

@@ -91,12 +91,42 @@ export class GameFlowController {
       Messages.gameStarting(Object.keys(room.players).length),
     );
 
+    const roleCounts = Object.values(room.players).reduce<Record<RoleId, number>>((acc, player) => {
+      if (player.role) {
+        acc[player.role] = (acc[player.role] ?? 0) + 1;
+      }
+      return acc;
+    }, {} as Record<RoleId, number>);
+
+    await this.bot.telegram.sendMessage(
+      chatId,
+      Messages.roleDistributionSummary(
+        Object.keys(room.players).length,
+        Object.entries(roleCounts).map(([roleId, count]) => ({
+          roleId: roleId as RoleId,
+          count,
+        })),
+      ),
+    );
+
+    const werewolves = Object.values(room.players).filter((player) => player.role === RoleId.WEREWOLF);
+
     for (const player of Object.values(room.players)) {
       if (!player.role) continue;
       try {
+        const roleMessage = Messages.roleAssigned(player.role);
+        const teammateMessage =
+          player.role === RoleId.WEREWOLF && werewolves.length >= 2
+            ? `\n\n${Messages.werewolfTeammates(
+                werewolves
+                  .filter((teammate) => teammate.telegramId !== player.telegramId)
+                  .map((teammate) => teammate.nickname),
+              )}`
+            : '';
+
         await this.bot.telegram.sendMessage(
           player.telegramId,
-          Messages.roleAssigned(player.role),
+          `${roleMessage}${teammateMessage}`,
           { parse_mode: 'Markdown' },
         );
       } catch {
@@ -377,6 +407,14 @@ export class GameFlowController {
     ).length;
     const winner = aliveWerewolves === 0 ? 'VILLAGE' : 'WEREWOLF';
     await this.bot.telegram.sendMessage(room.chatId, Messages.gameOver(winner));
+
+    const finalRoles = Object.values(room.players)
+      .sort((a, b) => a.joinedAt - b.joinedAt)
+      .map((player) => ({
+        nickname: player.nickname,
+        roleId: player.role ?? RoleId.VILLAGER,
+      }));
+    await this.bot.telegram.sendMessage(room.chatId, Messages.finalRoleSummary(finalRoles));
   }
 
   private async cancelTimerIfAny(roomId: string): Promise<void> {

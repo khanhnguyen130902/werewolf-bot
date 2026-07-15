@@ -62,7 +62,15 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
       throw new NotEnoughPlayersError(playerCount, 1);
     }
 
-    const werewolfCount = Math.max(1, Math.floor(playerCount / 4));
+    const werewolfCount =
+      playerCount >= 5 ? Math.max(2, Math.floor(playerCount / 4)) : Math.max(1, Math.floor(playerCount / 4));
+    const minimumVillagerCount = 1;
+
+    if (playerCount === 1) {
+      return {
+        [RoleId.WEREWOLF]: 1,
+      };
+    }
 
     const requestedSpecials = enabledSpecialRoles.filter((r) =>
       SPECIAL_ROLES.includes(r),
@@ -77,7 +85,7 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
       throw new TooManyPlayersForRolesError(usedSlots, playerCount);
     }
 
-    const villagerCount = playerCount - usedSlots;
+    const villagerCount = Math.max(minimumVillagerCount, playerCount - usedSlots);
 
     const plan: RoleDistributionPlan = {
       [RoleId.WEREWOLF]: werewolfCount,

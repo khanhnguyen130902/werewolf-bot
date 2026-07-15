@@ -5,7 +5,7 @@ import { DomainEventType } from './domain/enums';
 import { createEvent, DomainEvent } from './events/DomainEvent';
 import { RoomFactory, GameSettings, RoomState } from './domain/Room';
 import { PlayerFactory } from './domain/Player';
-import { RoomStatus } from './domain/enums';
+import { GameState, RoomStatus } from './domain/enums';
 import {
   RoomNotFoundError,
   RoomFullError,
@@ -82,6 +82,22 @@ export class RoomService {
     }
 
     const now = this.clock.now();
+    const existingRoom = await this.storage.getRoom(params.roomId);
+
+    if (existingRoom) {
+      const canRecreate =
+        existingRoom.gameState === GameState.GAME_OVER || existingRoom.status === RoomStatus.CLOSED;
+      if (!canRecreate) {
+        throw new RoomLockedError(params.roomId);
+      }
+
+      for (const telegramId of Object.keys(existingRoom.players)) {
+        await this.storage.clearPlayerSession(telegramId);
+      }
+      await this.storage.clearTimerDeadline(params.roomId);
+      await this.storage.deleteRoom(params.roomId);
+    }
+
     let room = RoomFactory.create({
       id: params.roomId,
       hostTelegramId: params.hostTelegramId,
