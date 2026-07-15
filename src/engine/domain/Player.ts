@@ -27,6 +27,8 @@ export interface PlayerState {
   deathCause: string | null;
   /** Round number in which the player died; null while alive. */
   diedOnRound: number | null;
+  /** A previously selected revenge target for the Hunter role, reused later if needed. */
+  hunterRevengeTarget: string | null;
 }
 
 /**
@@ -58,6 +60,7 @@ export class PlayerFactory {
       joinedAt: params.joinedAt,
       deathCause: null,
       diedOnRound: null,
+      hunterRevengeTarget: null,
     };
   }
 }

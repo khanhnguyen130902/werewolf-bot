@@ -293,24 +293,30 @@ export class NightResolver {
   }
 
   /**
-   * Tallies werewolf kill votes and returns the target with the most votes.
-   * Ties are broken uniformly at random via the injected RandomPort, so
-   * outcome fairness is deterministically testable with a seeded fake.
-   * Returns null if no werewolf submitted a valid (non-null) target.
+   * Resolves the werewolf consensus target.
+   *
+   * Business rule: if multiple werewolves are present, their choices must
+   * agree on the same target before a kill is finalized. If only one
+   * werewolf has submitted a target, that single choice is used as the
+   * fallback. If multiple werewolves submitted conflicting targets, the
+   * result is unresolved and no kill is finalized.
    */
   private resolveWerewolfVote(actions: NightActionSubmission[]): string | null {
-    const tally: Record<string, number> = {};
+    const latestByActor = new Map<string, NightActionSubmission>();
     for (const action of actions) {
       if (!action.targetTelegramId) continue;
-      tally[action.targetTelegramId] = (tally[action.targetTelegramId] ?? 0) + 1;
+      latestByActor.set(action.actorTelegramId, action);
     }
-    const entries = Object.entries(tally);
-    if (entries.length === 0) return null;
 
-    const maxVotes = Math.max(...entries.map(([, count]) => count));
-    const topTargets = entries
-      .filter(([, count]) => count === maxVotes)
-      .map(([id]) => id);
-    return this.random.pick(topTargets);
+    const targets = Array.from(latestByActor.values()).map((action) => action.targetTelegramId!);
+    if (targets.length === 0) return null;
+    if (targets.length === 1) return targets[0];
+
+    const uniqueTargets = new Set(targets);
+    if (uniqueTargets.size === 1) {
+      return targets[0];
+    }
+
+    return null;
   }
 }

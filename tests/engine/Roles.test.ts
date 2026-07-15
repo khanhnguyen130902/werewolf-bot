@@ -134,6 +134,11 @@ describe('WitchRole', () => {
       expect(() => role.validateSaveAction(baseContext(), true)).not.toThrow();
     });
 
+    it('allows saving self when the Witch is the werewolf victim', () => {
+      const ctx = baseContext({ targetTelegramId: 'actor' });
+      expect(() => role.validateSaveAction(ctx, true)).not.toThrow();
+    });
+
     it('throws NoPotionLeftError when save potion already used', () => {
       expect(() => role.validateSaveAction(baseContext(), false)).toThrow(
         NoPotionLeftError,

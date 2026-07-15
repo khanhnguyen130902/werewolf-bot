@@ -4,7 +4,7 @@ import { NightActionService } from './NightActionService';
 import { DayService } from './DayService';
 import { RoomTimerService, TimerJobType } from './RoomTimerService';
 import { RoomState } from './domain/Room';
-import { GameState } from './domain/enums';
+import { GameState, NightActionType } from './domain/enums';
 
 /**
  * Callback the Telegram layer supplies so the orchestrator can prompt a
@@ -139,7 +139,32 @@ export class GameOrchestrator {
 
     const actedTelegramIds = new Set(room.pendingNightActions.map((a) => a.actorTelegramId));
 
-    return alivePlayersWithNightAction.every((p) => actedTelegramIds.has(p.telegramId));
+    const allActed = alivePlayersWithNightAction.every((p) => actedTelegramIds.has(p.telegramId));
+    if (!allActed) return false;
+
+    return this.werewolfConsensusSettled(room);
+  }
+
+  private werewolfConsensusSettled(room: RoomState): boolean {
+    const aliveWerewolves = Object.values(room.players).filter(
+      (player) => player.alive && player.role === 'WEREWOLF',
+    );
+    if (aliveWerewolves.length < 2) return true;
+
+    const latestByActor = new Map<string, string | null>();
+    for (const action of room.pendingNightActions) {
+      if (action.actionType !== NightActionType.WEREWOLF_VOTE_KILL || action.round !== room.currentRound) {
+        continue;
+      }
+      latestByActor.set(action.actorTelegramId, action.targetTelegramId);
+    }
+
+    const targets = Array.from(latestByActor.values()).filter(
+      (target): target is string => Boolean(target),
+    );
+    if (targets.length !== aliveWerewolves.length) return false;
+
+    return new Set(targets).size === 1;
   }
 
   private roleHasNightAction(roleId: string): boolean {

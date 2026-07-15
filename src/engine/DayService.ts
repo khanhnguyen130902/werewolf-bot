@@ -303,12 +303,7 @@ export class DayService {
       }
 
       const deathQueue = new DeathQueue();
-      const { resolved: depth0Resolved } = deathQueue.resolveOriginalDeaths(
-        params.depth0Deaths,
-        room.players,
-        room.settings.hunterTriggerCauses as DeathCause[],
-      );
-
+      let updatedPlayers = { ...room.players };
       const decisionsWithHunterId: Record<
         string,
         { hunterTelegramId: string; targetTelegramId: string | null } | null
@@ -317,11 +312,24 @@ export class DayService {
         decisionsWithHunterId[hunterId] = decision
           ? { hunterTelegramId: hunterId, targetTelegramId: decision.targetTelegramId }
           : null;
+
+        const hunterPlayer = updatedPlayers[hunterId];
+        if (!hunterPlayer || !decision || decision.targetTelegramId === null) continue;
+        updatedPlayers[hunterId] = {
+          ...hunterPlayer,
+          hunterRevengeTarget: decision.targetTelegramId,
+        };
       }
+
+      const { resolved: depth0Resolved } = deathQueue.resolveOriginalDeaths(
+        params.depth0Deaths,
+        updatedPlayers,
+        room.settings.hunterTriggerCauses as DeathCause[],
+      );
 
       const resolvedDeaths = deathQueue.applyHunterDecisions(
         depth0Resolved,
-        room.players,
+        updatedPlayers,
         decisionsWithHunterId,
       );
       capturedDeaths = resolvedDeaths.map((d) => ({
@@ -329,7 +337,6 @@ export class DayService {
         cause: d.cause,
       }));
 
-      let updatedPlayers = { ...room.players };
       for (const death of resolvedDeaths) {
         const player = updatedPlayers[death.telegramId];
         if (!player || !player.alive) continue;

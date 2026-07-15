@@ -8,10 +8,14 @@ import {
 describe('DefaultPhase1DistributionStrategy', () => {
   const strategy = new DefaultPhase1DistributionStrategy();
 
-  it('computes 2 werewolves for 6 players when 5+ players are required to have at least 2 wolves', () => {
+  it('uses a valid plan for 6 players when all special roles are enabled by default', () => {
     const plan = strategy.computeDistribution(6, []);
-    expect(plan[RoleId.WEREWOLF]).toBe(2);
-    expect(plan[RoleId.VILLAGER]).toBe(4);
+    expect(plan[RoleId.WEREWOLF]).toBe(1);
+    expect(plan[RoleId.SEER]).toBe(1);
+    expect(plan[RoleId.BODYGUARD]).toBe(1);
+    expect(plan[RoleId.HUNTER]).toBe(1);
+    expect(plan[RoleId.WITCH]).toBe(1);
+    expect(plan[RoleId.VILLAGER]).toBe(1);
   });
 
   it('computes floor(playerCount/4) werewolves, minimum 1', () => {
@@ -26,6 +30,18 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(strategy.computeDistribution(5, [])[RoleId.WEREWOLF]).toBe(2);
     expect(strategy.computeDistribution(8, [])[RoleId.WEREWOLF]).toBe(2);
     expect(strategy.computeDistribution(12, [])[RoleId.WEREWOLF]).toBe(3);
+  });
+
+  it('enables all special roles for 6+ players when none are explicitly configured', () => {
+    const smallPlan = strategy.computeDistribution(5, []);
+    expect(smallPlan[RoleId.SEER]).toBeUndefined();
+    expect(smallPlan[RoleId.BODYGUARD]).toBeUndefined();
+
+    const largePlan = strategy.computeDistribution(6, []);
+    expect(largePlan[RoleId.SEER]).toBe(1);
+    expect(largePlan[RoleId.BODYGUARD]).toBe(1);
+    expect(largePlan[RoleId.HUNTER]).toBe(1);
+    expect(largePlan[RoleId.WITCH]).toBe(1);
   });
 
   it('includes only host-enabled special roles, one slot each', () => {
@@ -92,7 +108,7 @@ describe('DefaultPhase1DistributionStrategy', () => {
     const plan = strategy.computeDistribution(6, [RoleId.WEREWOLF, RoleId.VILLAGER]);
     // Werewolf/Villager aren't in SPECIAL_ROLES so they should be filtered out,
     // leaving werewolf count computed normally and no accidental double-counting.
-    expect(plan[RoleId.WEREWOLF]).toBe(2);
-    expect(plan[RoleId.VILLAGER]).toBe(4);
+    expect(plan[RoleId.WEREWOLF]).toBe(1);
+    expect(plan[RoleId.VILLAGER]).toBe(1);
   });
 });

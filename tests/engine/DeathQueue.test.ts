@@ -182,6 +182,24 @@ describe('DeathQueue split API (resolveOriginalDeaths / applyHunterDecisions)', 
     expect(pendingHunterTelegramIds).toEqual([]);
   });
 
+  it('reuses a previously stored revenge target without prompting again', () => {
+    const queue = new DeathQueue();
+    const players = makePlayers({ hunter1: RoleId.HUNTER, victim1: RoleId.VILLAGER });
+    players.hunter1.hunterRevengeTarget = 'victim1';
+
+    const { resolved, pendingHunterTelegramIds } = queue.resolveOriginalDeaths(
+      [{ telegramId: 'hunter1', cause: DeathCause.WEREWOLF_KILL }],
+      players,
+      HUNTER_TRIGGERS,
+    );
+
+    expect(pendingHunterTelegramIds).toEqual([]);
+    expect(queue.applyHunterDecisions(resolved, players, {})).toEqual([
+      { telegramId: 'hunter1', cause: DeathCause.WEREWOLF_KILL, chainDepth: 0 },
+      { telegramId: 'victim1', cause: DeathCause.HUNTER_SHOT, chainDepth: 1 },
+    ]);
+  });
+
   it('applyHunterDecisions appends a depth-1 death for a valid shot decision', () => {
     const queue = new DeathQueue();
     const players = makePlayers({ hunter1: RoleId.HUNTER, victim1: RoleId.VILLAGER });

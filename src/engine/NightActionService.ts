@@ -181,30 +181,46 @@ export class NightActionService {
         role.validateNightAction(context);
       }
 
-      // One submission per actor per round for each action type, except Witch
-      // who may submit both save and poison separately in the same night.
-      const existingSameRound = room.pendingNightActions.some(
+      // One submission per actor per round for each action type, except
+      // Werewolf kill votes may be updated by the same actor before the
+      // night resolves, and Witch may submit both save and poison separately
+      // in the same night.
+      const existingSameRoundIndex = room.pendingNightActions.findIndex(
         (a) =>
           a.actorTelegramId === params.actorTelegramId &&
           a.actionType === params.actionType &&
           a.round === room.currentRound,
       );
-      if (existingSameRound) {
+      if (existingSameRoundIndex >= 0 && params.actionType !== NightActionType.WEREWOLF_VOTE_KILL) {
         throw new DuplicateActionError(params.actionId);
       }
 
+      const pendingNightActions =
+        existingSameRoundIndex >= 0
+          ? room.pendingNightActions.map((action, index) =>
+              index === existingSameRoundIndex
+                ? {
+                    ...action,
+                    actionId: params.actionId,
+                    targetTelegramId: params.targetTelegramId,
+                    round: room.currentRound,
+                  }
+                : action,
+            )
+          : [
+              ...room.pendingNightActions,
+              {
+                actionId: params.actionId,
+                actorTelegramId: params.actorTelegramId,
+                actionType: params.actionType,
+                targetTelegramId: params.targetTelegramId,
+                round: room.currentRound,
+              },
+            ];
+
       const updated: RoomState = {
         ...room,
-        pendingNightActions: [
-          ...room.pendingNightActions,
-          {
-            actionId: params.actionId,
-            actorTelegramId: params.actorTelegramId,
-            actionType: params.actionType,
-            targetTelegramId: params.targetTelegramId,
-            round: room.currentRound,
-          },
-        ],
+        pendingNightActions,
         updatedAt: now,
       };
 
@@ -302,8 +318,23 @@ export class NightActionService {
     let capturedSeerResults: NightActionContext[] = [];
 
     const { room, events } = await this.withRetry(params.roomId, (room) => {
+      let updatedPlayers = { ...room.players };
+      for (const [hunterId, decision] of Object.entries(params.hunterDecisions)) {
+        const hunterPlayer = updatedPlayers[hunterId];
+        if (!hunterPlayer || !decision || decision.targetTelegramId === null) continue;
+        updatedPlayers[hunterId] = {
+          ...hunterPlayer,
+          hunterRevengeTarget: decision.targetTelegramId,
+        };
+      }
+
+      const roomWithPersistedHunterTargets = {
+        ...room,
+        players: updatedPlayers,
+      };
+
       const { room: afterNight, result } = resolver.applyHunterRevengeAndFinalize({
-        room,
+        room: roomWithPersistedHunterTargets,
         stepOneResult: params.stepOneResult,
         hunterDecisions: params.hunterDecisions,
       });

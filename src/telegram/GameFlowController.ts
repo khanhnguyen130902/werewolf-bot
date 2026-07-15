@@ -181,9 +181,14 @@ export class GameFlowController {
       });
 
       try {
+        const promptText =
+          player.role === RoleId.WEREWOLF && room.players[player.telegramId]?.role === RoleId.WEREWOLF
+            ? `🌙 Đêm ${room.currentRound}: Hãy chọn mục tiêu giết. Hai Sói cần thống nhất cùng một mục tiêu.`
+            : `🌙 Đêm ${room.currentRound}: Hãy chọn hành động của bạn (${RoleNames[player.role]}):`;
+
         await this.bot.telegram.sendMessage(
           player.telegramId,
-          `🌙 Đêm ${room.currentRound}: Hãy chọn hành động của bạn (${RoleNames[player.role]}):`,
+          promptText,
           buildTargetKeyboard({ actionType, targets }),
         );
       } catch {
@@ -235,7 +240,7 @@ export class GameFlowController {
     try {
       await this.bot.telegram.sendMessage(
         witch.telegramId,
-        `🌙 Đêm ${room.currentRound}: ${victim.nickname} vừa bị Sói chọn. Bạn có muốn dùng thuốc CỨU không?`,
+        `🌙 Đêm ${room.currentRound}: ${victim.nickname} vừa bị Sói cắn. Bạn có muốn dùng thuốc CỨU không?`,
         buildTargetKeyboard({
           actionType: NightActionType.WITCH_SAVE,
           targets: [{ telegramId: victimTelegramId, nickname: victim.nickname }],

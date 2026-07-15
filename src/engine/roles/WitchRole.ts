@@ -47,6 +47,10 @@ export class WitchRole implements IRole {
     if (!hasSavePotionLeft) {
       throw new NoPotionLeftError('save');
     }
+    // The Witch may save herself if she is the werewolf victim.
+    if (context.targetTelegramId === context.actorTelegramId) {
+      return;
+    }
     if (!context.alivePlayerIds.includes(context.targetTelegramId)) {
       throw new InvalidTargetError('Save target must be alive');
     }

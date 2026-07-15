@@ -77,8 +77,11 @@ export class DeathQueue {
     const pendingHunterTelegramIds = resolved
       .filter((d) => {
         const player = players[d.telegramId];
+        const hasStoredTarget = Boolean(player?.hunterRevengeTarget);
         return (
-          player?.role === RoleId.HUNTER && hunterTriggerCauses.includes(d.cause)
+          player?.role === RoleId.HUNTER &&
+          hunterTriggerCauses.includes(d.cause) &&
+          !hasStoredTarget
         );
       })
       .map((d) => d.telegramId);
@@ -103,11 +106,21 @@ export class DeathQueue {
     const alreadyDead = new Set(resolved.map((d) => d.telegramId));
     const result = [...resolved];
 
-    for (const [hunterTelegramId, decision] of Object.entries(decisions)) {
-      if (!decision || decision.targetTelegramId === null) {
+    const resolvedHunterIds = resolved
+      .filter((d) => {
+        const hunterPlayer = players[d.telegramId];
+        return hunterPlayer?.role === RoleId.HUNTER;
+      })
+      .map((d) => d.telegramId);
+
+    for (const hunterTelegramId of resolvedHunterIds) {
+      const hunterPlayer = players[hunterTelegramId];
+      const explicitDecision = decisions[hunterTelegramId];
+      const targetId = explicitDecision?.targetTelegramId ?? hunterPlayer?.hunterRevengeTarget ?? null;
+
+      if (targetId === null) {
         continue;
       }
-      const targetId = decision.targetTelegramId;
       if (alreadyDead.has(targetId)) {
         continue;
       }

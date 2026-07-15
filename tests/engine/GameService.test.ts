@@ -94,7 +94,7 @@ describe('GameService.startGame', () => {
 
     const roles = Object.values(room.players).map((p) => p.role);
     expect(roles.every((r) => r !== null)).toBe(true);
-    expect(roles.filter((r) => r === RoleId.WEREWOLF)).toHaveLength(2);
+    expect(roles.filter((r) => r === RoleId.WEREWOLF)).toHaveLength(1);
   });
 
   it('initializes witch potions when Witch role is in play', async () => {
@@ -111,12 +111,33 @@ describe('GameService.startGame', () => {
 
   it('leaves witchPotions null when Witch role is not enabled', async () => {
     const { roomService, gameService } = setup();
-    await createRoomWithPlayers(roomService, 6, { enabledRoles: [] });
+    await createRoomWithPlayers(roomService, 6, { enabledRoles: ['SEER'] });
     const room = await gameService.startGame({
       roomId: 'room1',
       requestedByTelegramId: 'p0',
     });
     expect(room.witchPotions).toBeNull();
+  });
+
+  it('allows a 3-player room to start when using default settings', async () => {
+    const { roomService, gameService } = setup();
+    const room = await roomService.createRoom({
+      roomId: 'room1',
+      hostTelegramId: 'p0',
+      hostNickname: 'Host',
+      chatId: 'chat1',
+    });
+    await roomService.joinRoom({ roomId: 'room1', telegramId: 'p1', nickname: 'Player1' });
+    await roomService.joinRoom({ roomId: 'room1', telegramId: 'p2', nickname: 'Player2' });
+
+    const startedRoom = await gameService.startGame({
+      roomId: 'room1',
+      requestedByTelegramId: 'p0',
+    });
+
+    expect(startedRoom.gameState).toBe(GameState.FIRST_NIGHT);
+    expect(startedRoom.status).toBe(RoomStatus.LOCKED);
+    expect(startedRoom.players['p0'].role).not.toBeNull();
   });
 
   it('rejects starting with fewer than minPlayers', async () => {

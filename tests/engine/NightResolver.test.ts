@@ -69,6 +69,40 @@ describe('NightResolver', () => {
     expect(updatedRoom.players['villager1'].alive).toBe(false);
   });
 
+  it('requires two werewolves to agree on the same target before a kill is finalized', () => {
+    const room = buildRoom({
+      players: [
+        { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'wolf2', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'villager1', role: RoleId.VILLAGER, team: Team.VILLAGE },
+        { id: 'villager2', role: RoleId.VILLAGER, team: Team.VILLAGE },
+      ],
+    });
+    const resolver = new NightResolver(new FirstPickRandom());
+    const { result } = resolver.resolve({
+      room,
+      submissions: [
+        {
+          actionId: 'a1',
+          actorTelegramId: 'wolf1',
+          actionType: NightActionType.WEREWOLF_VOTE_KILL,
+          targetTelegramId: 'villager1',
+          round: 1,
+        },
+        {
+          actionId: 'a2',
+          actorTelegramId: 'wolf2',
+          actionType: NightActionType.WEREWOLF_VOTE_KILL,
+          targetTelegramId: 'villager2',
+          round: 1,
+        },
+      ],
+      getHunterDecision: noHunterDecision,
+    });
+
+    expect(result.deaths).toEqual([]);
+  });
+
   it('CONFIRMED RULE: Bodyguard protection saves the werewolf target', () => {
     const room = buildRoom({
       players: [
@@ -383,7 +417,7 @@ describe('NightResolver', () => {
     expect(updatedRoom.players['villager1'].protected).toBe(false);
   });
 
-  it('werewolf majority vote picks the target with most votes', () => {
+  it('accepts the werewolf kill when both werewolves choose the same target', () => {
     const room = buildRoom({
       players: [
         { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
@@ -416,7 +450,7 @@ describe('NightResolver', () => {
     expect(result.deaths).toEqual([{ telegramId: 'villager1', cause: 'WEREWOLF_KILL' }]);
   });
 
-  it('werewolf tie is broken deterministically via injected RandomPort', () => {
+  it('does not finalize a kill when the two werewolves pick different targets', () => {
     const twoWolfRoom = buildRoom({
       players: [
         { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
@@ -446,7 +480,7 @@ describe('NightResolver', () => {
       ],
       getHunterDecision: noHunterDecision,
     });
-    expect(result.deaths).toEqual([{ telegramId: 'villager1', cause: 'WEREWOLF_KILL' }]);
+    expect(result.deaths).toEqual([]);
   });
 
   it('no death occurs if werewolves submit no valid target', () => {

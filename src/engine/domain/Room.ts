@@ -21,6 +21,8 @@ export interface GameSettings {
    * Werewolf count is always computed by the distribution strategy. Business
    * rule (confirmed with product owner): special roles are NOT auto-filled —
    * only the ones listed here are used, giving the host explicit control.
+   * By default, a fresh room starts with no special roles enabled so small
+   * games such as 3 players can still begin without hitting role-capacity errors.
    */
   enabledRoles: string[];
 
@@ -56,7 +58,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   minPlayers: 3,
   maxPlayers: 20,
   roleDistributionStrategy: 'default-phase1',
-  enabledRoles: ['SEER', 'BODYGUARD', 'HUNTER', 'WITCH'],
+  enabledRoles: [],
   seerRevealsExactRole: false,
   bodyguardAllowConsecutiveProtect: true,
   bodyguardAllowSelfProtect: false,

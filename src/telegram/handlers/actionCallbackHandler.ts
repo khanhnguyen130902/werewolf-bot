@@ -4,8 +4,7 @@ import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
 import { GameFlowController } from '../GameFlowController';
 import { parseActionCallbackData } from '../presenters/keyboards';
-import { NightActionType } from '../../engine/domain/enums';
-import { Messages } from '../presenters/messages';
+import { NightActionType, RoleId } from '../../engine/domain/enums';
 import { translateError } from '../presenters/translateError';
 
 const NIGHT_ACTION_TYPES: Set<string> = new Set([
@@ -38,6 +37,41 @@ const NIGHT_ACTION_TYPES: Set<string> = new Set([
  * always runs the full configured duration, which is always correct (if
  * slightly less snappy) and avoids adding state purely for an optimization.
  */
+async function notifyWerewolfConsensusConflict(
+  bot: Telegraf<BotContext>,
+  room: Awaited<ReturnType<BotServices['nightActionService']['submitNightAction']>>,
+): Promise<void> {
+  const aliveWerewolves = Object.values(room.players).filter(
+    (player) => player.alive && player.role === RoleId.WEREWOLF,
+  );
+
+  if (aliveWerewolves.length < 2) return;
+
+  const latestSelections = new Map<string, string | null>();
+  for (const action of room.pendingNightActions) {
+    if (action.actionType !== NightActionType.WEREWOLF_VOTE_KILL) continue;
+    if (action.round !== room.currentRound) continue;
+    latestSelections.set(action.actorTelegramId, action.targetTelegramId);
+  }
+
+  const targets = Array.from(latestSelections.values()).filter(
+    (target): target is string => Boolean(target),
+  );
+  if (targets.length < 2) return;
+
+  const uniqueTargets = new Set(targets);
+  if (uniqueTargets.size < 2) return;
+
+  const message = '⚠️ Hai Sói đang chọn mục tiêu khác nhau. Hãy thống nhất lại một mục tiêu để giết.';
+  for (const werewolf of aliveWerewolves) {
+    try {
+      await bot.telegram.sendMessage(werewolf.telegramId, message);
+    } catch {
+      // Non-fatal; best-effort notification only.
+    }
+  }
+}
+
 export function registerActionCallbackHandler(
   services: BotServices,
   flowController: GameFlowController,
@@ -51,40 +85,41 @@ export function registerActionCallbackHandler(
     if (!parsed) return next(); // not one of our "action:" buttons (e.g. hunter-shot:)
 
     const telegramId = String(ctx.from.id);
-    const roomId = await services.storage.getPlayerSession(telegramId);
-    if (!roomId) {
-      await ctx.answerCbQuery('Không tìm thấy phòng chơi của bạn.');
-      return;
-    }
+    void ctx.answerCbQuery('Đang xử lý...');
 
     try {
+      const roomId = await services.storage.getPlayerSession(telegramId);
+      if (!roomId) {
+        await ctx.answerCbQuery('Không tìm thấy phòng chơi của bạn.');
+        return;
+      }
+
       if (parsed.actionType === 'VOTE') {
-        await services.dayService.submitVote({
+        void services.dayService.submitVote({
           roomId,
           actionId: randomUUID(),
           voterTelegramId: telegramId,
           targetTelegramId: parsed.targetTelegramId,
         });
-        await ctx.answerCbQuery(Messages.voteRecorded());
         return;
       }
 
       if (NIGHT_ACTION_TYPES.has(parsed.actionType)) {
-        await services.nightActionService.submitNightAction({
+        const updatedRoom = await services.nightActionService.submitNightAction({
           roomId,
           actionId: randomUUID(),
           actorTelegramId: telegramId,
           actionType: parsed.actionType as NightActionType,
           targetTelegramId: parsed.targetTelegramId,
         });
-        await ctx.answerCbQuery(Messages.actionRecorded());
 
         if (parsed.actionType === NightActionType.WEREWOLF_VOTE_KILL) {
-          await flowController.promptWitchSaveForVictim(roomId, parsed.targetTelegramId);
+          await notifyWerewolfConsensusConflict(bot, updatedRoom);
+          void flowController.promptWitchSaveForVictim(roomId, parsed.targetTelegramId);
         }
 
-        const allSubmitted = await services.orchestrator.allNightActionsSubmitted(roomId);
-        if (allSubmitted) {
+        void services.orchestrator.allNightActionsSubmitted(roomId).then(async (allSubmitted) => {
+          if (!allSubmitted) return;
           const {
             room: resolvedRoom,
             deaths,
@@ -94,7 +129,7 @@ export function registerActionCallbackHandler(
             promptHunter: (rid, hid) => flowController.promptHunterAndAwait(rid, hid),
           });
           await flowController.onNightResolved(resolvedRoom, deaths, seerResults);
-        }
+        });
         return;
       }
 

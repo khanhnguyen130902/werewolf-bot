@@ -20,7 +20,7 @@ export const RoleNames: Record<RoleId, string> = {
 
 export const RoleDescriptions: Record<RoleId, string> = {
   [RoleId.WEREWOLF]:
-    'Mỗi đêm, bạn cùng các Sói khác chọn 1 người để cắn chết. Bạn thắng khi số Sói còn sống >= số Dân còn sống.',
+    'Mỗi đêm, bạn cùng các Sói khác chọn 1 người để cắn chết. Bạn thắng khi số Sói còn sống ≥ số Dân còn sống.',
   [RoleId.VILLAGER]:
     'Bạn không có kỹ năng đặc biệt. Hãy dùng lý luận vào ban ngày để tìm ra Sói.',
   [RoleId.SEER]:

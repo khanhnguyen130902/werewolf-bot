@@ -32,24 +32,15 @@ const SPECIAL_ROLES: RoleId[] = [
 ];
 
 /**
- * Default Phase 1 distribution strategy (business rule confirmed with
- * product owner):
- *   - Werewolf count = floor(playerCount / 4), minimum 1.
- *   - Special roles = exactly the ones the host enabled via
- *     `settings.enabledRoles`, provided there is room for them (each special
- *     role costs one non-werewolf slot). Unset special roles are simply
- *     omitted for this match rather than auto-filled — this matches the
- *     "host chooses which roles to use" decision, giving hosts control over
- *     game variety/difficulty instead of a rigid one-size-fits-all mapping.
- *   - Remaining slots (playerCount - wolves - enabled specials) become
- *     Villager.
+ * Default Phase 1 distribution strategy.
  *
- * Validation: if enabledSpecialRoles requests more special roles than there
- * is room for (i.e. wolves + specials > playerCount), this throws
- * TooManyPlayersForRolesError with a clear message rather than silently
- * dropping a role — silent role-dropping would be a serious, hard-to-debug
- * game-design bug (a host could think Witch is in play when it silently
- * isn't).
+ * Rule set:
+ * - Werewolf count is derived from the player count, but it is capped so the
+ *   final plan still leaves room for at least one villager.
+ * - If the host did not explicitly enable any special roles, then 6+ player
+ *   games automatically enable all special roles.
+ * - If the host explicitly enabled special roles, those roles are used as-is,
+ *   provided the plan still fits the player count.
  */
 export class DefaultPhase1DistributionStrategy implements RoleDistributionStrategy {
   readonly id = 'default-phase1';
@@ -62,41 +53,70 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
       throw new NotEnoughPlayersError(playerCount, 1);
     }
 
-    const werewolfCount =
-      playerCount >= 5 ? Math.max(2, Math.floor(playerCount / 4)) : Math.max(1, Math.floor(playerCount / 4));
-    const minimumVillagerCount = 1;
-
     if (playerCount === 1) {
       return {
         [RoleId.WEREWOLF]: 1,
       };
     }
 
-    const requestedSpecials = enabledSpecialRoles.filter((r) =>
+    const explicitSpecials = enabledSpecialRoles.filter((r) =>
       SPECIAL_ROLES.includes(r),
     );
-    // De-duplicate defensively in case caller passes duplicates.
-    const uniqueSpecials = [...new Set(requestedSpecials)];
+    const uniqueSpecials = [...new Set(explicitSpecials)];
 
-    const nonVillagerNonWolfCount = uniqueSpecials.length;
-    const usedSlots = werewolfCount + nonVillagerNonWolfCount;
+    const selectedSpecialRoles = this.getSelectedSpecialRoles(playerCount, uniqueSpecials);
+    const minimumVillagerCount = 1;
+    const maxWerewolves = Math.max(
+      1,
+      playerCount - selectedSpecialRoles.length - minimumVillagerCount,
+    );
+    const werewolfCount = Math.max(
+      1,
+      Math.min(this.getDefaultWerewolfCount(playerCount), maxWerewolves),
+    );
+    const usedSlots = werewolfCount + selectedSpecialRoles.length;
 
-    if (usedSlots > playerCount) {
+    if (usedSlots > playerCount - minimumVillagerCount) {
       throw new TooManyPlayersForRolesError(usedSlots, playerCount);
     }
 
-    const villagerCount = Math.max(minimumVillagerCount, playerCount - usedSlots);
+    return this.buildPlan(werewolfCount, selectedSpecialRoles, playerCount, usedSlots);
+  }
+
+  private buildPlan(
+    werewolfCount: number,
+    selectedSpecialRoles: RoleId[],
+    playerCount: number,
+    usedSlots: number,
+  ): RoleDistributionPlan {
+    const villagerCount = playerCount - usedSlots;
 
     const plan: RoleDistributionPlan = {
       [RoleId.WEREWOLF]: werewolfCount,
     };
-    for (const roleId of uniqueSpecials) {
-      plan[roleId] = 1; // Phase 1: each special role appears at most once
+    for (const roleId of selectedSpecialRoles) {
+      plan[roleId] = 1;
     }
     if (villagerCount > 0) {
       plan[RoleId.VILLAGER] = villagerCount;
     }
 
     return plan;
+  }
+
+  private getDefaultWerewolfCount(playerCount: number): number {
+    return playerCount >= 5 ? Math.max(2, Math.floor(playerCount / 4)) : 1;
+  }
+
+  private getSelectedSpecialRoles(playerCount: number, explicitSpecials: RoleId[]): RoleId[] {
+    if (explicitSpecials.length > 0) {
+      return explicitSpecials;
+    }
+
+    if (playerCount >= 6) {
+      return [...SPECIAL_ROLES];
+    }
+
+    return [];
   }
 }
