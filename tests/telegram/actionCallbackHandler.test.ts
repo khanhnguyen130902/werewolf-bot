@@ -158,6 +158,73 @@ describe('registerActionCallbackHandler', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it('locks the Hunter prompt keyboard and confirms the selected target privately', async () => {
+    const services = {
+      storage: {
+        getPlayerSession: jest.fn().mockResolvedValue('room1'),
+      },
+      dayService: {
+        submitVote: jest.fn(),
+      },
+      nightActionService: {
+        submitNightAction: jest.fn().mockResolvedValue({
+          players: {
+            hunter1: {
+              telegramId: 'hunter1',
+              nickname: 'Hunter',
+              role: 'HUNTER',
+              alive: true,
+            },
+            victim1: {
+              telegramId: 'victim1',
+              nickname: 'Victim',
+              role: 'VILLAGER',
+              alive: true,
+            },
+          },
+          pendingNightActions: [],
+          currentRound: 1,
+        }),
+      },
+      orchestrator: {
+        allNightActionsSubmitted: jest.fn().mockResolvedValue(false),
+      },
+    } as any;
+
+    const flowController = {
+      promptWitchSaveForVictim: jest.fn(),
+      onNightResolved: jest.fn(),
+    } as any;
+
+    let capturedHandler: ((ctx: any, next: any) => Promise<void>) | undefined;
+    const bot = {
+      on: jest.fn((_event: string, handler: (ctx: any, next: any) => Promise<void>) => {
+        capturedHandler = handler;
+      }),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+
+    registerActionCallbackHandler(services, flowController, bot);
+
+    const answerCbQuery = jest.fn().mockResolvedValue(undefined);
+    const ctx = {
+      callbackQuery: { data: 'hunter-shot:hunter1:victim1' },
+      from: { id: 'hunter1' },
+      answerCbQuery,
+      editMessageReplyMarkup: jest.fn().mockResolvedValue(undefined),
+      reply: jest.fn().mockResolvedValue(undefined),
+      telegram: { sendMessage: jest.fn() },
+    } as any;
+    const next = jest.fn();
+
+    await capturedHandler!(ctx, next);
+
+    expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
+    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
+    expect(ctx.reply).toHaveBeenCalledWith('✅ Thợ săn chọn mục tiêu bắn trả: **Victim**.');
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('notifies werewolves of current choices after a werewolf vote', async () => {
     const services = {
       storage: {

@@ -66,6 +66,7 @@ export class GameFlowController {
       }
 
       const pending = pendingHunterPrompts.get(hunterTelegramId);
+      await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
       if (!pending) {
         // No prompt currently awaited for this Hunter (already resolved, or
         // a stale/duplicate button press) -- acknowledge and ignore.
@@ -75,8 +76,22 @@ export class GameFlowController {
 
       clearTimeout(pending.timeoutHandle);
       pendingHunterPrompts.delete(hunterTelegramId);
-      await ctx.answerCbQuery();
       pending.resolve({ targetTelegramId: targetPart === 'SKIP' ? null : targetPart });
+      await ctx.answerCbQuery('Đã ghi nhận hành động.');
+
+      const roomId = await this.services.storage.getPlayerSession(hunterTelegramId);
+      let targetNickname: string | null = null;
+      if (targetPart !== 'SKIP') {
+        if (roomId) {
+          const room = await this.services.roomService.getRoom(roomId);
+          targetNickname = room?.players[targetPart]?.nickname ?? targetPart;
+        } else {
+          targetNickname = targetPart;
+        }
+      }
+      await ctx.reply(
+        Messages.targetSelected('Thợ săn chọn mục tiêu bắn trả', targetNickname),
+      ).catch(() => undefined);
     });
   }
 

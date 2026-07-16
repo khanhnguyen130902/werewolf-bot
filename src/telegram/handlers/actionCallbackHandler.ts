@@ -185,6 +185,8 @@ export function registerActionCallbackHandler(
       }
 
       if (NIGHT_ACTION_TYPES.has(parsed.actionType)) {
+        await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
+
         const updatedRoom = await services.nightActionService.submitNightAction({
           roomId,
           actionId: randomUUID(),
@@ -209,14 +211,15 @@ export function registerActionCallbackHandler(
         }
 
         await ctx.answerCbQuery('Đã ghi nhận hành động.');
-        await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
         await bot.telegram
           .sendMessage(
             telegramId,
-            Messages.targetSelected(
-              ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
-              targetNickname(updatedRoom, parsed.targetTelegramId),
-            ),
+            parsed.targetTelegramId
+              ? Messages.targetSelected(
+                  ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
+                  targetNickname(updatedRoom, parsed.targetTelegramId),
+                )
+              : Messages.nightActionSkipped(ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Hành động của bạn'),
           )
           .catch(() => undefined);
 

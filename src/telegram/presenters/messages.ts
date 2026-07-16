@@ -97,6 +97,7 @@ export const Messages = {
     targetNickname
       ? `✅ ${action}: **${targetNickname}**.`
       : `✅ ${action}: **Bỏ qua**.`,
+  nightActionSkipped: (action: string) => `✅ ${action} quyết định không ${action.includes('cứu') ? 'cứu' : action.includes('đầu độc') ? 'đầu độc' : action.includes('soi') ? 'soi' : action.includes('bảo vệ') ? 'bảo vệ' : action.includes('bắn trả') ? 'bắn ai' : 'thực hiện hành động'} ai đêm nay.`,
   executionResult: (nickname: string | null) =>
     nickname
       ? `⚖️ Dân làng đã quyết định treo cổ **${nickname}**.`
