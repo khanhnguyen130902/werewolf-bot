@@ -160,8 +160,9 @@ export function registerActionCallbackHandler(
     if (!parsed) return next(); // not one of our "action:" buttons (e.g. hunter-shot:)
 
     const telegramId = String(ctx.from.id);
-    const initialAck = parsed.actionType === 'VOTE' ? 'Đã bỏ phiếu' : 'Đã ghi nhận ✅';
-    await ctx.answerCbQuery(initialAck);
+    if (parsed.actionType !== 'VOTE') {
+      await ctx.answerCbQuery('Đã ghi nhận ✅');
+    }
 
     try {
       const roomId = await services.storage.getPlayerSession(telegramId);
