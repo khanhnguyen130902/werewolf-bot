@@ -32,6 +32,26 @@ export function buildTargetKeyboard(params: {
   return Markup.inlineKeyboard(rows);
 }
 
+/** Builds the public voting keyboard with the current tally on every button.
+ * Telegram inline keyboards cannot render a native poll, so the counts are
+ * appended to each button label and refreshed after every vote. */
+export function buildVoteKeyboard(params: {
+  targets: TargetOption[];
+  voteCounts: Record<string, number>;
+  skipCount: number;
+}): Markup.Markup<InlineKeyboardMarkup> {
+  const rows = params.targets.map((target) => [
+    Markup.button.callback(
+      `${target.nickname} (${params.voteCounts[target.telegramId] ?? 0})`,
+      `action:VOTE:${target.telegramId}`,
+    ),
+  ]);
+  rows.push([
+    Markup.button.callback(`⏭ Bỏ qua (${params.skipCount})`, 'action:VOTE:SKIP'),
+  ]);
+  return Markup.inlineKeyboard(rows);
+}
+
 /** Parses a callback_data string produced by buildTargetKeyboard back into
  * its actionType and targetTelegramId (null for the skip button). Returns
  * null if the string doesn't match the expected "action:..." format, so

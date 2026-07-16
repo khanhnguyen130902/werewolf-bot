@@ -204,7 +204,7 @@ describe('NightActionService.submitNightAction', () => {
     ).rejects.toBeInstanceOf(DuplicateActionError);
   });
 
-  it('allows a werewolf to update their kill target in the same round', async () => {
+  it('rejects a werewolf changing their kill target in the same round', async () => {
     const { roomService, gameService, nightActionService } = setup();
     const room = await createAndStartGame(roomService, gameService);
     const wolf = findByRole(room, RoleId.WEREWOLF);
@@ -220,21 +220,15 @@ describe('NightActionService.submitNightAction', () => {
       targetTelegramId: nonWerewolfTargets[0].telegramId,
     });
 
-    const updatedRoom = await nightActionService.submitNightAction({
-      roomId: 'room1',
-      actionId: 'changed-mind',
-      actorTelegramId: wolf.telegramId,
-      actionType: NightActionType.WEREWOLF_VOTE_KILL,
-      targetTelegramId: nonWerewolfTargets[1].telegramId,
-    });
-
-    const werewolfAction = updatedRoom.pendingNightActions.find(
-      (action) =>
-        action.actorTelegramId === wolf.telegramId &&
-        action.actionType === NightActionType.WEREWOLF_VOTE_KILL,
-    );
-
-    expect(werewolfAction?.targetTelegramId).toBe(nonWerewolfTargets[1].telegramId);
+    await expect(
+      nightActionService.submitNightAction({
+        roomId: 'room1',
+        actionId: 'changed-mind',
+        actorTelegramId: wolf.telegramId,
+        actionType: NightActionType.WEREWOLF_VOTE_KILL,
+        targetTelegramId: nonWerewolfTargets[1].telegramId,
+      }),
+    ).rejects.toBeInstanceOf(DuplicateActionError);
   });
 
   it('allows a Witch to submit both save and poison in the same round', async () => {

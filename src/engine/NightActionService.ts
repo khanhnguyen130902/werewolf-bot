@@ -181,42 +181,28 @@ export class NightActionService {
         role.validateNightAction(context);
       }
 
-      // One submission per actor per round for each action type, except
-      // Werewolf kill votes may be updated by the same actor before the
-      // night resolves, and Witch may submit both save and poison separately
-      // in the same night.
+      // One submission per actor per round for each action type. A Witch may
+      // still submit both save and poison because those are distinct actions.
       const existingSameRoundIndex = room.pendingNightActions.findIndex(
         (a) =>
           a.actorTelegramId === params.actorTelegramId &&
           a.actionType === params.actionType &&
           a.round === room.currentRound,
       );
-      if (existingSameRoundIndex >= 0 && params.actionType !== NightActionType.WEREWOLF_VOTE_KILL) {
+      if (existingSameRoundIndex >= 0) {
         throw new DuplicateActionError(params.actionId);
       }
 
-      const pendingNightActions =
-        existingSameRoundIndex >= 0
-          ? room.pendingNightActions.map((action, index) =>
-              index === existingSameRoundIndex
-                ? {
-                    ...action,
-                    actionId: params.actionId,
-                    targetTelegramId: params.targetTelegramId,
-                    round: room.currentRound,
-                  }
-                : action,
-            )
-          : [
-              ...room.pendingNightActions,
-              {
-                actionId: params.actionId,
-                actorTelegramId: params.actorTelegramId,
-                actionType: params.actionType,
-                targetTelegramId: params.targetTelegramId,
-                round: room.currentRound,
-              },
-            ];
+      const pendingNightActions = [
+        ...room.pendingNightActions,
+        {
+          actionId: params.actionId,
+          actorTelegramId: params.actorTelegramId,
+          actionType: params.actionType,
+          targetTelegramId: params.targetTelegramId,
+          round: room.currentRound,
+        },
+      ];
 
       const updated: RoomState = {
         ...room,

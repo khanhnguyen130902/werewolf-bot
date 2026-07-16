@@ -3,7 +3,7 @@ import { Telegraf } from 'telegraf';
 import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
 import { GameFlowController } from '../GameFlowController';
-import { parseActionCallbackData } from '../presenters/keyboards';
+import { buildVoteKeyboard, parseActionCallbackData, TargetOption } from '../presenters/keyboards';
 import { Messages } from '../presenters/messages';
 import { NightActionType, RoleId } from '../../engine/domain/enums';
 import { RoomState } from '../../engine/domain/Room';
@@ -16,6 +16,37 @@ const NIGHT_ACTION_TYPES: Set<string> = new Set([
   NightActionType.WITCH_SAVE,
   NightActionType.WITCH_POISON,
 ]);
+
+const ACTION_LABELS: Partial<Record<NightActionType, string>> = {
+  [NightActionType.WEREWOLF_VOTE_KILL]: 'Sói chọn cắn',
+  [NightActionType.SEER_INSPECT]: 'Tiên tri chọn soi',
+  [NightActionType.BODYGUARD_PROTECT]: 'Bảo vệ chọn bảo vệ',
+  [NightActionType.WITCH_SAVE]: 'Phù thủy chọn cứu',
+  [NightActionType.WITCH_POISON]: 'Phù thủy chọn đầu độc',
+};
+
+function targetNickname(room: RoomState, targetTelegramId: string | null): string | null {
+  return targetTelegramId ? room.players[targetTelegramId]?.nickname ?? targetTelegramId : null;
+}
+
+function buildCurrentVoteKeyboard(room: RoomState) {
+  const targets: TargetOption[] = Object.values(room.players)
+    .filter((player) => player.alive)
+    .map((player) => ({ telegramId: player.telegramId, nickname: player.nickname }));
+  const voteCounts: Record<string, number> = {};
+  let skipCount = 0;
+
+  for (const player of Object.values(room.players)) {
+    if (!player.hasVotedThisRound) continue;
+    if (player.voteTarget === null) {
+      skipCount += 1;
+    } else {
+      voteCounts[player.voteTarget] = (voteCounts[player.voteTarget] ?? 0) + 1;
+    }
+  }
+
+  return buildVoteKeyboard({ targets, voteCounts, skipCount });
+}
 
 /**
  * Registers the single handler for all "action:<type>:<target>" callback
@@ -32,12 +63,8 @@ const NIGHT_ACTION_TYPES: Set<string> = new Set([
  * already done.
  *
  * Votes intentionally do NOT get the same early-resolve treatment: a vote
- * of `null` is a legitimate explicit abstain (confirmed business rule), so
- * "has this player voted yet" cannot be distinguished from "this player
- * abstained" using the voteTarget field alone -- doing so correctly would
- * require an additional "hasVoted" flag on PlayerState. Voting therefore
- * always runs the full configured duration, which is always correct (if
- * slightly less snappy) and avoids adding state purely for an optimization.
+ * of `null` is a legitimate explicit abstain, so voting always runs for the
+ * full configured duration.
  */
 function formatWerewolfTarget(room: RoomState, targetTelegramId: string | null): string {
   if (!targetTelegramId) return 'chưa chọn';
@@ -142,14 +169,17 @@ export function registerActionCallbackHandler(
       }
 
       if (parsed.actionType === 'VOTE') {
-        await services.dayService.submitVote({
+        const updatedRoom = await services.dayService.submitVote({
           roomId,
           actionId: randomUUID(),
           voterTelegramId: telegramId,
           targetTelegramId: parsed.targetTelegramId,
         });
         await ctx.answerCbQuery(Messages.voteRecorded());
-        await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
+        await ctx.editMessageReplyMarkup(buildCurrentVoteKeyboard(updatedRoom).reply_markup).catch(() => undefined);
+        await ctx.reply(
+          Messages.targetSelected('Bạn đã bỏ phiếu cho', targetNickname(updatedRoom, parsed.targetTelegramId)),
+        );
         return;
       }
 
@@ -167,9 +197,16 @@ export function registerActionCallbackHandler(
         }
 
         await ctx.answerCbQuery('Đã ghi nhận hành động.');
-        if (parsed.actionType !== NightActionType.WEREWOLF_VOTE_KILL) {
-          await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
-        }
+        await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
+        await bot.telegram
+          .sendMessage(
+            telegramId,
+            Messages.targetSelected(
+              ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
+              targetNickname(updatedRoom, parsed.targetTelegramId),
+            ),
+          )
+          .catch(() => undefined);
 
         void (async () => {
           try {

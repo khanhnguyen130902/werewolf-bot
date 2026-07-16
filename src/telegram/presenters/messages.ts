@@ -93,6 +93,10 @@ export const Messages = {
   votingStarted: (seconds: number) =>
     `🗳 Bắt đầu bỏ phiếu trong ${seconds} giây. Chọn người bạn muốn treo cổ.`,
   voteRecorded: () => `✅ Đã ghi nhận phiếu bầu của bạn.`,
+  targetSelected: (action: string, targetNickname: string | null) =>
+    targetNickname
+      ? `✅ ${action}: **${targetNickname}**.`
+      : `✅ ${action}: **Bỏ qua**.`,
   executionResult: (nickname: string | null) =>
     nickname
       ? `⚖️ Dân làng đã quyết định treo cổ **${nickname}**.`

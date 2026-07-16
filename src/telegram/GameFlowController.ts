@@ -5,7 +5,7 @@ import { RoomState } from '../engine/domain/Room';
 import { RoleId, NightActionType, GameState } from '../engine/domain/enums';
 import { createPhase1RoleRegistry } from '../engine/roles/RoleRegistry';
 import { Messages, RoleNames, TeamNames, DeathCauseNames } from './presenters/messages';
-import { buildTargetKeyboard, TargetOption } from './presenters/keyboards';
+import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presenters/keyboards';
 import { TimerJobType } from '../engine/RoomTimerService';
 
 const roleRegistry = createPhase1RoleRegistry();
@@ -370,7 +370,7 @@ export class GameFlowController {
     await this.bot.telegram.sendMessage(
       room.chatId,
       Messages.votingStarted(seconds),
-      buildTargetKeyboard({ actionType: 'VOTE', targets: aliveTargets, includeSkip: true }),
+      buildVoteKeyboard({ targets: aliveTargets, voteCounts: {}, skipCount: 0 }),
     );
 
     const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
