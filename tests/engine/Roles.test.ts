@@ -111,6 +111,10 @@ describe('BodyguardRole', () => {
 describe('HunterRole', () => {
   const role = new HunterRole();
 
+  it('is treated as having a nightly action prompt', () => {
+    expect(role.definition.hasNightAction).toBe(true);
+  });
+
   it('allows shooting another living player', () => {
     expect(() => role.validateNightAction(baseContext())).not.toThrow();
   });

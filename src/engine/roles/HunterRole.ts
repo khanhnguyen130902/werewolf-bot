@@ -3,20 +3,18 @@ import { RoleId, Team, NightActionType } from '../domain/enums';
 import { InvalidTargetError } from '../errors/DomainError';
 
 /**
- * Hunter (Thợ săn). Has no regular night action; instead, when killed by a
- * death-cause configured in GameSettings.hunterTriggerCauses (SRS: "Khi chết
- * bởi Sói/Vote/Độc (theo setting)"), fires one revenge shot before leaving
- * the game. The revenge-shot action itself is validated the same way as any
- * other targeted action (reuses NightActionType.HUNTER_SHOOT so NightResolver
- * can process it uniformly), but it is *triggered* by the death pipeline
- * rather than by the normal per-round night-action prompt.
+ * Hunter (Thợ săn). Cho phép người chơi chọn trước một mục tiêu mỗi đêm.
+ * Hành động này không có hiệu lực ngay lập tức; nó chỉ được kích hoạt nếu
+ * Hunter chết bởi một nguyên nhân được cấu hình trong GameSettings.hunterTriggerCauses.
+ * Revenge shot sử dụng cùng NightActionType.HUNTER_SHOOT để NightResolver và
+ * DeathQueue xử lý đồng nhất với các hành động ban đêm khác.
  */
 export class HunterRole implements IRole {
   readonly definition = {
     id: RoleId.HUNTER,
     team: Team.VILLAGE,
     nameKey: 'role.hunter',
-    hasNightAction: false,
+    hasNightAction: true,
     nightActionType: NightActionType.HUNTER_SHOOT,
     reactsToOwnDeath: true,
   };
