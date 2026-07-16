@@ -73,9 +73,9 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   ],
   defaultTimeoutBehavior: TimeoutBehavior.SKIP,
   timers: {
-    nightActionSeconds: 60,
+    nightActionSeconds: 45,
     discussionSeconds: 180,
-    votingSeconds: 30,
+    votingSeconds: 15,
   },
 };
 

@@ -2,7 +2,8 @@ import { Telegraf } from 'telegraf';
 import { BotContext } from './BotContext';
 import { BotServices } from './BotServices';
 import { RoomState } from '../engine/domain/Room';
-import { RoleId, NightActionType, NightPhase, GameState } from '../engine/domain/enums';
+import { PlayerState } from '../engine/domain/Player';
+import { RoleId, Team, NightActionType, NightPhase, GameState } from '../engine/domain/enums';
 import { createPhase1RoleRegistry } from '../engine/roles/RoleRegistry';
 import { Messages, RoleNames, DeathCauseNames } from './presenters/messages';
 import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presenters/keyboards';
@@ -18,6 +19,19 @@ function isTestBot(telegramId: string): boolean {
 function pickRandomTarget(targets: TargetOption[]): TargetOption | null {
   if (targets.length === 0) return null;
   return targets[Math.floor(Math.random() * targets.length)];
+}
+
+function pickImmediateBotTarget(room: RoomState, actor: PlayerState, targets: TargetOption[]): TargetOption | null {
+  if (targets.length === 0) return null;
+
+  if (actor.team === Team.WEREWOLF) {
+    const enemyTargets = targets.filter((t) => room.players[t.telegramId]?.team !== Team.WEREWOLF);
+    if (enemyTargets.length > 0) {
+      return enemyTargets[Math.floor(Math.random() * enemyTargets.length)];
+    }
+  }
+
+  return pickRandomTarget(targets);
 }
 
 /** Maps a role that has a regular per-night prompt to its NightActionType.
@@ -213,7 +227,7 @@ export class GameFlowController {
       });
 
       if (isTestBot(player.telegramId)) {
-        const selection = pickRandomTarget(targets);
+        const selection = pickImmediateBotTarget(room, player, targets);
         if (selection) {
           await this.services.nightActionService.submitNightAction({
             roomId: room.id,

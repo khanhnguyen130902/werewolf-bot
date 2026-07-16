@@ -8,6 +8,7 @@ import { Messages } from '../presenters/messages';
 import { NightActionType, NightPhase, RoleId } from '../../engine/domain/enums';
 import { RoomState } from '../../engine/domain/Room';
 import { translateError } from '../presenters/translateError';
+import { logger } from '../../infrastructure/logging/logger';
 
 const NIGHT_ACTION_TYPES: Set<string> = new Set([
   NightActionType.WEREWOLF_VOTE_KILL,
@@ -206,6 +207,23 @@ export function registerActionCallbackHandler(
         });
 
         if (parsed.actionType === NightActionType.WEREWOLF_VOTE_KILL) {
+          const werewolfActions = updatedRoom.pendingNightActions.filter(
+            (a) =>
+              a.actionType === NightActionType.WEREWOLF_VOTE_KILL &&
+              a.round === updatedRoom.currentRound,
+          );
+          logger.debug('Werewolf vote submitted', {
+            roomId,
+            actorTelegramId: telegramId,
+            targetTelegramId: parsed.targetTelegramId,
+            totalWerewolfActions: werewolfActions.length,
+            werewolfActions: werewolfActions.map((a) => ({
+              actorTelegramId: a.actorTelegramId,
+              targetTelegramId: a.targetTelegramId,
+              round: a.round,
+            })),
+          });
+
           await notifyWerewolfVoteStatus(bot, updatedRoom);
         }
 
@@ -236,11 +254,24 @@ export function registerActionCallbackHandler(
         void (async () => {
           try {
             const allSubmitted = await services.orchestrator.allNightActionsSubmitted(roomId);
+            logger.debug('Checked all night actions submitted', {
+              roomId,
+              allSubmitted,
+              nightPhase: updatedRoom.nightPhase,
+              currentRound: updatedRoom.currentRound,
+            });
             if (!allSubmitted) return;
             if (updatedRoom.nightPhase !== NightPhase.WITCH) {
+              logger.debug('Advancing to witch phase early because all night actions submitted', {
+                roomId,
+                nightPhase: updatedRoom.nightPhase,
+              });
               await flowController.beginWitchPhase(roomId);
               return;
             }
+            logger.debug('Resolving night early because all night actions submitted during witch phase', {
+              roomId,
+            });
             const {
               room: resolvedRoom,
               deaths,
@@ -250,9 +281,8 @@ export function registerActionCallbackHandler(
               promptHunter: (rid, hid) => flowController.promptHunterAndAwait(rid, hid),
             });
             await flowController.onNightResolved(resolvedRoom, deaths, seerResults);
-          } catch {
-            // Follow-up actions are best-effort and should not leave the user
-            // stuck with a callback that never gets acknowledged.
+          } catch (err) {
+            logger.error('Error during early night-resolution follow-up', { roomId, err });
           }
         })();
         return;

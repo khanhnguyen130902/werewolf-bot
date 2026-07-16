@@ -83,9 +83,7 @@ export const Messages = {
     if (deaths.length === 0) {
       return `☀️ Trời sáng rồi! Đêm ${round} không có ai thiệt mạng.`;
     }
-    const lines = deaths
-      .map((d) => `💀 ${d.nickname} đã ${DeathCauseNames[d.cause] ?? d.cause}.`)
-      .join('\n');
+    const lines = deaths.map((d) => `💀 ${d.nickname} đã chết.`).join('\n');
     return `☀️ Trời sáng rồi!\n\n${lines}`;
   },
   discussionStarted: (seconds: number) =>
