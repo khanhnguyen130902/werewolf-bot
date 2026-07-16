@@ -9,6 +9,16 @@ import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presente
 import { TimerJobType } from '../engine/RoomTimerService';
 
 const roleRegistry = createPhase1RoleRegistry();
+const TEST_BOT_ID_PREFIX = '999999900';
+
+function isTestBot(telegramId: string): boolean {
+  return telegramId.startsWith(TEST_BOT_ID_PREFIX);
+}
+
+function pickRandomTarget(targets: TargetOption[]): TargetOption | null {
+  if (targets.length === 0) return null;
+  return targets[Math.floor(Math.random() * targets.length)];
+}
 
 /** Maps a role that has a regular per-night prompt to its NightActionType.
  * Hunter's normal-night action records a preselected revenge target. */
@@ -127,6 +137,7 @@ export class GameFlowController {
 
     for (const player of Object.values(room.players)) {
       if (!player.role) continue;
+      if (isTestBot(player.telegramId)) continue;
       try {
         const roleMessage = Messages.roleAssigned(player.role);
         const teammateMessage =
@@ -195,8 +206,25 @@ export class GameFlowController {
         if (player.role === RoleId.SEER) {
           return t.telegramId !== player.telegramId;
         }
+        if (player.role === RoleId.BODYGUARD && !room.settings.bodyguardAllowSelfProtect) {
+          return t.telegramId !== player.telegramId;
+        }
         return true;
       });
+
+      if (isTestBot(player.telegramId)) {
+        const selection = pickRandomTarget(targets);
+        if (selection) {
+          await this.services.nightActionService.submitNightAction({
+            roomId: room.id,
+            actionId: `bot-${player.telegramId}-${room.currentRound}-${actionType}-${selection.telegramId}`,
+            actorTelegramId: player.telegramId,
+            actionType,
+            targetTelegramId: selection.telegramId,
+          });
+        }
+        continue;
+      }
 
       try {
         const promptText =
@@ -259,6 +287,49 @@ export class GameFlowController {
       }
     }
     rows.push([{ text: '⏭ Bỏ qua', callback_data: 'action:WITCH_SAVE:SKIP' }]);
+    if (isTestBot(witch.telegramId)) {
+      const hasSave = victimId !== null && room.witchPotions && !room.witchPotions.saveUsed;
+      const hasPoison = room.witchPotions && !room.witchPotions.poisonUsed;
+      const shouldSave = hasSave && Math.random() < 0.7;
+      if (shouldSave) {
+        try {
+          await this.services.nightActionService.submitNightAction({
+            roomId: room.id,
+            actionId: `bot-witch-save-${witch.telegramId}-${room.currentRound}-${victimId}`,
+            actorTelegramId: witch.telegramId,
+            actionType: NightActionType.WITCH_SAVE,
+            targetTelegramId: victimId,
+          });
+        } catch {
+          // Ignore invalid bot action.
+        }
+      }
+
+      if (hasPoison) {
+        const poisonTargets = Object.values(room.players).filter(
+          (player) => player.alive && player.telegramId !== witch.telegramId,
+        );
+        const poisonTarget = pickRandomTarget(poisonTargets.map((player) => ({
+          telegramId: player.telegramId,
+          nickname: player.nickname,
+        })));
+        if (poisonTarget && Math.random() < 0.4) {
+          try {
+            await this.services.nightActionService.submitNightAction({
+              roomId: room.id,
+              actionId: `bot-witch-poison-${witch.telegramId}-${room.currentRound}-${poisonTarget.telegramId}`,
+              actorTelegramId: witch.telegramId,
+              actionType: NightActionType.WITCH_POISON,
+              targetTelegramId: poisonTarget.telegramId,
+            });
+          } catch {
+            // Ignore invalid bot action.
+          }
+        }
+      }
+      return;
+    }
+
     try {
       await this.bot.telegram.sendMessage(
         witch.telegramId,
@@ -313,6 +384,11 @@ export class GameFlowController {
     const aliveTargets: TargetOption[] = Object.values(room.players)
       .filter((p) => p.alive && p.telegramId !== hunterTelegramId)
       .map((p) => ({ telegramId: p.telegramId, nickname: p.nickname }));
+
+    if (isTestBot(hunterTelegramId)) {
+      const pick = pickRandomTarget(aliveTargets);
+      return { targetTelegramId: pick?.telegramId ?? null };
+    }
 
     const seconds = room.settings.timers.nightActionSeconds;
 
@@ -406,6 +482,22 @@ export class GameFlowController {
       Messages.votingStarted(seconds),
       buildVoteKeyboard({ targets: aliveTargets, voteCounts: {}, skipCount: 0 }),
     );
+
+    for (const player of Object.values(room.players)) {
+      if (!player.alive || !isTestBot(player.telegramId)) continue;
+      const targetOption = pickRandomTarget(aliveTargets);
+      if (!targetOption) continue;
+      try {
+        await this.services.dayService.submitVote({
+          roomId: room.id,
+          actionId: `bot-vote-${player.telegramId}-${room.currentRound}-${targetOption.telegramId}`,
+          voterTelegramId: player.telegramId,
+          targetTelegramId: targetOption.telegramId,
+        });
+      } catch {
+        // Ignore duplicate or invalid bot votes.
+      }
+    }
 
     const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
     if (jobId) activeTimerJobIds.set(room.id, jobId);

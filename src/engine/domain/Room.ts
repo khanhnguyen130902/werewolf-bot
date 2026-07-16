@@ -61,7 +61,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   enabledRoles: [],
   seerRevealsExactRole: false,
   bodyguardAllowConsecutiveProtect: true,
-  bodyguardAllowSelfProtect: false,
+  bodyguardAllowSelfProtect: true,
   witchAllowDualPotion: true,
   hunterTriggerCauses: ['WEREWOLF_KILL', 'VOTE_EXECUTION', 'WITCH_POISON'],
   nightActionOrder: [

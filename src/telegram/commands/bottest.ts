@@ -34,7 +34,7 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
         chatId: roomId,
       });
 
-      await ctx.reply(`🎮 Phòng test đã được tạo. Đang thêm ${TEST_BOT_COUNT} bot để đủ 6 người...`);
+      await ctx.reply(`🎮 Phòng test đã được tạo. Đang thêm ${TEST_BOT_COUNT} bot để đủ người...`);
 
       const room = await services.roomService.getRoom(roomId);
       if (!room) {
