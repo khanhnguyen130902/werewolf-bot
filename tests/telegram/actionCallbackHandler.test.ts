@@ -38,6 +38,7 @@ describe('registerActionCallbackHandler', () => {
       on: jest.fn((_event: string, handler: (ctx: any, next: any) => Promise<void>) => {
         capturedHandler = handler;
       }),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
     } as any;
 
     registerActionCallbackHandler(services, flowController, bot);
@@ -56,10 +57,141 @@ describe('registerActionCallbackHandler', () => {
 
     const runPromise = capturedHandler!(ctx, next);
 
-    expect(answerCbQuery).toHaveBeenCalled();
+    expect(answerCbQuery).toHaveBeenCalledWith('Đang xử lý...');
     expect(next).not.toHaveBeenCalled();
 
     deferred.resolve(undefined);
     await runPromise;
+
+    expect(answerCbQuery).toHaveBeenCalledWith(Messages.voteRecorded());
+  });
+
+  it('confirms a night action after submission instead of leaving the UI stuck in processing', async () => {
+    const services = {
+      storage: {
+        getPlayerSession: jest.fn().mockResolvedValue('room1'),
+      },
+      dayService: {
+        submitVote: jest.fn(),
+      },
+      nightActionService: {
+        submitNightAction: jest.fn().mockResolvedValue({
+          players: {
+            '123': {
+              telegramId: '123',
+              nickname: 'Wolf A',
+              role: 'WEREWOLF',
+              alive: true,
+            },
+          },
+          pendingNightActions: [],
+          currentRound: 1,
+        }),
+      },
+      orchestrator: {
+        allNightActionsSubmitted: jest.fn().mockResolvedValue(false),
+        resolveNight: jest.fn(),
+      },
+    } as any;
+
+    const flowController = {
+      promptWitchSaveForVictim: jest.fn(),
+      onNightResolved: jest.fn(),
+    } as any;
+
+    let capturedHandler: ((ctx: any, next: any) => Promise<void>) | undefined;
+    const bot = {
+      on: jest.fn((_event: string, handler: (ctx: any, next: any) => Promise<void>) => {
+        capturedHandler = handler;
+      }),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+
+    registerActionCallbackHandler(services, flowController, bot);
+
+    const answerCbQuery = jest.fn().mockResolvedValue(undefined);
+    const ctx = {
+      callbackQuery: { data: 'action:WEREWOLF_VOTE_KILL:target1' },
+      from: { id: '123' },
+      answerCbQuery,
+      telegram: { sendMessage: jest.fn() },
+    } as any;
+    const next = jest.fn();
+
+    await capturedHandler!(ctx, next);
+
+    expect(services.nightActionService.submitNightAction).toHaveBeenCalled();
+    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('notifies werewolves of current choices after a werewolf vote', async () => {
+    const services = {
+      storage: {
+        getPlayerSession: jest.fn().mockResolvedValue('room1'),
+      },
+      dayService: {
+        submitVote: jest.fn(),
+      },
+      nightActionService: {
+        submitNightAction: jest.fn().mockResolvedValue({
+          players: {
+            'wolf1': { telegramId: 'wolf1', nickname: 'Wolf A', role: 'WEREWOLF', alive: true },
+            'wolf2': { telegramId: 'wolf2', nickname: 'Wolf B', role: 'WEREWOLF', alive: true },
+            'villager1': { telegramId: 'villager1', nickname: 'Villager', role: 'VILLAGER', alive: true },
+          },
+          pendingNightActions: [
+            {
+              actorTelegramId: 'wolf1',
+              actionType: 'WEREWOLF_VOTE_KILL',
+              targetTelegramId: 'villager1',
+              round: 1,
+              actionId: 'action1',
+            },
+          ],
+          currentRound: 1,
+        }),
+      },
+      orchestrator: {
+        allNightActionsSubmitted: jest.fn().mockResolvedValue(false),
+      },
+    } as any;
+
+    const flowController = {
+      promptWitchSaveForVictim: jest.fn(),
+      onNightResolved: jest.fn(),
+    } as any;
+
+    let capturedHandler: ((ctx: any, next: any) => Promise<void>) | undefined;
+    const bot = {
+      on: jest.fn((_event: string, handler: (ctx: any, next: any) => Promise<void>) => {
+        capturedHandler = handler;
+      }),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+
+    registerActionCallbackHandler(services, flowController, bot);
+
+    const answerCbQuery = jest.fn().mockResolvedValue(undefined);
+    const ctx = {
+      callbackQuery: { data: 'action:WEREWOLF_VOTE_KILL:villager1' },
+      from: { id: 'wolf1' },
+      answerCbQuery,
+      telegram: { sendMessage: jest.fn() },
+    } as any;
+    const next = jest.fn();
+
+    await capturedHandler!(ctx, next);
+
+    expect(services.nightActionService.submitNightAction).toHaveBeenCalled();
+    expect(bot.telegram.sendMessage).toHaveBeenCalledTimes(2);
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
+      'wolf1',
+      expect.stringContaining('- Wolf A: Villager'),
+    );
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
+      'wolf2',
+      expect.stringContaining('Wolf B: chưa chọn'),
+    );
   });
 });
