@@ -13,7 +13,7 @@ export function registerHelpCommand(_services: BotServices, bot: Telegraf<BotCon
       '/leave - Rời phòng hiện tại',
       '/status - Xem trạng thái phòng',
       '/startgame - Host bắt đầu ván chơi',
-      '/zonkhanhtest - Tạo phòng test 6 người và thêm bot tự động',
+      '/bottest - Tạo phòng test 6 người và thêm bot tự động',
       '/vote - Gửi phiếu bầu thủ công (nếu cần)',
       '/end - Kết thúc phòng chơi',
       '/help - Xem danh sách lệnh',

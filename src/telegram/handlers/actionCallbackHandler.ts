@@ -160,7 +160,8 @@ export function registerActionCallbackHandler(
     if (!parsed) return next(); // not one of our "action:" buttons (e.g. hunter-shot:)
 
     const telegramId = String(ctx.from.id);
-    await ctx.answerCbQuery('Đã ghi nhận ✅');
+    const initialAck = parsed.actionType === 'VOTE' ? 'Đã bỏ phiếu' : 'Đã ghi nhận ✅';
+    await ctx.answerCbQuery(initialAck);
 
     try {
       const roomId = await services.storage.getPlayerSession(telegramId);
@@ -170,18 +171,26 @@ export function registerActionCallbackHandler(
       }
 
       if (parsed.actionType === 'VOTE') {
-        const updatedRoom = await services.dayService.submitVote({
-          roomId,
-          actionId: randomUUID(),
-          voterTelegramId: telegramId,
-          targetTelegramId: parsed.targetTelegramId,
-        });
-        await ctx.answerCbQuery(Messages.voteRecorded());
-        await ctx.editMessageReplyMarkup(buildCurrentVoteKeyboard(updatedRoom).reply_markup).catch(() => undefined);
-        await ctx.reply(
-          Messages.targetSelected('Bạn đã bỏ phiếu cho', targetNickname(updatedRoom, parsed.targetTelegramId)),
-        );
-        return;
+        try {
+          const updatedRoom = await services.dayService.submitVote({
+            roomId,
+            actionId: randomUUID(),
+            voterTelegramId: telegramId,
+            targetTelegramId: parsed.targetTelegramId,
+          });
+          await ctx.answerCbQuery(Messages.voteRecorded());
+          await ctx.editMessageReplyMarkup(buildCurrentVoteKeyboard(updatedRoom).reply_markup).catch(() => undefined);
+          await ctx.reply(
+            Messages.targetSelected('Bạn đã bỏ phiếu cho', targetNickname(updatedRoom, parsed.targetTelegramId)),
+          );
+          return;
+        } catch (err) {
+          if ((err as any)?.code === 'DUPLICATE_ACTION') {
+            await ctx.answerCbQuery(Messages.voteAlreadyCast(), { show_alert: true });
+            return;
+          }
+          throw err;
+        }
       }
 
       if (NIGHT_ACTION_TYPES.has(parsed.actionType)) {

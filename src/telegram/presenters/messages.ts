@@ -92,7 +92,9 @@ export const Messages = {
     `💬 Bắt đầu thảo luận trong ${seconds} giây. Hãy cùng bàn bạc xem ai là Sói!`,
   votingStarted: (seconds: number) =>
     `🗳 Bắt đầu bỏ phiếu trong ${seconds} giây. Chọn người bạn muốn treo cổ.`,
-  voteRecorded: () => `✅ Đã ghi nhận phiếu bầu của bạn.`,
+  voteRecorded: () => `✅ Đã bỏ phiếu.`,
+  voteAlreadyCast: () =>
+    '⚠️ Bạn đã bỏ phiếu trong round này và không thể thay đổi lựa chọn.',
   targetSelected: (action: string, targetNickname: string | null) =>
     targetNickname
       ? `✅ ${action}: **${targetNickname}**.`

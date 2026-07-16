@@ -7,10 +7,10 @@ import { GameState, RoomStatus } from '../../engine/domain/enums';
 const TEST_BOT_COUNT = 5;
 const BOT_ID_PREFIX = '999999900';
 
-export function registerZonkhanhTestCommand(services: BotServices, bot: Telegraf<BotContext>): void {
-  bot.command('zonkhanhtest', async (ctx) => {
+export function registerbottestCommand(services: BotServices, bot: Telegraf<BotContext>): void {
+  bot.command('bottest', async (ctx) => {
     if (ctx.chat.type === 'private') {
-      await ctx.reply('❌ Lệnh /zonkhanhtest chỉ dùng được trong group chat.');
+      await ctx.reply('❌ Lệnh /bottest chỉ dùng được trong group chat.');
       return;
     }
 
