@@ -59,6 +59,16 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
       };
     }
 
+    if (playerCount === 6) {
+      return {
+        [RoleId.WEREWOLF]: 2,
+        [RoleId.SEER]: 1,
+        [RoleId.BODYGUARD]: 1,
+        [RoleId.WITCH]: 1,
+        [RoleId.VILLAGER]: 1,
+      };
+    }
+
     const explicitSpecials = enabledSpecialRoles.filter((r) =>
       SPECIAL_ROLES.includes(r),
     );
