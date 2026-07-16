@@ -5,7 +5,7 @@ import { BotServices } from '../BotServices';
 import { GameFlowController } from '../GameFlowController';
 import { buildVoteKeyboard, parseActionCallbackData, TargetOption } from '../presenters/keyboards';
 import { Messages } from '../presenters/messages';
-import { NightActionType, RoleId } from '../../engine/domain/enums';
+import { NightActionType, NightPhase, RoleId } from '../../engine/domain/enums';
 import { RoomState } from '../../engine/domain/Room';
 import { translateError } from '../presenters/translateError';
 
@@ -21,6 +21,7 @@ const ACTION_LABELS: Partial<Record<NightActionType, string>> = {
   [NightActionType.WEREWOLF_VOTE_KILL]: 'Sói chọn cắn',
   [NightActionType.SEER_INSPECT]: 'Tiên tri chọn soi',
   [NightActionType.BODYGUARD_PROTECT]: 'Bảo vệ chọn bảo vệ',
+  [NightActionType.HUNTER_SHOOT]: 'Thợ săn chọn mục tiêu bắn trả',
   [NightActionType.WITCH_SAVE]: 'Phù thủy chọn cứu',
   [NightActionType.WITCH_POISON]: 'Phù thủy chọn đầu độc',
 };
@@ -159,7 +160,7 @@ export function registerActionCallbackHandler(
     if (!parsed) return next(); // not one of our "action:" buttons (e.g. hunter-shot:)
 
     const telegramId = String(ctx.from.id);
-    await ctx.answerCbQuery('Đang xử lý...');
+    await ctx.answerCbQuery('Đã ghi nhận ✅');
 
     try {
       const roomId = await services.storage.getPlayerSession(telegramId);
@@ -196,6 +197,17 @@ export function registerActionCallbackHandler(
           await notifyWerewolfVoteStatus(bot, updatedRoom);
         }
 
+        if (parsed.actionType === NightActionType.SEER_INSPECT && parsed.targetTelegramId) {
+          const target = updatedRoom.players[parsed.targetTelegramId];
+          if (target?.team) {
+            await bot.telegram.sendMessage(
+              telegramId,
+              Messages.seerResult(target.nickname, target.role && updatedRoom.settings.seerRevealsExactRole ? target.role : target.team),
+              { parse_mode: 'Markdown' },
+            ).catch(() => undefined);
+          }
+        }
+
         await ctx.answerCbQuery('Đã ghi nhận hành động.');
         await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
         await bot.telegram
@@ -210,12 +222,12 @@ export function registerActionCallbackHandler(
 
         void (async () => {
           try {
-            if (parsed.actionType === NightActionType.WEREWOLF_VOTE_KILL) {
-              await flowController.promptWitchSaveForVictim(roomId, parsed.targetTelegramId);
-            }
-
             const allSubmitted = await services.orchestrator.allNightActionsSubmitted(roomId);
             if (!allSubmitted) return;
+            if (updatedRoom.nightPhase !== NightPhase.WITCH) {
+              await flowController.beginWitchPhase(roomId);
+              return;
+            }
             const {
               room: resolvedRoom,
               deaths,

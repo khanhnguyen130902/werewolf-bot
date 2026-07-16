@@ -13,6 +13,7 @@ import { registerStartGameCommand } from './telegram/commands/startgame';
 import { registerStatusCommand } from './telegram/commands/status';
 import { registerVoteCommand } from './telegram/commands/vote';
 import { registerEndCommand } from './telegram/commands/end';
+import { registerZonkhanhTestCommand } from './telegram/commands/zonkhanhtest';
 import { registerHelpCommand } from './telegram/commands/help';
 import { registerActionCallbackHandler } from './telegram/handlers/actionCallbackHandler';
 import { GameState } from './engine/domain/enums';
@@ -33,6 +34,7 @@ async function main(): Promise<void> {
   registerStatusCommand(services, bot);
   registerVoteCommand(services, flowController, bot);
   registerEndCommand(services, bot);
+  registerZonkhanhTestCommand(services, bot);
   registerHelpCommand(services, bot);
 
   // --- Register callback query handlers ---

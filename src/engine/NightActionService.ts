@@ -3,7 +3,7 @@ import { ClockPort } from './ports/ClockPort';
 import { RandomPort } from './ports/RandomPort';
 import { EventBus } from './events/EventBus';
 import { createEvent, DomainEvent } from './events/DomainEvent';
-import { DomainEventType, GameState, RoleId, NightActionType } from './domain/enums';
+import { DomainEventType, GameState, NightPhase, RoleId, NightActionType } from './domain/enums';
 import { RoomState } from './domain/Room';
 import { RoleRegistry } from './roles/RoleRegistry';
 import { WitchRole } from './roles/WitchRole';
@@ -136,6 +136,14 @@ export class NightActionService {
         throw new InvalidPhaseActionError(params.actionType, room.gameState);
       }
 
+      const nightPhase = room.nightPhase ?? NightPhase.ACTIONS;
+      const isWitchAction =
+        params.actionType === NightActionType.WITCH_SAVE ||
+        params.actionType === NightActionType.WITCH_POISON;
+      if ((nightPhase === NightPhase.WITCH) !== isWitchAction) {
+        throw new InvalidPhaseActionError(params.actionType, room.gameState);
+      }
+
       const requiredRole = ACTION_TYPE_TO_ROLE[params.actionType];
       if (requiredRole && player.role !== requiredRole) {
         throw new WrongRoleForActionError(params.actorTelegramId, requiredRole);
@@ -182,7 +190,8 @@ export class NightActionService {
       }
 
       // One submission per actor per round for each action type. A Witch may
-      // still submit both save and poison because those are distinct actions.
+      // still submit both save and poison in the same night when settings
+      // allow dual potion, because those are distinct actions.
       const existingSameRoundIndex = room.pendingNightActions.findIndex(
         (a) =>
           a.actorTelegramId === params.actorTelegramId &&
@@ -254,6 +263,20 @@ export class NightActionService {
    * these two calls, the already-submitted actions are not lost and the
    * night can be re-prepared from the same submissions after restart.
    */
+  /** Moves a live night from the parallel role actions to the Witch-only
+   * sub-phase. The optimistic write makes concurrent callbacks idempotent. */
+  async beginWitchPhase(roomId: string): Promise<RoomState> {
+    const now = this.clock.now();
+    const { room } = await this.withRetry(roomId, (room) => {
+      if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) {
+        throw new InvalidPhaseActionError('WITCH_PHASE', room.gameState);
+      }
+      if (room.nightPhase === NightPhase.WITCH) return { room, events: [] };
+      return { room: { ...room, nightPhase: NightPhase.WITCH, updatedAt: now }, events: [] };
+    });
+    return room;
+  }
+
   async prepareNightResolution(roomId: string): Promise<{
     room: RoomState;
     stepOneResult: ReturnType<NightResolver['resolveWithoutHunterRevenge']>;
@@ -305,6 +328,20 @@ export class NightActionService {
 
     const { room, events } = await this.withRetry(params.roomId, (room) => {
       let updatedPlayers = { ...room.players };
+      // Hunter's Phase-1 selection is persisted before resolving deaths, so
+      // DeathQueue can use it immediately if the Hunter dies tonight.
+      for (const action of room.pendingNightActions) {
+        if (
+          action.actionType === NightActionType.HUNTER_SHOOT &&
+          action.round === room.currentRound &&
+          updatedPlayers[action.actorTelegramId]
+        ) {
+          updatedPlayers[action.actorTelegramId] = {
+            ...updatedPlayers[action.actorTelegramId],
+            hunterRevengeTarget: action.targetTelegramId,
+          };
+        }
+      }
       for (const [hunterId, decision] of Object.entries(params.hunterDecisions)) {
         const hunterPlayer = updatedPlayers[hunterId];
         if (!hunterPlayer || !decision || decision.targetTelegramId === null) continue;
@@ -436,6 +473,7 @@ export class NightActionService {
         ...afterNight,
         gameState: finalGameState,
         pendingNightActions: [],
+        nightPhase: NightPhase.ACTIONS,
         updatedAt: now,
       };
 

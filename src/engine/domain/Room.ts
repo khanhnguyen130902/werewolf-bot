@@ -1,4 +1,4 @@
-import { GameState, RoomStatus, TimeoutBehavior } from './enums';
+import { GameState, NightPhase, RoomStatus, TimeoutBehavior } from './enums';
 import { PlayerState } from './Player';
 
 /**
@@ -130,6 +130,8 @@ export interface RoomState {
     targetTelegramId: string | null;
     round: number;
   }>;
+  /** Optional to keep persisted rooms from before night sub-phases readable. */
+  nightPhase?: NightPhase;
 }
 
 export class RoomFactory {
@@ -156,6 +158,7 @@ export class RoomFactory {
       witchPotions: null,
       lastProtectedByBodyguard: {},
       pendingNightActions: [],
+      nightPhase: NightPhase.ACTIONS,
     };
   }
 }

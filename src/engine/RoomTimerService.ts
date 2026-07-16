@@ -5,6 +5,7 @@ import { ClockPort } from './ports/ClockPort';
 /** Job type identifiers for each timed phase, scheduled via SchedulerPort. */
 export enum TimerJobType {
   NIGHT_ACTION_TIMEOUT = 'night-action-timeout',
+  WITCH_ACTION_TIMEOUT = 'witch-action-timeout',
   DISCUSSION_TIMEOUT = 'discussion-timeout',
   VOTING_TIMEOUT = 'voting-timeout',
 }

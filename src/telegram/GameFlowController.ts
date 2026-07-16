@@ -2,22 +2,21 @@ import { Telegraf } from 'telegraf';
 import { BotContext } from './BotContext';
 import { BotServices } from './BotServices';
 import { RoomState } from '../engine/domain/Room';
-import { RoleId, NightActionType, GameState } from '../engine/domain/enums';
+import { RoleId, NightActionType, NightPhase, GameState } from '../engine/domain/enums';
 import { createPhase1RoleRegistry } from '../engine/roles/RoleRegistry';
-import { Messages, RoleNames, TeamNames, DeathCauseNames } from './presenters/messages';
+import { Messages, RoleNames, DeathCauseNames } from './presenters/messages';
 import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presenters/keyboards';
 import { TimerJobType } from '../engine/RoomTimerService';
 
 const roleRegistry = createPhase1RoleRegistry();
 
 /** Maps a role that has a regular per-night prompt to its NightActionType.
- * Hunter is intentionally excluded -- its only action is the death-triggered
- * revenge shot, handled separately by promptHunterAndAwait. */
+ * Hunter's normal-night action records a preselected revenge target. */
 const ROLE_NIGHT_ACTION: Partial<Record<RoleId, NightActionType>> = {
   [RoleId.WEREWOLF]: NightActionType.WEREWOLF_VOTE_KILL,
   [RoleId.SEER]: NightActionType.SEER_INSPECT,
   [RoleId.BODYGUARD]: NightActionType.BODYGUARD_PROTECT,
-  // Witch is handled specially below (two separate prompts: save + poison).
+  [RoleId.HUNTER]: NightActionType.HUNTER_SHOOT,
 };
 
 /** In-memory tracking of the currently-scheduled timer jobId per room, so it
@@ -146,6 +145,13 @@ export class GameFlowController {
   private async startNightPrompts(room: RoomState): Promise<void> {
     await this.bot.telegram.sendMessage(room.chatId, Messages.nightBegins(room.currentRound));
 
+    // Arm the deadline before any DM is sent. A player can tap a button as
+    // soon as Telegram receives it; scheduling first prevents that callback
+    // from advancing to Phase 2 while this method later re-arms a stale
+    // Phase-1 timer.
+    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
+    if (jobId) activeTimerJobIds.set(room.id, jobId);
+
     const alivePlayers = Object.values(room.players).filter((p) => p.alive);
     const aliveTargets: TargetOption[] = alivePlayers.map((p) => ({
       telegramId: p.telegramId,
@@ -155,10 +161,7 @@ export class GameFlowController {
     for (const player of alivePlayers) {
       if (!player.role) continue;
 
-      if (player.role === RoleId.WITCH) {
-        await this.promptWitchPoison(room, player.telegramId, aliveTargets);
-        continue;
-      }
+      if (player.role === RoleId.WITCH) continue;
 
       const actionType = ROLE_NIGHT_ACTION[player.role];
       if (!actionType) continue; // Villager, Hunter: no regular night prompt
@@ -196,30 +199,61 @@ export class GameFlowController {
       }
     }
 
-    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
-    if (jobId) activeTimerJobIds.set(room.id, jobId);
   }
 
-  private async promptWitchPoison(
-    room: RoomState,
-    witchTelegramId: string,
-    aliveTargets: TargetOption[],
-  ): Promise<void> {
-    if (!room.witchPotions) return;
+  /** Starts the Witch-only phase. It is safe to call more than once: the
+   * service's phase write is idempotent, while only the first caller sends
+   * the prompt/timer. */
+  async beginWitchPhase(roomId: string): Promise<void> {
+    const room = await this.services.roomService.getRoom(roomId);
+    if (!room || room.nightPhase === NightPhase.WITCH) return;
+    await this.cancelTimerIfAny(roomId);
+    const hasLivingWitch = Object.values(room.players).some(
+      (player) => player.alive && player.role === RoleId.WITCH,
+    );
+    if (!hasLivingWitch) {
+      const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
+        roomId,
+        promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+      });
+      await this.onNightResolved(resolvedRoom, deaths, seerResults);
+      return;
+    }
+    const witchRoom = await this.services.nightActionService.beginWitchPhase(roomId);
+    await this.promptWitchPhase(witchRoom);
+    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(witchRoom);
+    if (jobId) activeTimerJobIds.set(roomId, jobId);
+  }
 
-    try {
-      if (!room.witchPotions.poisonUsed) {
-        await this.bot.telegram.sendMessage(
-          witchTelegramId,
-          `🌙 Đêm ${room.currentRound}: Bạn muốn dùng thuốc ĐỘC cho ai?`,
-          buildTargetKeyboard({
-            actionType: NightActionType.WITCH_POISON,
-            targets: aliveTargets.filter((t) => t.telegramId !== witchTelegramId),
-          }),
-        );
+  private async promptWitchPhase(room: RoomState): Promise<void> {
+    const witch = Object.values(room.players).find((p) => p.alive && p.role === RoleId.WITCH);
+    if (!witch) return;
+    const wolfChoices = room.pendingNightActions
+      .filter((a) => a.actionType === NightActionType.WEREWOLF_VOTE_KILL && a.round === room.currentRound)
+      .map((a) => a.targetTelegramId)
+      .filter((id): id is string => Boolean(id));
+    const victimId = wolfChoices.length > 0 && new Set(wolfChoices).size === 1 ? wolfChoices[0] : null;
+    const rows: Array<Array<{ text: string; callback_data: string }>> = [];
+    if (victimId && room.witchPotions && !room.witchPotions.saveUsed) {
+      const victim = room.players[victimId];
+      if (victim) rows.push([{ text: `🧪 Cứu ${victim.nickname}`, callback_data: `action:WITCH_SAVE:${victimId}` }]);
+    }
+    if (room.witchPotions && !room.witchPotions.poisonUsed) {
+      for (const player of Object.values(room.players).filter((p) => p.alive && p.telegramId !== witch.telegramId)) {
+        rows.push([{ text: `☠️ Độc ${player.nickname}`, callback_data: `action:WITCH_POISON:${player.telegramId}` }]);
       }
+    }
+    rows.push([{ text: '⏭ Bỏ qua', callback_data: 'action:WITCH_SAVE:SKIP' }]);
+    try {
+      await this.bot.telegram.sendMessage(
+        witch.telegramId,
+        victimId
+          ? `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId]?.nickname ?? victimId}. Hãy chọn một hành động.`
+          : `🌙 Đêm ${room.currentRound}: Sói chưa thống nhất mục tiêu. Hãy chọn một hành động.`,
+        { reply_markup: { inline_keyboard: rows } },
+      );
     } catch {
-      // See onGameStarted's catch above for rationale.
+      // A failed DM must not prevent the Phase 2 timer from resolving.
     }
   }
 
@@ -322,24 +356,9 @@ export class GameFlowController {
       Messages.dayBegins(room.currentRound, deathsWithNicknames),
     );
 
-    for (const result of seerResults) {
-      const targetNickname =
-        room.players[result.targetTelegramId]?.nickname ?? result.targetTelegramId;
-      const teamName =
-        TeamNames[result.revealedTeam as keyof typeof TeamNames] ?? result.revealedTeam;
-      try {
-        await this.bot.telegram.sendMessage(
-          result.seerTelegramId,
-          Messages.seerResult(
-            targetNickname,
-            result.revealedRole ? RoleNames[result.revealedRole as RoleId] : teamName,
-          ),
-          { parse_mode: 'Markdown' },
-        );
-      } catch {
-        // Non-fatal: see onGameStarted's catch above.
-      }
-    }
+    // Seer results are delivered immediately when the inspection is submitted;
+    // they are still returned by the engine for auditability and tests.
+    void seerResults;
 
     if (room.gameState === GameState.GAME_OVER) {
       await this.announceGameOver(room);
@@ -440,11 +459,26 @@ export class GameFlowController {
       if (!room) return;
       if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) return;
 
+      if (room.nightPhase !== NightPhase.WITCH) {
+        await this.beginWitchPhase(roomId);
+        return;
+      }
+
       const {
         room: resolvedRoom,
         deaths,
         seerResults,
       } = await this.services.orchestrator.resolveNight({
+        roomId,
+        promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+      });
+      await this.onNightResolved(resolvedRoom, deaths, seerResults);
+    });
+
+    this.services.timerService.onTimeout(TimerJobType.WITCH_ACTION_TIMEOUT, async (roomId) => {
+      const room = await this.services.roomService.getRoom(roomId);
+      if (!room || room.nightPhase !== NightPhase.WITCH) return;
+      const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
         roomId,
         promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
       });

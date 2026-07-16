@@ -284,7 +284,7 @@ describe('GameOrchestrator.allNightActionsSubmitted', () => {
     const deps = setup();
     const room = await createAndStartGame(deps);
     const rolesWithAction = Object.values(room.players).filter((p) =>
-      ['WEREWOLF', 'SEER', 'BODYGUARD', 'WITCH'].includes(p.role ?? ''),
+      ['WEREWOLF', 'SEER', 'BODYGUARD', 'HUNTER'].includes(p.role ?? ''),
     );
     const villager = Object.values(room.players).find((p) => p.role === RoleId.VILLAGER)!;
 
@@ -296,13 +296,16 @@ describe('GameOrchestrator.allNightActionsSubmitted', () => {
             ? NightActionType.SEER_INSPECT
             : player.role === RoleId.BODYGUARD
               ? NightActionType.BODYGUARD_PROTECT
-              : NightActionType.WITCH_SAVE;
+              : NightActionType.HUNTER_SHOOT;
       await deps.nightActionService.submitNightAction({
         roomId: 'room1',
         actionId: `sub-${idx}`,
         actorTelegramId: player.telegramId,
         actionType,
-        targetTelegramId: player.role === RoleId.WEREWOLF ? villager.telegramId : null,
+        targetTelegramId:
+          player.role === RoleId.WEREWOLF || player.role === RoleId.HUNTER
+            ? villager.telegramId
+            : null,
       });
     }
 

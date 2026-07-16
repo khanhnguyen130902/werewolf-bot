@@ -3,7 +3,7 @@ import { ClockPort } from './ports/ClockPort';
 import { RandomPort } from './ports/RandomPort';
 import { EventBus } from './events/EventBus';
 import { createEvent, DomainEvent } from './events/DomainEvent';
-import { DomainEventType, GameState, RoomStatus, RoleId } from './domain/enums';
+import { DomainEventType, GameState, NightPhase, RoomStatus, RoleId } from './domain/enums';
 import { RoomState } from './domain/Room';
 import { RoleRegistry } from './roles/RoleRegistry';
 import { RoleDistributionStrategyRegistry } from './role-distribution/RoleDistributionStrategyRegistry';
@@ -182,6 +182,7 @@ export class GameService {
         witchPotions: hasWitch ? { saveUsed: false, poisonUsed: false } : null,
         lastProtectedByBodyguard: {},
         pendingNightActions: [],
+        nightPhase: NightPhase.ACTIONS,
         updatedAt: now,
       };
 

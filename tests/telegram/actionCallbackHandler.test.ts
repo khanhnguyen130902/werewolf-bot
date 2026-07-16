@@ -59,7 +59,7 @@ describe('registerActionCallbackHandler', () => {
 
     const runPromise = capturedHandler!(ctx, next);
 
-    expect(answerCbQuery).toHaveBeenCalledWith('Đang xử lý...');
+    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận');
     expect(next).not.toHaveBeenCalled();
 
     deferred.resolve({

@@ -28,7 +28,7 @@ export const RoleDescriptions: Record<RoleId, string> = {
   [RoleId.BODYGUARD]:
     'Mỗi đêm, bạn chọn 1 người để bảo vệ khỏi bị Sói cắn chết.',
   [RoleId.HUNTER]:
-    'Khi bạn chết (do Sói cắn hoặc bị dân làng xử tử), bạn được bắn trả 1 người trước khi rời cuộc chơi.',
+    'Mỗi đêm, bạn chọn trước 1 người để bắn trả nếu đêm đó bạn bị hạ. Nếu không chết, lựa chọn này không có hiệu lực.',
   [RoleId.WITCH]:
     'Bạn có 1 bình thuốc cứu và 1 bình thuốc độc, mỗi loại chỉ dùng được 1 lần trong cả ván. Bạn có thể dùng cả 2 trong cùng 1 đêm nếu muốn.',
 };

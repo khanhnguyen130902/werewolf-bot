@@ -4,7 +4,7 @@ import { NightActionService } from './NightActionService';
 import { DayService } from './DayService';
 import { RoomTimerService, TimerJobType } from './RoomTimerService';
 import { RoomState } from './domain/Room';
-import { GameState, NightActionType } from './domain/enums';
+import { GameState, NightActionType, NightPhase, RoleId } from './domain/enums';
 
 /**
  * Callback the Telegram layer supplies so the orchestrator can prompt a
@@ -93,7 +93,10 @@ export class GameOrchestrator {
       case GameState.FIRST_NIGHT:
       case GameState.NIGHT:
         return this.timerService.scheduleTimeout({
-          jobType: TimerJobType.NIGHT_ACTION_TIMEOUT,
+          jobType:
+            room.nightPhase === NightPhase.WITCH
+              ? TimerJobType.WITCH_ACTION_TIMEOUT
+              : TimerJobType.NIGHT_ACTION_TIMEOUT,
           roomId: room.id,
           delayMs: timers.nightActionSeconds * 1000,
         });
@@ -133,16 +136,20 @@ export class GameOrchestrator {
     const room = await this.roomService.getRoom(roomId);
     if (!room) return false;
 
-    const alivePlayersWithNightAction = Object.values(room.players).filter(
-      (p) => p.alive && p.role && this.roleHasNightAction(p.role),
-    );
+    const phase = room.nightPhase ?? NightPhase.ACTIONS;
+    const alivePlayersWithNightAction = Object.values(room.players).filter((p) => {
+      if (!p.alive || !p.role) return false;
+      return phase === NightPhase.WITCH
+        ? p.role === RoleId.WITCH
+        : p.role !== RoleId.WITCH && this.roleHasNightAction(p.role);
+    });
 
     const actedTelegramIds = new Set(room.pendingNightActions.map((a) => a.actorTelegramId));
 
     const allActed = alivePlayersWithNightAction.every((p) => actedTelegramIds.has(p.telegramId));
     if (!allActed) return false;
 
-    return this.werewolfConsensusSettled(room);
+    return phase === NightPhase.WITCH || this.werewolfConsensusSettled(room);
   }
 
   private werewolfConsensusSettled(room: RoomState): boolean {
@@ -171,7 +178,7 @@ export class GameOrchestrator {
     // Villager and Hunter (whose only action is the death-triggered revenge
     // shot, not a regular per-night prompt) have no regular night action.
     return (
-      roleId === 'WEREWOLF' || roleId === 'SEER' || roleId === 'BODYGUARD' || roleId === 'WITCH'
+      roleId === 'WEREWOLF' || roleId === 'SEER' || roleId === 'BODYGUARD' || roleId === 'HUNTER' || roleId === 'WITCH'
     );
   }
 }

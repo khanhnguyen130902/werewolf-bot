@@ -231,13 +231,31 @@ describe('NightActionService.submitNightAction', () => {
     ).rejects.toBeInstanceOf(DuplicateActionError);
   });
 
-  it('allows a Witch to submit both save and poison in the same round', async () => {
+  it('accepts one Witch save action during the Witch phase', async () => {
+    const { roomService, gameService, nightActionService } = setup();
+    const room = await createAndStartGame(roomService, gameService);
+    const witch = findByRole(room, RoleId.WITCH);
+
+    await nightActionService.beginWitchPhase('room1');
+    const first = await nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'witch-save',
+      actorTelegramId: witch.telegramId,
+      actionType: NightActionType.WITCH_SAVE,
+      targetTelegramId: witch.telegramId,
+    });
+
+    expect(first.pendingNightActions).toHaveLength(1);
+  });
+
+  it('allows Witch to submit both save and poison in the same night when dual potion is enabled', async () => {
     const { roomService, gameService, nightActionService } = setup();
     const room = await createAndStartGame(roomService, gameService);
     const witch = findByRole(room, RoleId.WITCH);
     const villager = Object.values(room.players).find((p) => p.role === RoleId.VILLAGER)!;
 
-    const first = await nightActionService.submitNightAction({
+    await nightActionService.beginWitchPhase('room1');
+    await nightActionService.submitNightAction({
       roomId: 'room1',
       actionId: 'witch-save',
       actorTelegramId: witch.telegramId,
@@ -253,8 +271,32 @@ describe('NightActionService.submitNightAction', () => {
       targetTelegramId: villager.telegramId,
     });
 
-    expect(first.pendingNightActions).toHaveLength(1);
     expect(second.pendingNightActions).toHaveLength(2);
+  });
+
+  it('rejects duplicate Witch save actions in the same night', async () => {
+    const { roomService, gameService, nightActionService } = setup();
+    const room = await createAndStartGame(roomService, gameService);
+    const witch = findByRole(room, RoleId.WITCH);
+
+    await nightActionService.beginWitchPhase('room1');
+    await nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'witch-save-1',
+      actorTelegramId: witch.telegramId,
+      actionType: NightActionType.WITCH_SAVE,
+      targetTelegramId: witch.telegramId,
+    });
+
+    await expect(
+      nightActionService.submitNightAction({
+        roomId: 'room1',
+        actionId: 'witch-save-2',
+        actorTelegramId: witch.telegramId,
+        actionType: NightActionType.WITCH_SAVE,
+        targetTelegramId: witch.telegramId,
+      }),
+    ).rejects.toBeInstanceOf(DuplicateActionError);
   });
 });
 

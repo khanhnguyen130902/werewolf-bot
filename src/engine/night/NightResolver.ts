@@ -184,10 +184,19 @@ export class NightResolver {
       depth0Deaths.push({ telegramId: poisonedTargetId, cause: DeathCause.WITCH_POISON });
     }
 
+    const playersWithHunterSelections = { ...room.players };
+    for (const action of params.submissions) {
+      if (action.actionType === NightActionType.HUNTER_SHOOT && playersWithHunterSelections[action.actorTelegramId]) {
+        playersWithHunterSelections[action.actorTelegramId] = {
+          ...playersWithHunterSelections[action.actorTelegramId],
+          hunterRevengeTarget: action.targetTelegramId,
+        };
+      }
+    }
     const deathQueue = new DeathQueue();
     const { pendingHunterTelegramIds } = deathQueue.resolveOriginalDeaths(
       depth0Deaths,
-      room.players,
+      playersWithHunterSelections,
       settings.hunterTriggerCauses as DeathCause[],
     );
 

@@ -77,6 +77,12 @@ export enum NightActionType {
   HUNTER_SHOOT = 'HUNTER_SHOOT',
 }
 
+/** Sub-phases within a night; GameState remains NIGHT/FIRST_NIGHT. */
+export enum NightPhase {
+  ACTIONS = 'ACTIONS',
+  WITCH = 'WITCH',
+}
+
 /** Domain event type identifiers (event-sourcing-friendly log schema — Suggestion #11). */
 export enum DomainEventType {
   ROOM_CREATED = 'ROOM_CREATED',
