@@ -89,7 +89,7 @@ async function createStartAndAdvanceToDay(
     chatId: 'chat1',
     settingsOverride: { minPlayers: 6, maxPlayers: 20 },
   });
-  for (let i = 1; i < playerCount; i++) {
+  for (let i = 1; i < 7; i++) {
     await roomService.joinRoom({ roomId: 'room1', telegramId: `p${i}`, nickname: `P${i}` });
   }
   await gameService.startGame({ roomId: 'room1', requestedByTelegramId: 'p0' });

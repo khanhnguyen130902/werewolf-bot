@@ -89,7 +89,7 @@ async function createAndStartGame(
     chatId: 'chat1',
     settingsOverride: { minPlayers: 6, maxPlayers: 20 },
   });
-  for (let i = 1; i < 6; i++) {
+  for (let i = 1; i < 7; i++) {
     await roomService.joinRoom({ roomId: 'room1', telegramId: `p${i}`, nickname: `P${i}` });
   }
   const room = await gameService.startGame({
@@ -204,7 +204,7 @@ describe('NightActionService.submitNightAction', () => {
     ).rejects.toBeInstanceOf(DuplicateActionError);
   });
 
-  it('rejects a werewolf changing their kill target in the same round', async () => {
+  it('allows a werewolf changing their kill target in the same round', async () => {
     const { roomService, gameService, nightActionService } = setup();
     const room = await createAndStartGame(roomService, gameService);
     const wolf = findByRole(room, RoleId.WEREWOLF);
@@ -220,15 +220,16 @@ describe('NightActionService.submitNightAction', () => {
       targetTelegramId: nonWerewolfTargets[0].telegramId,
     });
 
-    await expect(
-      nightActionService.submitNightAction({
-        roomId: 'room1',
-        actionId: 'changed-mind',
-        actorTelegramId: wolf.telegramId,
-        actionType: NightActionType.WEREWOLF_VOTE_KILL,
-        targetTelegramId: nonWerewolfTargets[1].telegramId,
-      }),
-    ).rejects.toBeInstanceOf(DuplicateActionError);
+    const updatedRoom = await nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'changed-mind',
+      actorTelegramId: wolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL,
+      targetTelegramId: nonWerewolfTargets[1].telegramId,
+    });
+
+    const action = updatedRoom.pendingNightActions.find((a) => a.actorTelegramId === wolf.telegramId);
+    expect(action!.targetTelegramId).toBe(nonWerewolfTargets[1].telegramId);
   });
 
   it('accepts one Witch save action during the Witch phase', async () => {

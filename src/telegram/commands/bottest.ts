@@ -4,7 +4,6 @@ import { BotServices } from '../BotServices';
 import { translateError } from '../presenters/translateError';
 import { GameState, RoomStatus } from '../../engine/domain/enums';
 
-const TEST_BOT_COUNT = 5;
 const BOT_ID_PREFIX = '999999900';
 
 export function registerbottestCommand(services: BotServices, bot: Telegraf<BotContext>): void {
@@ -17,6 +16,18 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
     const roomId = String(ctx.chat.id);
     const hostTelegramId = String(ctx.from.id);
     const hostNickname = ctx.from.first_name ?? ctx.from.username ?? 'Host';
+
+    // Parse target player count
+    const args = ctx.message.text.trim().split(/\s+/);
+    let targetPlayerCount = 6;
+    if (args.length > 1) {
+      const parsed = parseInt(args[1], 10);
+      if (!isNaN(parsed) && parsed >= 4 && parsed <= 15) {
+        targetPlayerCount = parsed;
+      } else {
+        await ctx.reply('⚠️ Số lượng người chơi cho phòng test phải từ 4 đến 15. Mặc định dùng 6.');
+      }
+    }
 
     try {
       const existingRoom = await services.roomService.getRoom(roomId);
@@ -34,15 +45,16 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
         chatId: roomId,
       });
 
-      await ctx.reply(`🎮 Phòng test đã được tạo. Đang thêm ${TEST_BOT_COUNT} bot để đủ người...`);
-
       const room = await services.roomService.getRoom(roomId);
       if (!room) {
         throw new Error('Không thể tạo phòng test.');
       }
 
       const existingCount = Object.keys(room.players).length;
-      const needed = Math.max(0, 6 - existingCount);
+      const needed = Math.max(0, targetPlayerCount - existingCount);
+
+      await ctx.reply(`🎮 Phòng test đã được tạo. Đang thêm ${needed} bot để phòng có ${targetPlayerCount} người...`);
+
       for (let i = 0; i < needed; i += 1) {
         const botId = `${BOT_ID_PREFIX}${i}`;
         const botNickname = `Bot${i + 1}`;
@@ -60,3 +72,4 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
     }
   });
 }
+

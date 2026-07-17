@@ -3,7 +3,7 @@ import { Telegraf } from 'telegraf';
 import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
 import { GameFlowController } from '../GameFlowController';
-import { buildVoteKeyboard, parseActionCallbackData, TargetOption } from '../presenters/keyboards';
+import { buildVoteKeyboard, parseActionCallbackData, TargetOption, buildTargetKeyboard } from '../presenters/keyboards';
 import { Messages } from '../presenters/messages';
 import { NightActionType, NightPhase, RoleId } from '../../engine/domain/enums';
 import { RoomState } from '../../engine/domain/Room';
@@ -19,7 +19,7 @@ const NIGHT_ACTION_TYPES: Set<string> = new Set([
 ]);
 
 const ACTION_LABELS: Partial<Record<NightActionType, string>> = {
-  [NightActionType.WEREWOLF_VOTE_KILL]: 'Sói chọn cắn',
+  [NightActionType.WEREWOLF_VOTE_KILL]: 'Bạn chọn cắn',
   [NightActionType.SEER_INSPECT]: 'Tiên tri chọn soi',
   [NightActionType.BODYGUARD_PROTECT]: 'Bảo vệ chọn bảo vệ',
   [NightActionType.HUNTER_SHOOT]: 'Thợ săn chọn mục tiêu bắn trả',
@@ -128,6 +128,7 @@ function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
 async function notifyWerewolfVoteStatus(
   bot: Telegraf<BotContext>,
   room: RoomState,
+  flowController: GameFlowController,
 ): Promise<void> {
   const aliveWerewolves = Object.values(room.players).filter(
     (player) => player.alive && player.role === RoleId.WEREWOLF,
@@ -137,15 +138,49 @@ async function notifyWerewolfVoteStatus(
   const message = buildWerewolfVoteStatusMessage(room);
   if (!message) return;
 
+  const chosenTargets = aliveWerewolves
+    .map((wolf) => {
+      const action = room.pendingNightActions.find(
+        (a) =>
+          a.actorTelegramId === wolf.telegramId &&
+          a.actionType === NightActionType.WEREWOLF_VOTE_KILL &&
+          a.round === room.currentRound,
+      );
+      return action?.targetTelegramId;
+    })
+    .filter((target): target is string => Boolean(target));
+  const uniqueTargets = new Set(chosenTargets);
+  const allChosen = chosenTargets.length === aliveWerewolves.length;
+  const isDisagreement = allChosen && uniqueTargets.size !== 1;
+
+  let keyboard: any = undefined;
+  if (isDisagreement) {
+    const aliveTargets: TargetOption[] = Object.values(room.players)
+      .filter((p) => p.alive && p.role !== RoleId.WEREWOLF)
+      .map((p) => ({
+        telegramId: p.telegramId,
+        nickname: p.nickname,
+      }));
+    keyboard = buildTargetKeyboard({ actionType: NightActionType.WEREWOLF_VOTE_KILL, targets: aliveTargets });
+  }
+
   await Promise.all(
     aliveWerewolves.map(async (werewolf) => {
       try {
-        await bot.telegram.sendMessage(werewolf.telegramId, message);
+        if (keyboard) {
+          await bot.telegram.sendMessage(werewolf.telegramId, message, keyboard);
+        } else {
+          await bot.telegram.sendMessage(werewolf.telegramId, message);
+        }
       } catch {
         // Non-fatal; best-effort notification only.
       }
     }),
   );
+
+  if (isDisagreement && flowController.reAlignBotWerewolfVote) {
+    await flowController.reAlignBotWerewolfVote(room.id).catch(() => undefined);
+  }
 }
 
 export function registerActionCallbackHandler(
@@ -185,6 +220,28 @@ export function registerActionCallbackHandler(
           await ctx.reply(
             Messages.targetSelected('Bạn đã bỏ phiếu cho', targetNickname(updatedRoom, parsed.targetTelegramId)),
           );
+
+          // Check if all alive players have voted to resolve early
+          const alivePlayers = Object.values(updatedRoom.players).filter((p) => p.alive);
+          const allVoted = alivePlayers.every((p) => p.hasVotedThisRound);
+          if (allVoted) {
+            void (async () => {
+              try {
+                logger.debug('Resolving execution early because all alive players have voted', { roomId });
+                const {
+                  room: resolvedRoom,
+                  executedTelegramId,
+                  deaths,
+                } = await services.orchestrator.resolveExecution({
+                  roomId,
+                  promptHunter: (rid, hid) => flowController.promptHunterAndAwait(rid, hid),
+                });
+                await flowController.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
+              } catch (err) {
+                logger.error('Error during early execution-resolution follow-up', { roomId, err });
+              }
+            })();
+          }
           return;
         } catch (err) {
           if ((err as any)?.code === 'DUPLICATE_ACTION') {
@@ -224,7 +281,7 @@ export function registerActionCallbackHandler(
             })),
           });
 
-          await notifyWerewolfVoteStatus(bot, updatedRoom);
+          await notifyWerewolfVoteStatus(bot, updatedRoom, flowController);
         }
 
         if (parsed.actionType === NightActionType.SEER_INSPECT && parsed.targetTelegramId) {

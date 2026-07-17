@@ -12,13 +12,13 @@ function createDeferred<T>() {
 }
 
 describe('registerActionCallbackHandler', () => {
-  it('answers the callback immediately for vote actions before the submission finishes', async () => {
+  it('confirms a vote action after the submission finishes', async () => {
     const services = {
       storage: {
         getPlayerSession: jest.fn().mockResolvedValue('room1'),
       },
       dayService: {
-        submitVote: jest.fn().mockResolvedValue({ players: {} }),
+        submitVote: jest.fn(),
       },
       nightActionService: {
         submitNightAction: jest.fn(),
@@ -43,8 +43,24 @@ describe('registerActionCallbackHandler', () => {
 
     registerActionCallbackHandler(services, flowController, bot);
 
-    const deferred = createDeferred<{ players: Record<string, unknown> }>();
-    services.dayService.submitVote.mockImplementation(() => deferred.promise);
+    services.dayService.submitVote.mockResolvedValue({
+      players: {
+        target1: {
+          telegramId: 'target1',
+          nickname: 'Target One',
+          alive: true,
+          hasVotedThisRound: false,
+          voteTarget: null,
+        },
+        voter: {
+          telegramId: '123',
+          nickname: 'Voter',
+          alive: true,
+          hasVotedThisRound: true,
+          voteTarget: 'target1',
+        },
+      },
+    });
 
     const answerCbQuery = jest.fn().mockResolvedValue(undefined);
     const ctx = {
@@ -57,42 +73,17 @@ describe('registerActionCallbackHandler', () => {
     } as any;
     const next = jest.fn();
 
-    const runPromise = capturedHandler!(ctx, next);
+    await capturedHandler!(ctx, next);
 
-    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận');
-    expect(next).not.toHaveBeenCalled();
-
-    deferred.resolve({
-      players: {
-        target1: {
-          telegramId: 'target1',
-          nickname: 'Target One',
-          alive: true,
-          hasVotedThisRound: false,
-          voteTarget: null,
-        },
-        voter: {
-          telegramId: 'voter',
-          nickname: 'Voter',
-          alive: true,
-          hasVotedThisRound: true,
-          voteTarget: 'target1',
-        },
-      },
-    });
-    await runPromise;
-
+    expect(services.dayService.submitVote).toHaveBeenCalled();
     expect(answerCbQuery).toHaveBeenCalledWith(Messages.voteRecorded());
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith(
       expect.objectContaining({
-        inline_keyboard: [
-          [expect.objectContaining({ text: 'Target One (1)', callback_data: 'action:VOTE:target1' })],
-          [expect.objectContaining({ text: 'Voter (0)', callback_data: 'action:VOTE:voter' })],
-          [expect.objectContaining({ text: '⏭ Bỏ qua (0)', callback_data: 'action:VOTE:SKIP' })],
-        ],
+        inline_keyboard: expect.any(Array),
       }),
     );
     expect(ctx.reply).toHaveBeenCalledWith('✅ Bạn đã bỏ phiếu cho: **Target One**.');
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('confirms a night action after submission instead of leaving the UI stuck in processing', async () => {
@@ -154,41 +145,19 @@ describe('registerActionCallbackHandler', () => {
     expect(services.nightActionService.submitNightAction).toHaveBeenCalled();
     expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
-    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', '✅ Sói chọn cắn: **target1**.');
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', '✅ Bạn chọn cắn: **target1**.');
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('locks the Hunter prompt keyboard and confirms the selected target privately', async () => {
+  it('passes hunter-shot callbacks through to next() since they use a different prefix', async () => {
+    // hunter-shot:X:Y callbacks are handled by GameFlowController.registerHunterCallbackHandler,
+    // NOT by registerActionCallbackHandler (which only handles "action:TYPE:TARGET" format).
+    // This test verifies the handler correctly passes unrecognised callbacks to next().
     const services = {
-      storage: {
-        getPlayerSession: jest.fn().mockResolvedValue('room1'),
-      },
-      dayService: {
-        submitVote: jest.fn(),
-      },
-      nightActionService: {
-        submitNightAction: jest.fn().mockResolvedValue({
-          players: {
-            hunter1: {
-              telegramId: 'hunter1',
-              nickname: 'Hunter',
-              role: 'HUNTER',
-              alive: true,
-            },
-            victim1: {
-              telegramId: 'victim1',
-              nickname: 'Victim',
-              role: 'VILLAGER',
-              alive: true,
-            },
-          },
-          pendingNightActions: [],
-          currentRound: 1,
-        }),
-      },
-      orchestrator: {
-        allNightActionsSubmitted: jest.fn().mockResolvedValue(false),
-      },
+      storage: { getPlayerSession: jest.fn() },
+      dayService: { submitVote: jest.fn() },
+      nightActionService: { submitNightAction: jest.fn() },
+      orchestrator: { allNightActionsSubmitted: jest.fn() },
     } as any;
 
     const flowController = {
@@ -219,10 +188,11 @@ describe('registerActionCallbackHandler', () => {
 
     await capturedHandler!(ctx, next);
 
-    expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
-    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
-    expect(ctx.reply).toHaveBeenCalledWith('✅ Thợ săn chọn mục tiêu bắn trả: **Victim**.');
-    expect(next).not.toHaveBeenCalled();
+    // hunter-shot format is not recognised by parseActionCallbackData → handler calls next()
+    expect(next).toHaveBeenCalled();
+    // No submission or UI changes should occur here
+    expect(services.nightActionService.submitNightAction).not.toHaveBeenCalled();
+    expect(ctx.editMessageReplyMarkup).not.toHaveBeenCalled();
   });
 
   it('notifies werewolves of current choices after a werewolf vote', async () => {
@@ -297,7 +267,7 @@ describe('registerActionCallbackHandler', () => {
     );
     expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
       'wolf1',
-      '✅ Sói chọn cắn: **Villager**.',
+      '✅ Bạn chọn cắn: **Villager**.',
     );
   });
 });

@@ -198,20 +198,35 @@ export class NightActionService {
           a.actionType === params.actionType &&
           a.round === room.currentRound,
       );
-      if (existingSameRoundIndex >= 0) {
-        throw new DuplicateActionError(params.actionId);
-      }
 
-      const pendingNightActions = [
-        ...room.pendingNightActions,
-        {
-          actionId: params.actionId,
-          actorTelegramId: params.actorTelegramId,
-          actionType: params.actionType,
-          targetTelegramId: params.targetTelegramId,
-          round: room.currentRound,
-        },
-      ];
+      let pendingNightActions = room.pendingNightActions;
+      if (existingSameRoundIndex >= 0) {
+        const aliveWerewolvesCount = Object.values(room.players).filter(
+          (p) => p.alive && p.role === RoleId.WEREWOLF,
+        ).length;
+
+        if (params.actionType === NightActionType.WEREWOLF_VOTE_KILL && aliveWerewolvesCount >= 2) {
+          pendingNightActions = [...room.pendingNightActions];
+          pendingNightActions[existingSameRoundIndex] = {
+            ...pendingNightActions[existingSameRoundIndex],
+            actionId: params.actionId,
+            targetTelegramId: params.targetTelegramId,
+          };
+        } else {
+          throw new DuplicateActionError(params.actionId);
+        }
+      } else {
+        pendingNightActions = [
+          ...room.pendingNightActions,
+          {
+            actionId: params.actionId,
+            actorTelegramId: params.actorTelegramId,
+            actionType: params.actionType,
+            targetTelegramId: params.targetTelegramId,
+            round: room.currentRound,
+          },
+        ];
+      }
 
       const updated: RoomState = {
         ...room,
