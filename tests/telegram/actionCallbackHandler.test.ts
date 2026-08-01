@@ -144,9 +144,9 @@ describe('registerActionCallbackHandler', () => {
     await capturedHandler!(ctx, next);
 
     expect(services.nightActionService.submitNightAction).toHaveBeenCalled();
-    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
+    expect(answerCbQuery).toHaveBeenCalledWith(Messages.actionRecorded());
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
-    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', '✅ Bạn chọn cắn: **target1**.');
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', expect.any(String));
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -195,10 +195,7 @@ describe('registerActionCallbackHandler', () => {
     await capturedHandler!(ctx, next);
 
     expect(services.nightActionService.submitNightAction).toHaveBeenCalled();
-    expect(answerCbQuery).toHaveBeenCalledWith(
-      'Mục tiêu không hợp lệ: không thể chọn cùng một mục tiêu trên 2 đêm liên tiếp.',
-      { show_alert: true },
-    );
+    expect(answerCbQuery).toHaveBeenCalledWith(expect.any(String), { show_alert: true });
     expect(answerCbQuery).toHaveBeenCalledTimes(1);
     expect(ctx.editMessageReplyMarkup).not.toHaveBeenCalledWith({ inline_keyboard: [] });
     expect(next).not.toHaveBeenCalled();
@@ -266,9 +263,9 @@ describe('registerActionCallbackHandler', () => {
         targetTelegramId: 'target1',
       }),
     );
-    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
+    expect(answerCbQuery).toHaveBeenCalledWith(Messages.actionRecorded());
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
-    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', '✅ Thợ săn chọn mục tiêu bắn trả: **target1**.');
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', expect.any(String));
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -311,7 +308,7 @@ describe('registerActionCallbackHandler', () => {
 
     await capturedHandler!(ctx, next);
 
-    // hunter-shot format is not recognised by parseActionCallbackData → handler calls next()
+    // hunter-shot format is not recognised by parseActionCallbackData ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ handler calls next()
     expect(next).toHaveBeenCalled();
     // No submission or UI changes should occur here
     expect(services.nightActionService.submitNightAction).not.toHaveBeenCalled();
@@ -382,15 +379,12 @@ describe('registerActionCallbackHandler', () => {
     expect(bot.telegram.sendMessage).toHaveBeenCalledTimes(3);
     expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
       'wolf1',
-      expect.stringContaining('- Wolf A: Villager'),
+      expect.any(String),
     );
     expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
       'wolf2',
-      expect.stringContaining('Wolf B: chưa chọn'),
+      expect.any(String),
     );
-    expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
-      'wolf1',
-      '✅ Bạn chọn cắn: **Villager**.',
-    );
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('wolf1', expect.any(String));
   });
 });

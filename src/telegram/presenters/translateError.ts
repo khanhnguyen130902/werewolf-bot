@@ -2,28 +2,26 @@ import { DomainError } from '../../engine/errors/DomainError';
 
 /** Converts domain errors into concise, player-friendly Vietnamese. */
 const ERROR_MESSAGES: Record<string, string> = {
-  ROOM_NOT_FOUND: 'Kh�ng t�m th?y ph�ng choi n�y. C� th? ph�ng d� b? d�ng.',
-  ROOM_FULL: 'Ph�ng d� d? ngu?i choi.',
-  ROOM_LOCKED: 'V�n choi d� b?t d?u n�n kh�ng th? tham gia th�m.',
-  PLAYER_ALREADY_IN_ROOM: 'B?n d� ? trong ph�ng n�y r?i.',
-  PLAYER_NOT_IN_ROOM: 'B?n chua tham gia ph�ng n�y.',
-  NOT_ENOUGH_PLAYERS: 'Chua d? ngu?i d? b?t d?u v�n choi.',
-  TOO_MANY_PLAYERS: 'S? ngu?i choi d� vu?t qu� gi?i h?n c?a ph�ng.',
-  NOT_HOST: 'Ch? ch? ph�ng m?i c� th? th?c hi?n vi?c n�y.',
-  DEAD_PLAYER_ACTION: 'B?n d� b? lo?i n�n kh�ng th? th?c hi?n h�nh d?ng n�y.',
-  INVALID_PHASE_ACTION: 'H�nh d?ng n�y chua th? th?c hi?n ? giai do?n hi?n t?i.',
-  INVALID_TARGET: 'M?c ti�u kh�ng h?p l?. H�y ch?n l?i.',
-  WRONG_ROLE_FOR_ACTION: 'Vai tr� c?a b?n kh�ng th? th?c hi?n h�nh d?ng n�y.',
-  NO_POTION_LEFT: 'B?n d� d�ng b�nh thu?c n�y r?i.',
-  CONCURRENT_MODIFICATION: 'Ph�ng v?a c� thay d?i. Vui l�ng th? l?i.',
-  DUPLICATE_ACTION: 'L?a ch?n n�y d� du?c ghi nh?n tru?c d�.',
-  INVALID_STATE_TRANSITION: 'Kh�ng th? th?c hi?n thao t�c n�y v�o l�c n�y.',
-  DM_NOT_REACHABLE: 'H�y nh?n /start cho bot trong tin nh?n ri�ng tru?c khi tham gia ph�ng.',
+  ROOM_NOT_FOUND: 'Không tìm thấy phòng chơi này. Có thể phòng đã bị đóng.',
+  ROOM_FULL: 'Phòng đã đủ người chơi.',
+  ROOM_LOCKED: 'Ván chơi đã bắt đầu nên không thể tham gia thêm.',
+  PLAYER_ALREADY_IN_ROOM: 'Bạn đã ở trong phòng này rồi.',
+  PLAYER_NOT_IN_ROOM: 'Bạn chưa tham gia phòng này.',
+  NOT_ENOUGH_PLAYERS: 'Chưa đủ người để bắt đầu ván chơi.',
+  TOO_MANY_PLAYERS: 'Số người chơi đã vượt quá giới hạn của phòng.',
+  NOT_HOST: 'Chỉ chủ phòng mới có thể thực hiện việc này.',
+  DEAD_PLAYER_ACTION: 'Bạn đã bị loại nên không thể thực hiện hành động này.',
+  INVALID_PHASE_ACTION: 'Hành động này chưa thể thực hiện ở giai đoạn hiện tại.',
+  INVALID_TARGET: 'Mục tiêu không hợp lệ. Hãy chọn lại.',
+  WRONG_ROLE_FOR_ACTION: 'Vai trò của bạn không thể thực hiện hành động này.',
+  NO_POTION_LEFT: 'Bạn đã dùng bình thuốc này rồi.',
+  CONCURRENT_MODIFICATION: 'Phòng vừa có thay đổi. Vui lòng thử lại.',
+  DUPLICATE_ACTION: 'Lựa chọn này đã được ghi nhận trước đó.',
+  INVALID_STATE_TRANSITION: 'Không thể thực hiện thao tác này vào lúc này.',
+  DM_NOT_REACHABLE: 'Hãy nhắn /start cho bot trong tin nhắn riêng trước khi tham gia phòng.',
 };
 
 export function translateError(err: unknown): string {
-  if (err instanceof DomainError) {
-    return ERROR_MESSAGES[err.code] ?? '? Kh�ng th? th?c hi?n thao t�c n�y. Vui l�ng th? l?i.';
-  }
-  return '? C� l?i x?y ra. Vui l�ng th? l?i.';
+  if (err instanceof DomainError) return ERROR_MESSAGES[err.code] ?? '❌ Không thể thực hiện thao tác này. Vui lòng thử lại.';
+  return '❌ Có lỗi xảy ra. Vui lòng thử lại.';
 }
