@@ -1,4 +1,4 @@
-import { GameState, NightPhase, RoomStatus, TimeoutBehavior } from './enums';
+import { GameState, NightPhase, RoomStatus, TimeoutBehavior, RoleId } from './enums';
 import { PlayerState } from './Player';
 
 /**
@@ -132,6 +132,8 @@ export interface RoomState {
   }>;
   /** Optional to keep persisted rooms from before night sub-phases readable. */
   nightPhase?: NightPhase;
+  /** Optional override requested by /bottest to force a specific role assignment. */
+  requestedRoleOverride?: RoleId | null;
 }
 
 export class RoomFactory {

@@ -6,13 +6,11 @@ import { InvalidTargetError } from '../errors/DomainError';
  * Bodyguard (Bảo vệ). Each night protects one living player from the
  * werewolves' kill. Two configurable rules (SRS section 6):
  *   - bodyguardAllowSelfProtect: may target self.
- *   - bodyguardAllowConsecutiveProtect: may protect the same target two
- *     nights in a row. Enforcing the "consecutive" rule requires knowing the
- *     previous night's target, which is tracked by NightResolver/Room state
- *     (not visible to this validation-only class) — this class validates
- *     what it can from the immediate context (self-protect + alive check);
- *     the consecutive-protect check is enforced by the resolver, which has
- *     access to history.
+ *   - consecutive protect rule: a Bodyguard may not protect the same target
+ *     on two consecutive nights, including self-protect. The submission
+ *     service enforces this rule using the previous night's saved target
+ *     from room state; this class only validates the immediate target shape
+ *     (self-protect availability + alive check).
  */
 export class BodyguardRole implements IRole {
   readonly definition = {

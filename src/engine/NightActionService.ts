@@ -19,6 +19,7 @@ import {
   DuplicateActionError,
   ConcurrentModificationError,
   PlayerNotInRoomError,
+  InvalidTargetError,
 } from './errors/DomainError';
 
 const MAX_OPTIMISTIC_RETRY = 10;
@@ -187,6 +188,13 @@ export class NightActionService {
       } else {
         const role = this.roleRegistry.get(player.role as RoleId);
         role.validateNightAction(context);
+      }
+
+      if (params.actionType === NightActionType.BODYGUARD_PROTECT && params.targetTelegramId !== null) {
+        const previousTarget = room.lastProtectedByBodyguard[params.actorTelegramId];
+        if (room.currentRound > 1 && previousTarget !== undefined && previousTarget === params.targetTelegramId) {
+          throw new InvalidTargetError('Bodyguard cannot protect the same target consecutively');
+        }
       }
 
       // One submission per actor per round for each action type. A Witch may

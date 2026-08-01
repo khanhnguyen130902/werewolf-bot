@@ -9,11 +9,13 @@ describe('DefaultPhase1DistributionStrategy', () => {
   const strategy = new DefaultPhase1DistributionStrategy();
 
   it('uses a valid plan for 6 players when all special roles are enabled by default', () => {
+    // 6-player distribution is hard-coded: 2 Wolves + Seer + Bodyguard + Witch + 1 Villager
+    // (Hunter is NOT included in the 6-player fixed layout)
     const plan = strategy.computeDistribution(6, []);
-    expect(plan[RoleId.WEREWOLF]).toBe(1);
+    expect(plan[RoleId.WEREWOLF]).toBe(2);
     expect(plan[RoleId.SEER]).toBe(1);
     expect(plan[RoleId.BODYGUARD]).toBe(1);
-    expect(plan[RoleId.HUNTER]).toBe(1);
+    expect(plan[RoleId.HUNTER]).toBeUndefined();
     expect(plan[RoleId.WITCH]).toBe(1);
     expect(plan[RoleId.VILLAGER]).toBe(1);
   });
@@ -37,7 +39,15 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(smallPlan[RoleId.SEER]).toBeUndefined();
     expect(smallPlan[RoleId.BODYGUARD]).toBeUndefined();
 
-    const largePlan = strategy.computeDistribution(6, []);
+    // 6-player is a fixed layout: 2 Wolves + Seer + Bodyguard + Witch + 1 Villager (no Hunter)
+    const sixPlan = strategy.computeDistribution(6, []);
+    expect(sixPlan[RoleId.SEER]).toBe(1);
+    expect(sixPlan[RoleId.BODYGUARD]).toBe(1);
+    expect(sixPlan[RoleId.WITCH]).toBe(1);
+    expect(sixPlan[RoleId.HUNTER]).toBeUndefined();
+
+    // 7+ players: all specials are auto-enabled when none are explicitly configured
+    const largePlan = strategy.computeDistribution(8, []);
     expect(largePlan[RoleId.SEER]).toBe(1);
     expect(largePlan[RoleId.BODYGUARD]).toBe(1);
     expect(largePlan[RoleId.HUNTER]).toBe(1);
@@ -105,10 +115,12 @@ describe('DefaultPhase1DistributionStrategy', () => {
   });
 
   it('ignores non-special role ids passed in enabledSpecialRoles defensively', () => {
+    // When Werewolf/Villager are passed in enabledSpecialRoles they should be filtered
+    // since they are not in SPECIAL_ROLES. For 6 players the fixed layout kicks in,
+    // so the result is the same as calling computeDistribution(6, []).
     const plan = strategy.computeDistribution(6, [RoleId.WEREWOLF, RoleId.VILLAGER]);
-    // Werewolf/Villager aren't in SPECIAL_ROLES so they should be filtered out,
-    // leaving werewolf count computed normally and no accidental double-counting.
-    expect(plan[RoleId.WEREWOLF]).toBe(1);
+    // 6-player fixed layout: 2 Wolves + Seer + Bodyguard + Witch + 1 Villager
+    expect(plan[RoleId.WEREWOLF]).toBe(2);
     expect(plan[RoleId.VILLAGER]).toBe(1);
   });
 });

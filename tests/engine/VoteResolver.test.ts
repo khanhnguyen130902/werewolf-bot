@@ -31,13 +31,13 @@ describe('VoteResolver', () => {
     expect(result.executedTelegramId).toBeNull();
   });
 
-  it('CONFIRMED RULE: blank/abstain votes do not count toward any candidate', () => {
+  it('CONFIRMED RULE: abstain votes can block execution when they reach the highest tally', () => {
     const result = resolver.resolve([
       { voterTelegramId: 'v1', targetTelegramId: 'target1' },
       { voterTelegramId: 'v2', targetTelegramId: null },
       { voterTelegramId: 'v3', targetTelegramId: null },
     ]);
-    expect(result.executedTelegramId).toBe('target1');
+    expect(result.executedTelegramId).toBeNull();
     expect(result.abstainCount).toBe(2);
     expect(result.voteCounts).toEqual({ target1: 1 });
   });
@@ -50,6 +50,19 @@ describe('VoteResolver', () => {
     expect(result.executedTelegramId).toBeNull();
     expect(result.abstainCount).toBe(2);
     expect(result.voteCounts).toEqual({});
+  });
+
+  it('does not execute anyone when abstain votes outnumber the leading candidate', () => {
+    const result = resolver.resolve([
+      { voterTelegramId: 'v1', targetTelegramId: 'target1' },
+      { voterTelegramId: 'v2', targetTelegramId: 'target1' },
+      { voterTelegramId: 'v3', targetTelegramId: null },
+      { voterTelegramId: 'v4', targetTelegramId: null },
+      { voterTelegramId: 'v5', targetTelegramId: null },
+    ]);
+    expect(result.executedTelegramId).toBeNull();
+    expect(result.abstainCount).toBe(3);
+    expect(result.voteCounts).toEqual({ target1: 2 });
   });
 
   it('returns no execution when there are no submissions at all', () => {

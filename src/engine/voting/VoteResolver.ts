@@ -62,6 +62,10 @@ export class VoteResolver {
     }
 
     const maxVotes = Math.max(...entries.map(([, count]) => count));
+    if (abstainCount >= maxVotes) {
+      return { executedTelegramId: null, voteCounts, abstainCount };
+    }
+
     const topCandidates = entries.filter(([, count]) => count === maxVotes);
 
     const executedTelegramId =

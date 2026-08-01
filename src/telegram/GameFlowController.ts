@@ -796,6 +796,16 @@ export class GameFlowController {
       : null;
     await this.bot.telegram.sendMessage(room.chatId, Messages.executionResult(executedNickname));
 
+    if (executedTelegramId) {
+      const executedPlayer = room.players[executedTelegramId];
+      if (executedPlayer?.role) {
+        await this.bot.telegram.sendMessage(
+          room.chatId,
+          Messages.executionRoleReveal(executedNickname ?? executedTelegramId, executedPlayer.role),
+        );
+      }
+    }
+
     const extraDeaths = deaths.filter((d) => d.telegramId !== executedTelegramId);
     for (const death of extraDeaths) {
       const nickname = room.players[death.telegramId]?.nickname ?? death.telegramId;

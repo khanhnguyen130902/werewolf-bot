@@ -94,7 +94,26 @@ describe('GameService.startGame', () => {
 
     const roles = Object.values(room.players).map((p) => p.role);
     expect(roles.every((r) => r !== null)).toBe(true);
-    expect(roles.filter((r) => r === RoleId.WEREWOLF)).toHaveLength(1);
+    // 6-player fixed layout: 2 Wolves + Seer + Bodyguard + Witch + 1 Villager
+    expect(roles.filter((r) => r === RoleId.WEREWOLF)).toHaveLength(2);
+  });
+
+  it('applies a requested role override during startGame', async () => {
+    const { roomService, gameService, storage } = setup();
+    await createRoomWithPlayers(roomService, 6);
+
+    const roomBeforeStart = await storage.getRoom('room1');
+    await storage.saveRoom(
+      { ...roomBeforeStart!, requestedRoleOverride: RoleId.BODYGUARD },
+      roomBeforeStart!.version,
+    );
+
+    const room = await gameService.startGame({
+      roomId: 'room1',
+      requestedByTelegramId: 'p0',
+    });
+
+    expect(room.players['p0'].role).toBe(RoleId.BODYGUARD);
   });
 
   it('initializes witch potions when Witch role is in play', async () => {
@@ -111,7 +130,9 @@ describe('GameService.startGame', () => {
 
   it('leaves witchPotions null when Witch role is not enabled', async () => {
     const { roomService, gameService } = setup();
-    await createRoomWithPlayers(roomService, 6, { enabledRoles: ['SEER'] });
+    // Use 5 players (below the 6-player auto-Witch threshold) with only SEER enabled
+    // so no Witch appears in the distribution plan. Must also lower minPlayers to 5.
+    await createRoomWithPlayers(roomService, 5, { minPlayers: 5, enabledRoles: ['SEER'] });
     const room = await gameService.startGame({
       roomId: 'room1',
       requestedByTelegramId: 'p0',

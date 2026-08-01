@@ -1,5 +1,6 @@
 import { registerActionCallbackHandler } from '../../src/telegram/handlers/actionCallbackHandler';
 import { Messages } from '../../src/telegram/presenters/messages';
+import { InvalidTargetError } from '../../src/engine/errors/DomainError';
 
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -146,6 +147,60 @@ describe('registerActionCallbackHandler', () => {
     expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
     expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', '✅ Bạn chọn cắn: **target1**.');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('keeps the target keyboard open and shows an error alert when a night action target is invalid', async () => {
+    const services = {
+      storage: {
+        getPlayerSession: jest.fn().mockResolvedValue('room1'),
+      },
+      dayService: {
+        submitVote: jest.fn(),
+      },
+      nightActionService: {
+        submitNightAction: jest.fn().mockRejectedValue(new InvalidTargetError('Bodyguard cannot protect the same target consecutively')),
+      },
+      orchestrator: {
+        allNightActionsSubmitted: jest.fn(),
+      },
+    } as any;
+
+    const flowController = {
+      promptWitchSaveForVictim: jest.fn(),
+      onNightResolved: jest.fn(),
+    } as any;
+
+    let capturedHandler: ((ctx: any, next: any) => Promise<void>) | undefined;
+    const bot = {
+      on: jest.fn((_event: string, handler: (ctx: any, next: any) => Promise<void>) => {
+        capturedHandler = handler;
+      }),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+
+    registerActionCallbackHandler(services, flowController, bot);
+
+    const answerCbQuery = jest.fn().mockResolvedValue(undefined);
+    const ctx = {
+      callbackQuery: { data: 'action:BODYGUARD_PROTECT:target1' },
+      from: { id: '123' },
+      answerCbQuery,
+      editMessageReplyMarkup: jest.fn().mockResolvedValue(undefined),
+      reply: jest.fn().mockResolvedValue(undefined),
+      telegram: { sendMessage: jest.fn() },
+    } as any;
+    const next = jest.fn();
+
+    await capturedHandler!(ctx, next);
+
+    expect(services.nightActionService.submitNightAction).toHaveBeenCalled();
+    expect(answerCbQuery).toHaveBeenCalledWith(
+      'Mục tiêu không hợp lệ: không thể chọn cùng một mục tiêu trên 2 đêm liên tiếp.',
+      { show_alert: true },
+    );
+    expect(answerCbQuery).toHaveBeenCalledTimes(1);
+    expect(ctx.editMessageReplyMarkup).not.toHaveBeenCalledWith({ inline_keyboard: [] });
     expect(next).not.toHaveBeenCalled();
   });
 

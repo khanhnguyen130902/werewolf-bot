@@ -102,6 +102,8 @@ export const Messages = {
     nickname
       ? `⚖️ Dân làng đã quyết định treo cổ **${nickname}**.`
       : `⚖️ Không đạt đa số phiếu — không ai bị treo cổ hôm nay.`,
+  executionRoleReveal: (nickname: string, roleId: RoleId) =>
+    `🎭 Vai trò của ${nickname}: **${RoleNames[roleId]}**.`,
   hunterPrompt: (seconds: number) =>
     `🏹 Bạn là Thợ săn và vừa bị hạ! Bạn có ${seconds} giây để chọn 1 người bắn trả (hoặc bỏ qua).`,
   hunterShotResult: (hunterNickname: string, targetNickname: string) =>

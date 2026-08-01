@@ -14,6 +14,7 @@ import {
   InvalidPhaseActionError,
   WrongRoleForActionError,
   DuplicateActionError,
+  InvalidTargetError,
 } from '../../src/engine/errors/DomainError';
 
 class FakeClock implements ClockPort {
@@ -298,6 +299,49 @@ describe('NightActionService.submitNightAction', () => {
         targetTelegramId: witch.telegramId,
       }),
     ).rejects.toBeInstanceOf(DuplicateActionError);
+  });
+
+  it('rejects a bodyguard protecting the same target on the next night', async () => {
+    const { roomService, gameService, nightActionService, storage } = setup();
+    const room = await createAndStartGame(roomService, gameService);
+    const bodyguard = findByRole(room, RoleId.BODYGUARD);
+    const target = Object.values(room.players).find((p) => p.telegramId !== bodyguard.telegramId)!;
+
+    const current = await storage.getRoom('room1');
+    current!.currentRound = 2;
+    current!.lastProtectedByBodyguard[bodyguard.telegramId] = target.telegramId;
+    await storage.saveRoom(current!, current!.version);
+
+    await expect(
+      nightActionService.submitNightAction({
+        roomId: 'room1',
+        actionId: 'bodyguard-repeat',
+        actorTelegramId: bodyguard.telegramId,
+        actionType: NightActionType.BODYGUARD_PROTECT,
+        targetTelegramId: target.telegramId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTargetError);
+  });
+
+  it('rejects a bodyguard self-protecting on consecutive nights', async () => {
+    const { roomService, gameService, nightActionService, storage } = setup();
+    const room = await createAndStartGame(roomService, gameService);
+    const bodyguard = findByRole(room, RoleId.BODYGUARD);
+
+    const current = await storage.getRoom('room1');
+    current!.currentRound = 2;
+    current!.lastProtectedByBodyguard[bodyguard.telegramId] = bodyguard.telegramId;
+    await storage.saveRoom(current!, current!.version);
+
+    await expect(
+      nightActionService.submitNightAction({
+        roomId: 'room1',
+        actionId: 'bodyguard-self-repeat',
+        actorTelegramId: bodyguard.telegramId,
+        actionType: NightActionType.BODYGUARD_PROTECT,
+        targetTelegramId: bodyguard.telegramId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTargetError);
   });
 });
 

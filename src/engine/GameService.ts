@@ -16,6 +16,7 @@ import {
   TooManyPlayersForRolesError,
   ConcurrentModificationError,
 } from './errors/DomainError';
+import { logger } from '../infrastructure/logging/logger';
 
 const MAX_OPTIMISTIC_RETRY = 10;
 
@@ -109,6 +110,27 @@ export class GameService {
 
       const assigner = new RoleAssigner(this.random, this.roleRegistry);
       const assignments = assigner.assign(playerIds, plan);
+
+      const requestedRoleOverride = (room as RoomState & { requestedRoleOverride?: RoleId | null }).requestedRoleOverride;
+      logger.debug('startGame: role assignment inputs', {
+        roomId: room.id,
+        hostTelegramId: room.hostTelegramId,
+        requestedRoleOverride,
+        playerIds,
+        plan,
+      });
+      if (requestedRoleOverride) {
+        const overrideTarget = assignments.find((assignment) => assignment.telegramId === room.hostTelegramId);
+        logger.debug('startGame: applying requested role override', {
+          roomId: room.id,
+          hostTelegramId: room.hostTelegramId,
+          requestedRoleOverride,
+          overrideTargetBefore: overrideTarget,
+        });
+        if (overrideTarget) {
+          overrideTarget.roleId = requestedRoleOverride;
+        }
+      }
 
       const updatedPlayers = { ...room.players };
       const assignmentEventPayload: Array<{
@@ -215,6 +237,45 @@ export class GameService {
 
     await this.storage.appendEvents(matchId, events);
     await this.eventBus.publishAll(events);
+    return room;
+  }
+
+  async swapPlayerRole(roomId: string, player1TelegramId: string, player2TelegramId: string): Promise<RoomState> {
+    const { room } = await this.withRetry(roomId, (room) => {
+      const player1 = room.players[player1TelegramId];
+      const player2 = room.players[player2TelegramId];
+      if (!player1 || !player2) {
+        throw new Error('One or both players are not in the room');
+      }
+      if (!player1.role || !player2.role) {
+        throw new Error('Both players must already have assigned roles');
+      }
+
+      const updatedPlayers = { ...room.players };
+      const player1Role = player1.role;
+      const player2Role = player2.role;
+
+      updatedPlayers[player1TelegramId] = {
+        ...player1,
+        role: player2Role,
+        team: this.roleRegistry.get(player2Role).definition.team,
+      };
+      updatedPlayers[player2TelegramId] = {
+        ...player2,
+        role: player1Role,
+        team: this.roleRegistry.get(player1Role).definition.team,
+      };
+
+      return {
+        room: {
+          ...room,
+          players: updatedPlayers,
+          updatedAt: this.clock.now(),
+        },
+        events: [],
+      };
+    });
+
     return room;
   }
 

@@ -125,18 +125,21 @@ function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
   )}`;
 }
 
+/**
+ * Notifies all alive werewolves of the current vote status.
+ * Returns true if there is a disagreement that requires further votes.
+ */
 async function notifyWerewolfVoteStatus(
   bot: Telegraf<BotContext>,
   room: RoomState,
-  flowController: GameFlowController,
-): Promise<void> {
+): Promise<boolean> {
   const aliveWerewolves = Object.values(room.players).filter(
     (player) => player.alive && player.role === RoleId.WEREWOLF,
   );
-  if (aliveWerewolves.length < 2) return;
+  if (aliveWerewolves.length < 2) return false;
 
   const message = buildWerewolfVoteStatusMessage(room);
-  if (!message) return;
+  if (!message) return false;
 
   const chosenTargets = aliveWerewolves
     .map((wolf) => {
@@ -153,20 +156,23 @@ async function notifyWerewolfVoteStatus(
   const allChosen = chosenTargets.length === aliveWerewolves.length;
   const isDisagreement = allChosen && uniqueTargets.size !== 1;
 
-  let keyboard: any = undefined;
-  if (isDisagreement) {
-    const aliveTargets: TargetOption[] = Object.values(room.players)
-      .filter((p) => p.alive && p.role !== RoleId.WEREWOLF)
-      .map((p) => ({
-        telegramId: p.telegramId,
-        nickname: p.nickname,
-      }));
-    keyboard = buildTargetKeyboard({ actionType: NightActionType.WEREWOLF_VOTE_KILL, targets: aliveTargets });
-  }
+  // Only send the re-vote keyboard to HUMAN (non-bot) werewolves.
+  // Bot werewolves will be realigned on the NEXT human vote to avoid
+  // immediately creating consensus and advancing the game prematurely.
+  const aliveTargets: TargetOption[] = isDisagreement
+    ? Object.values(room.players)
+        .filter((p) => p.alive && p.role !== RoleId.WEREWOLF)
+        .map((p) => ({ telegramId: p.telegramId, nickname: p.nickname }))
+    : [];
+  const keyboard = isDisagreement
+    ? buildTargetKeyboard({ actionType: NightActionType.WEREWOLF_VOTE_KILL, targets: aliveTargets, includeSkip: false })
+    : undefined;
 
   await Promise.all(
     aliveWerewolves.map(async (werewolf) => {
       try {
+        // Skip sending keyboard to bots — they don't interact via Telegram
+        if (isDisagreement && isWerewolfBot(werewolf.telegramId)) return;
         if (keyboard) {
           await bot.telegram.sendMessage(werewolf.telegramId, message, keyboard);
         } else {
@@ -178,9 +184,12 @@ async function notifyWerewolfVoteStatus(
     }),
   );
 
-  if (isDisagreement && flowController.reAlignBotWerewolfVote) {
-    await flowController.reAlignBotWerewolfVote(room.id).catch(() => undefined);
-  }
+  return isDisagreement;
+}
+
+/** Matches bot player IDs injected by /bottest (prefix 999999900). */
+function isWerewolfBot(telegramId: string): boolean {
+  return telegramId.startsWith('999999900');
 }
 
 export function registerActionCallbackHandler(
@@ -196,14 +205,11 @@ export function registerActionCallbackHandler(
     if (!parsed) return next(); // not one of our "action:" buttons (e.g. hunter-shot:)
 
     const telegramId = String(ctx.from.id);
-    if (parsed.actionType !== 'VOTE') {
-      await ctx.answerCbQuery('Đã ghi nhận ✅');
-    }
 
     try {
       const roomId = await services.storage.getPlayerSession(telegramId);
       if (!roomId) {
-        await ctx.answerCbQuery('Không tìm thấy phòng chơi của bạn.');
+        await ctx.answerCbQuery('Không tìm thấy phòng chơi của bạn.').catch(() => undefined);
         return;
       }
 
@@ -215,7 +221,7 @@ export function registerActionCallbackHandler(
             voterTelegramId: telegramId,
             targetTelegramId: parsed.targetTelegramId,
           });
-          await ctx.answerCbQuery(Messages.voteRecorded());
+          await ctx.answerCbQuery(Messages.voteRecorded()).catch(() => undefined);
           await ctx.editMessageReplyMarkup(buildCurrentVoteKeyboard(updatedRoom).reply_markup).catch(() => undefined);
           await ctx.reply(
             Messages.targetSelected('Bạn đã bỏ phiếu cho', targetNickname(updatedRoom, parsed.targetTelegramId)),
@@ -245,7 +251,7 @@ export function registerActionCallbackHandler(
           return;
         } catch (err) {
           if ((err as any)?.code === 'DUPLICATE_ACTION') {
-            await ctx.answerCbQuery(Messages.voteAlreadyCast(), { show_alert: true });
+            await ctx.answerCbQuery(Messages.voteAlreadyCast(), { show_alert: true }).catch(() => undefined);
             return;
           }
           throw err;
@@ -253,16 +259,27 @@ export function registerActionCallbackHandler(
       }
 
       if (NIGHT_ACTION_TYPES.has(parsed.actionType)) {
-        await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
+        let updatedRoom: RoomState | undefined;
+        try {
+          updatedRoom = await services.nightActionService.submitNightAction({
+            roomId,
+            actionId: randomUUID(),
+            actorTelegramId: telegramId,
+            actionType: parsed.actionType as NightActionType,
+            targetTelegramId: parsed.targetTelegramId,
+          });
+          await ctx.editMessageReplyMarkup({ inline_keyboard: [] }).catch(() => undefined);
+        } catch (err) {
+          const message = translateError(err);
+          const isInvalidTarget = err instanceof Error && err.message.includes('consecutively');
+          const userMessage = isInvalidTarget
+            ? 'Mục tiêu không hợp lệ: không thể chọn cùng một mục tiêu trên 2 đêm liên tiếp.'
+            : message;
+          await ctx.answerCbQuery(userMessage, { show_alert: true }).catch(() => undefined);
+          return;
+        }
 
-        const updatedRoom = await services.nightActionService.submitNightAction({
-          roomId,
-          actionId: randomUUID(),
-          actorTelegramId: telegramId,
-          actionType: parsed.actionType as NightActionType,
-          targetTelegramId: parsed.targetTelegramId,
-        });
-
+        let werewolfDisagreement = false;
         if (parsed.actionType === NightActionType.WEREWOLF_VOTE_KILL) {
           const werewolfActions = updatedRoom.pendingNightActions.filter(
             (a) =>
@@ -281,7 +298,13 @@ export function registerActionCallbackHandler(
             })),
           });
 
-          await notifyWerewolfVoteStatus(bot, updatedRoom, flowController);
+          werewolfDisagreement = await notifyWerewolfVoteStatus(bot, updatedRoom);
+
+          // If human wolves have reached consensus (no disagreement),
+          // realign any bot wolves that may still differ.
+          if (!werewolfDisagreement && flowController.reAlignBotWerewolfVote) {
+            await flowController.reAlignBotWerewolfVote(roomId).catch(() => undefined);
+          }
         }
 
         if (parsed.actionType === NightActionType.SEER_INSPECT && parsed.targetTelegramId) {
@@ -295,7 +318,27 @@ export function registerActionCallbackHandler(
           }
         }
 
-        await ctx.answerCbQuery('Đã ghi nhận hành động.');
+        if (parsed.actionType === NightActionType.WITCH_SAVE && parsed.targetTelegramId !== null) {
+          const witchPotions = updatedRoom.witchPotions;
+          if (witchPotions && !witchPotions.poisonUsed) {
+            const poisonTargets = Object.values(updatedRoom.players)
+              .filter((player) => player.alive && player.telegramId !== telegramId)
+              .map((player) => ({ telegramId: player.telegramId, nickname: player.nickname }));
+            const poisonKeyboard = buildTargetKeyboard({
+              actionType: NightActionType.WITCH_POISON,
+              targets: poisonTargets,
+            });
+            await bot.telegram
+              .sendMessage(
+                telegramId,
+                '🧪 Bạn còn bình thuốc độc. Bạn có muốn đầu độc ai không?',
+                poisonKeyboard,
+              )
+              .catch(() => undefined);
+          }
+        }
+
+        await ctx.answerCbQuery('Đã ghi nhận hành động.').catch(() => undefined);
         await bot.telegram
           .sendMessage(
             telegramId,
@@ -307,6 +350,14 @@ export function registerActionCallbackHandler(
               : Messages.nightActionSkipped(ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Hành động của bạn'),
           )
           .catch(() => undefined);
+
+        // If werewolves are still disagreeing, do NOT advance the game.
+        // The keyboard has already been re-sent to human wolves above.
+        // They will continue voting until consensus or timeout.
+        if (werewolfDisagreement) {
+          logger.debug('Werewolf disagreement detected — skipping early advance, awaiting re-vote', { roomId });
+          return;
+        }
 
         void (async () => {
           try {
@@ -347,7 +398,7 @@ export function registerActionCallbackHandler(
 
       return next();
     } catch (err) {
-      await ctx.answerCbQuery(translateError(err), { show_alert: true });
+      await ctx.answerCbQuery(translateError(err), { show_alert: true }).catch(() => undefined);
     }
   });
 }

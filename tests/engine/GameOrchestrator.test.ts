@@ -127,7 +127,24 @@ async function createAndStartGame(deps: ReturnType<typeof setup>) {
 describe('GameOrchestrator.resolveNight', () => {
   it('awaits a REAL asynchronous Hunter prompt (genuine Promise + delay, not a stub) before finalizing', async () => {
     const deps = setup();
-    const room = await createAndStartGame(deps);
+    // Need 7+ players to get a Hunter in the role distribution (6-player games
+    // use a fixed layout without Hunter: 2 Wolves + Seer + Bodyguard + Witch + 1 Villager)
+    await deps.roomService.createRoom({
+      roomId: 'room1',
+      hostTelegramId: 'p0',
+      hostNickname: 'Host',
+      chatId: 'chat1',
+      settingsOverride: {
+        minPlayers: 7,
+        maxPlayers: 20,
+        enabledRoles: ['SEER', 'BODYGUARD', 'HUNTER', 'WITCH'],
+      },
+    });
+    for (let i = 1; i < 7; i++) {
+      await deps.roomService.joinRoom({ roomId: 'room1', telegramId: `p${i}`, nickname: `P${i}` });
+    }
+    const room = await deps.gameService.startGame({ roomId: 'room1', requestedByTelegramId: 'p0' });
+
     const wolf = Object.values(room.players).find((p) => p.role === RoleId.WEREWOLF)!;
     const hunter = Object.values(room.players).find((p) => p.role === RoleId.HUNTER)!;
     const villager = Object.values(room.players).find((p) => p.role === RoleId.VILLAGER)!;
@@ -190,7 +207,23 @@ describe('GameOrchestrator.resolveNight', () => {
 describe('GameOrchestrator.resolveExecution', () => {
   it('awaits a REAL asynchronous Hunter prompt when the executed player is a Hunter', async () => {
     const deps = setup();
-    const room = await createAndStartGame(deps);
+    // Need 7+ players with enabledRoles to get a Hunter in distribution
+    await deps.roomService.createRoom({
+      roomId: 'room1',
+      hostTelegramId: 'p0',
+      hostNickname: 'Host',
+      chatId: 'chat1',
+      settingsOverride: {
+        minPlayers: 7,
+        maxPlayers: 20,
+        enabledRoles: ['SEER', 'BODYGUARD', 'HUNTER', 'WITCH'],
+      },
+    });
+    for (let i = 1; i < 7; i++) {
+      await deps.roomService.joinRoom({ roomId: 'room1', telegramId: `p${i}`, nickname: `P${i}` });
+    }
+    const room = await deps.gameService.startGame({ roomId: 'room1', requestedByTelegramId: 'p0' });
+
     const hunter = Object.values(room.players).find((p) => p.role === RoleId.HUNTER)!;
     const otherPlayers = Object.values(room.players).filter(
       (p) => p.telegramId !== hunter.telegramId,
