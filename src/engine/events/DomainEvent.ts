@@ -3,7 +3,7 @@ import { DomainEventType } from '../domain/enums';
 /**
  * Canonical, serializable domain event shape. Every state-changing operation
  * in the engine emits one or more of these. They serve THREE purposes at once:
- *   1. Audit log (SRS section 12 — "Lưu toàn bộ sự kiện").
+ *   1. Audit log (SRS section 12 - "Lưu toàn bộ sự kiện").
  *   2. Decoupling engine from Telegram: the bot subscribes to events to render
  *      messages, instead of engine code calling Telegraf directly.
  *   3. Future Replay feature (SRS section 4/13, Suggestion #11): since the
@@ -15,7 +15,7 @@ import { DomainEventType } from '../domain/enums';
  */
 export interface BaseDomainEvent<T extends DomainEventType, P> {
   type: T;
-  /** Schema version for this event type — bump if payload shape changes. */
+  /** Schema version for this event type - bump if payload shape changes. */
   version: 1;
   roomId: string;
   matchId: string | null;

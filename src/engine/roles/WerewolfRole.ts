@@ -6,7 +6,7 @@ import { InvalidTargetError } from '../errors/DomainError';
  * Werewolf (Sói). Every night the werewolf faction collectively votes to
  * kill one target. Cannot target a dead player. The actual "majority vote
  * among wolves" tallying is handled by NightResolver (Phase 3), since it
- * requires aggregating multiple wolves' submissions — this class only
+ * requires aggregating multiple wolves' submissions - this class only
  * validates a single wolf's individual vote submission.
  */
 export class WerewolfRole implements IRole {

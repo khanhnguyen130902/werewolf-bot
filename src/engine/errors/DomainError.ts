@@ -1,5 +1,5 @@
 /**
- * Base class for all engine-raised errors. Kept platform-agnostic — the
+ * Base class for all engine-raised errors. Kept platform-agnostic - the
  * Telegram layer is responsible for translating these into user-facing
  * messages (in Vietnamese), so no display strings live here.
  */

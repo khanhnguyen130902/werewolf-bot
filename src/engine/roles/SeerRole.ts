@@ -7,11 +7,11 @@ import { InvalidTargetError } from '../errors/DomainError';
  * revealing only their Team (Village/Werewolf); GameSettings.seerRevealsExactRole
  * can switch this to reveal the exact Role instead (SRS section 6). The
  * actual result computation happens in NightResolver since it needs to read
- * the target's assigned role — this class only validates the target choice.
+ * the target's assigned role - this class only validates the target choice.
  *
  * Business rule (confirmed with product owner): if the Seer dies the same
  * night (e.g. killed by werewolves), they still receive their private
- * inspection result before being removed — this is enforced by NightResolver's
+ * inspection result before being removed - this is enforced by NightResolver's
  * processing order (Seer action resolves and notifies BEFORE the death queue
  * is applied at the end of the night), not by this class.
  */

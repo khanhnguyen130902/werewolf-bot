@@ -38,7 +38,7 @@ export enum RoleId {
   WITCH = 'WITCH',
 }
 
-/** Cause of a player's death — used for Hunter trigger rules and logging. */
+/** Cause of a player's death - used for Hunter trigger rules and logging. */
 export enum DeathCause {
   WEREWOLF_KILL = 'WEREWOLF_KILL',
   VOTE_EXECUTION = 'VOTE_EXECUTION',
@@ -83,7 +83,7 @@ export enum NightPhase {
   WITCH = 'WITCH',
 }
 
-/** Domain event type identifiers (event-sourcing-friendly log schema — Suggestion #11). */
+/** Domain event type identifiers (event-sourcing-friendly log schema - Suggestion #11). */
 export enum DomainEventType {
   ROOM_CREATED = 'ROOM_CREATED',
   ROOM_CLOSED = 'ROOM_CLOSED',

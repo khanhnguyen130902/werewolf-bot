@@ -21,7 +21,7 @@ export interface PlayerState {
   hasVotedThisRound: boolean;
   /** Whether this player is the room host (SRS: "Host quản lý phòng"). */
   isHost: boolean;
-  /** Monotonic join order — used for deterministic tie-breaks and display order. */
+  /** Monotonic join order - used for deterministic tie-breaks and display order. */
   joinedAt: number;
   /** Cause of death, set once the player dies; null while alive. */
   deathCause: string | null;

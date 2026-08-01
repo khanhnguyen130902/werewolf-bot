@@ -258,6 +258,10 @@ export class GameFlowController {
       nickname: p.nickname,
     }));
 
+    const botWerewolfTarget = pickRandomTarget(
+      aliveTargets.filter((target) => room.players[target.telegramId]?.role !== RoleId.WEREWOLF),
+    );
+
     for (const player of alivePlayers) {
       if (!player.role) continue;
 
@@ -287,7 +291,9 @@ export class GameFlowController {
       });
 
       if (isTestBot(player.telegramId)) {
-        const selection = pickImmediateBotTarget(room, player, targets, this.activeBotStates.get(room.id));
+        const selection = player.role === RoleId.WEREWOLF
+          ? botWerewolfTarget
+          : pickImmediateBotTarget(room, player, targets, this.activeBotStates.get(room.id));
         if (selection) {
           await this.services.nightActionService.submitNightAction({
             roomId: room.id,
@@ -316,6 +322,22 @@ export class GameFlowController {
       }
     }
 
+    await this.advanceNightIfReady(room.id);
+  }
+
+  private async advanceNightIfReady(roomId: string): Promise<void> {
+    if (!(await this.services.orchestrator.allNightActionsSubmitted(roomId))) return;
+    const room = await this.services.roomService.getRoom(roomId);
+    if (!room) return;
+    if (room.nightPhase !== NightPhase.WITCH) {
+      await this.beginWitchPhase(roomId);
+      return;
+    }
+    const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
+      roomId,
+      promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+    });
+    await this.onNightResolved(resolvedRoom, deaths, seerResults);
   }
 
   /** If bot werewolves disagree with a human werewolf, re-align them to the human's target. */
@@ -439,7 +461,7 @@ export class GameFlowController {
       prompts.push(
         this.bot.telegram.sendMessage(
           witch.telegramId,
-          `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId!]?.nickname ?? victimId}. Bạn có muốn dùng thuốc CỨU không?`,
+          `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId!]?.nickname ?? victimId}. Bạn có muốn dùng thuốc Cứu không?`,
           saveKeyboard,
         ).catch(() => undefined),
       );
@@ -448,7 +470,7 @@ export class GameFlowController {
       prompts.push(
         this.bot.telegram.sendMessage(
           witch.telegramId,
-          `🌙 Đêm ${room.currentRound}: Bạn có muốn dùng thuốc ĐỘC không?`,
+          `🌙 Đêm ${room.currentRound}: Bạn có muốn dùng thuốc Độc không?`,
           poisonKeyboard,
         ).catch(() => undefined),
       );
@@ -473,7 +495,7 @@ export class GameFlowController {
     try {
       await this.bot.telegram.sendMessage(
         witch.telegramId,
-        `🌙 Đêm ${room.currentRound}: ${victim.nickname} vừa bị Sói cắn. Bạn có muốn dùng thuốc CỨU không?`,
+        `🌙 Đêm ${room.currentRound}: ${victim.nickname} vừa bị Sói cắn. Bạn có muốn dùng thuốc Cứu không?`,
         buildTargetKeyboard({
           actionType: NightActionType.WITCH_SAVE,
           targets: [{ telegramId: victimTelegramId, nickname: victim.nickname }],
@@ -631,12 +653,12 @@ export class GameFlowController {
       if (revealedTeam === Team.WEREWOLF) {
         await this.bot.telegram.sendMessage(
           room.chatId,
-          `👁 **[Tiên Tri]** ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và phát hiện hắn chính là **Sói** 🐺! Mọi người hãy vote treo hắn ngay hôm nay!"`
+          `👁 **[Tiên Tri]** ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và phát hiện hắn chính là **Sói** 🐺! Mọi người hãy vote treo hắn ngay hôm nay!"`,
         );
       } else {
         await this.bot.telegram.sendMessage(
           room.chatId,
-          `👁 **[Tiên Tri]** ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và thấy họ là **Người tốt** 😇 (phe Dân làng)."`
+          `👁 **[Tiên Tri]** ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và thấy họ là **Người tốt** 😇 (phe Dân làng)."`,
         );
       }
 
@@ -654,7 +676,7 @@ export class GameFlowController {
           const wolfChatOptions = [
             `💬 ${randomBot.nickname}: "Đã rõ! Treo cổ ${targetNickname} thôi!"`,
             `💬 ${randomBot.nickname}: "Tiên tri đã nói thì không sai được, vote ${targetNickname} nào."`,
-            `💬 ${randomBot.nickname}: "Ủa thật hả? Vote ngay ${targetNickname}."`,
+            `💬 ${randomBot.nickname}: "Thật hả? Vote ngay ${targetNickname}."`,
           ];
           await this.bot.telegram.sendMessage(
             nextRoom.chatId,
@@ -759,6 +781,20 @@ export class GameFlowController {
 
     const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
     if (jobId) activeTimerJobIds.set(room.id, jobId);
+
+    await this.resolveExecutionIfAllVoted(room.id);
+  }
+
+  private async resolveExecutionIfAllVoted(roomId: string): Promise<void> {
+    const room = await this.services.roomService.getRoom(roomId);
+    if (!room || room.gameState !== GameState.VOTING) return;
+    const allVoted = Object.values(room.players).filter((player) => player.alive).every((player) => player.hasVotedThisRound);
+    if (!allVoted) return;
+    const { room: resolvedRoom, executedTelegramId, deaths } = await this.services.orchestrator.resolveExecution({
+      roomId,
+      promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+    });
+    await this.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
   }
 
   async onExecutionResolved(

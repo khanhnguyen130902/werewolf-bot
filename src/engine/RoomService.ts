@@ -26,7 +26,7 @@ const MAX_OPTIMISTIC_RETRY = 10;
 /**
  * Application service coordinating Room lifecycle operations (create, join,
  * leave, kick). This is the primary entry point the Telegram command
- * handlers call into — it contains NO Telegraf types, only plain strings/ids,
+ * handlers call into - it contains NO Telegraf types, only plain strings/ids,
  * keeping it reusable from any front-end.
  *
  * Concurrency strategy (Suggestion #1): every mutation is expressed as

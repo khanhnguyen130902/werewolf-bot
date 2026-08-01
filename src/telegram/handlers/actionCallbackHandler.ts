@@ -100,10 +100,10 @@ function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
   const uniqueTargets = new Set(chosenTargets);
 
   if (chosenTargets.length === 0) {
-    return '🐺 Phe Sói chưa chọn mục tiêu. Hãy thống nhất một người để tấn công.';
+    return '🐺 Phe Sói chưa chọn mục tiêu. Hãy thống nhất một người để cắn.';
   }
   if (allChosen && uniqueTargets.size === 1) {
-    return `🐺 Phe Sói đã thống nhất tấn công ${formatWerewolfTarget(room, chosenTargets[0])}.`;
+    return `🐺 Phe Sói đã thống nhất đêm nay cắn ${formatWerewolfTarget(room, chosenTargets[0])}.`;
   }
   if (!allChosen) {
     return `🐺 Lựa chọn hiện tại của phe Sói:\n${statusLines.join('\n')}\n\nHãy chờ các Sói còn lại chọn mục tiêu.`;
@@ -157,7 +157,7 @@ async function notifyWerewolfVoteStatus(
   await Promise.all(
     aliveWerewolves.map(async (werewolf) => {
       try {
-        // Skip sending keyboard to bots — they don't interact via Telegram
+        // Skip sending keyboard to bots - they don't interact via Telegram
         if (isDisagreement && isWerewolfBot(werewolf.telegramId)) return;
         if (keyboard) {
           await bot.telegram.sendMessage(werewolf.telegramId, message, keyboard);
@@ -326,7 +326,7 @@ export function registerActionCallbackHandler(
         // The keyboard has already been re-sent to human wolves above.
         // They will continue voting until consensus or timeout.
         if (werewolfDisagreement) {
-          logger.debug('Werewolf disagreement detected — skipping early advance, awaiting re-vote', { roomId });
+          logger.debug('Werewolf disagreement detected - skipping early advance, awaiting re-vote', { roomId });
           return;
         }
 

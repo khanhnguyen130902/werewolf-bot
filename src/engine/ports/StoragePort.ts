@@ -3,7 +3,7 @@ import { DomainEvent } from '../events/DomainEvent';
 
 /**
  * Storage abstraction the Game Engine depends on. The engine NEVER imports
- * ioredis or any Redis-specific type — it only knows this interface. This is
+ * ioredis or any Redis-specific type - it only knows this interface. This is
  * what makes "Game Engine độc lập với Telegram" (SRS section 3) achievable
  * in practice: swapping Redis for an in-memory store (tests) or a different
  * database in the future requires writing one new adapter class, zero engine

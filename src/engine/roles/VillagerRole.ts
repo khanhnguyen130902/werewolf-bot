@@ -2,7 +2,7 @@ import { IRole, NightActionContext } from './IRole';
 import { RoleId, Team } from '../domain/enums';
 
 /**
- * Villager (Dân thường). No special skill — participates only in discussion
+ * Villager (Dân thường). No special skill - participates only in discussion
  * and voting during the day. Has no night action at all.
  */
 export class VillagerRole implements IRole {

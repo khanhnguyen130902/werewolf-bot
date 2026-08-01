@@ -18,7 +18,7 @@ import { InvalidStateTransitionError } from '../errors/DomainError';
  *
  * Design rationale: representing allowed transitions as a lookup table
  * (rather than scattering `if (state === X)` checks across the codebase)
- * gives us ONE place to audit "can the game legally move from A to B?" — this
+ * gives us ONE place to audit "can the game legally move from A to B?" - this
  * directly supports the anti-cheat requirement ("khóa thao tác ngoài phase")
  * because any code path attempting an illegal transition fails loudly with
  * InvalidStateTransitionError instead of silently corrupting game state.
@@ -61,7 +61,7 @@ export class GameStateMachine {
     return to;
   }
 
-  /** All states reachable directly from `from` — useful for UI/debug tooling. */
+  /** All states reachable directly from `from` - useful for UI/debug tooling. */
   possibleNextStates(from: GameState): GameState[] {
     return [...(TRANSITIONS[from] ?? [])];
   }

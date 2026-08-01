@@ -30,7 +30,7 @@ const ACTION_ID_TTL_SECONDS = 60 * 30;
 /** Maps a NightActionType to the RoleId that is allowed to submit it, for
  * the anti-cheat "wrong role" check. Witch's two action types both map to
  * WITCH; Hunter's revenge shot maps to HUNTER but is only ever accepted
- * while HUNTER is in a "pending revenge" micro-state (checked separately —
+ * while HUNTER is in a "pending revenge" micro-state (checked separately -
  * see submitHunterRevengeShot). */
 const ACTION_TYPE_TO_ROLE: Partial<Record<NightActionType, RoleId>> = {
   [NightActionType.WEREWOLF_VOTE_KILL]: RoleId.WEREWOLF,
@@ -53,13 +53,13 @@ const ACTION_TYPE_TO_ROLE: Partial<Record<NightActionType, RoleId>> = {
  *   2. Player must be alive (DeadPlayerActionError).
  *   3. Room must be in NIGHT or FIRST_NIGHT (InvalidPhaseActionError).
  *   4. Player's assigned role must match the action type's required role
- *      (WrongRoleForActionError) — prevents a Villager from spoofing a
+ *      (WrongRoleForActionError) - prevents a Villager from spoofing a
  *      Werewolf's kill action even if they somehow know the action shape.
  *   5. Role-specific target validation (IRole.validateNightAction /
- *      Witch's validateSaveAction/validatePoisonAction) — enforces alive
+ *      Witch's validateSaveAction/validatePoisonAction) - enforces alive
  *      targets, self-target rules, potion availability, etc.
  *   6. Idempotency check (Suggestion #2) via StoragePort.recordActionIdIfNew
- *      — a retried/duplicated button press is rejected before being counted.
+ *      - a retried/duplicated button press is rejected before being counted.
  */
 export class NightActionService {
   constructor(
@@ -291,7 +291,7 @@ export class NightActionService {
    * if no Hunters are pending), then calls `finalizeNightResolution` with
    * the collected decisions.
    *
-   * `pendingNightActions` is intentionally NOT cleared here — it's cleared
+   * `pendingNightActions` is intentionally NOT cleared here - it's cleared
    * only in `finalizeNightResolution`, so if the process crashes between
    * these two calls, the already-submitted actions are not lost and the
    * night can be re-prepared from the same submissions after restart.

@@ -14,7 +14,7 @@ import { InvalidTargetError, NoPotionLeftError } from '../errors/DomainError';
  * use BOTH potions in the same night. This class exposes two independent
  * validation methods (save / poison) rather than a single combined one,
  * because NightResolver (Phase 3) must be able to process the Witch's save
- * decision and poison decision as two separate sub-actions — the "dual
+ * decision and poison decision as two separate sub-actions - the "dual
  * potion" setting only gates whether both are *allowed in the same night*,
  * it does not change the fact they are logically distinct choices.
  */
@@ -61,7 +61,7 @@ export class WitchRole implements IRole {
    * @param hasPoisonPotionLeft whether the Witch's poison potion is unused.
    * @param allowDualPotion current room setting; when false and the Witch
    *   already used the save potion this same night, poison must be rejected
-   *   (and vice versa) — the resolver passes `alreadyUsedOtherPotionThisNight`
+   *   (and vice versa) - the resolver passes `alreadyUsedOtherPotionThisNight`
    *   to enforce that exclusivity, since this class has no memory of state.
    */
   validatePoisonAction(
@@ -86,7 +86,7 @@ export class WitchRole implements IRole {
     }
   }
 
-  /** Not used directly — Witch action validation is split into the two
+  /** Not used directly - Witch action validation is split into the two
    * methods above since save/poison have different rules. Present only to
    * satisfy the IRole contract. */
   validateNightAction(_context: NightActionContext): void {
@@ -97,7 +97,7 @@ export class WitchRole implements IRole {
 
 /**
  * Per-match Witch potion inventory. Lives outside PlayerState because a
- * potion, once used, stays used for the rest of the match — it is match-scoped
+ * potion, once used, stays used for the rest of the match - it is match-scoped
  * state, not per-night state like `protected`/`poisoned` flags on Player.
  */
 export interface WitchPotionState {

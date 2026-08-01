@@ -72,7 +72,7 @@ export class GameService {
    *
    * Two state-machine hops happen in a single call because STARTING is a
    * transient bookkeeping state with no player-facing waiting period (SRS's
-   * diagram lists it, but no requirement says players wait *in* STARTING) —
+   * diagram lists it, but no requirement says players wait *in* STARTING) -
    * modeling it as an instantaneous pass-through keeps the observable
    * behavior correct while still emitting a PHASE_CHANGED event for each hop,
    * so the audit log accurately reflects that both states were visited.

@@ -15,7 +15,7 @@ export interface WinCheckResult {
  *
  * Implemented as a stateless pure function over a RoomState snapshot so it
  * can be called after every death-causing event (night resolution, day
- * execution) without any hidden coupling — this mirrors the SRS flow's
+ * execution) without any hidden coupling - this mirrors the SRS flow's
  * explicit "CHECK_WIN" state, which the GameStateMachine transitions into
  * after both NIGHT and EXECUTION.
  */

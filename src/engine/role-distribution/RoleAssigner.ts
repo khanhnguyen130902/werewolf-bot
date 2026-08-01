@@ -16,7 +16,7 @@ export interface RoleAssignment {
  * Kept separate from RoleDistributionStrategy on purpose: distribution
  * strategy answers a game-design question ("how many wolves for N players"),
  * while this class answers a pure-mechanics question ("shuffle players and
- * hand out these role slots") — mixing the two would make it harder to unit
+ * hand out these role slots") - mixing the two would make it harder to unit
  * test fairness independently of the distribution formula.
  */
 export class RoleAssigner {
@@ -58,7 +58,7 @@ export class RoleAssigner {
       }
     }
 
-    // Validate every role in the plan is actually registered — fail fast
+    // Validate every role in the plan is actually registered - fail fast
     // with a clear error instead of assigning an unusable role at runtime.
     for (const roleId of rolePool) {
       if (!this.roleRegistry.has(roleId)) {

@@ -7,7 +7,7 @@ import {
  * Resolves a GameSettings.roleDistributionStrategy string id to its
  * implementation. Mirrors RoleRegistry's extensibility pattern: adding a new
  * distribution strategy (e.g. a "hardcore" or "beginner-friendly" preset for
- * Phase 2/3 game modes) means registering one more class here — no changes
+ * Phase 2/3 game modes) means registering one more class here - no changes
  * to RoomService, GameService, or RoleAssigner.
  */
 export class RoleDistributionStrategyRegistry {

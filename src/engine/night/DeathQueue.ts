@@ -8,7 +8,7 @@ export interface PendingDeath {
    * Chain depth: 0 for an "original" death (werewolf kill, vote execution,
    * witch poison); 1 for a death caused by a Hunter's revenge shot reacting
    * to a depth-0 death. CONFIRMED BUSINESS RULE: Hunter revenge only
-   * triggers off depth-0 deaths — a Hunter killed by another Hunter's
+   * triggers off depth-0 deaths - a Hunter killed by another Hunter's
    * revenge shot (depth 1) does NOT get to fire back, preventing an infinite
    * domino chain. This field is what enforces that rule.
    */
@@ -37,17 +37,17 @@ export interface HunterShotDecision {
  *
  * SPLIT API (Phase 6 revision): resolving a Hunter's revenge shot in a real
  * deployment requires prompting the Hunter over Telegram and awaiting their
- * response (or a timeout) — an inherently asynchronous, I/O-bound operation
+ * response (or a timeout) - an inherently asynchronous, I/O-bound operation
  * that cannot be represented as a synchronous callback invoked mid-resolve.
  * The original single-method `resolve()` API assumed the Hunter's decision
  * was already known synchronously, which cannot model "wait for a button
  * click". This class is therefore split into two synchronous steps with the
  * async gap living BETWEEN them, in the caller:
  *
- *   1. `resolveOriginalDeaths` — registers depth-0 deaths and returns both
+ *   1. `resolveOriginalDeaths` - registers depth-0 deaths and returns both
  *      the resolved list AND the set of Hunters who need to be prompted.
  *   2. (caller awaits Telegram interaction for each pending Hunter here)
- *   3. `applyHunterDecisions` — takes the already-collected decisions and
+ *   3. `applyHunterDecisions` - takes the already-collected decisions and
  *      appends the resulting depth-1 deaths.
  *
  * This keeps DeathQueue itself pure and synchronous (no I/O, easy to unit
@@ -94,7 +94,7 @@ export class DeathQueue {
    * decisions collected by the caller (via Telegram prompt-and-await, or
    * null for "declined/timed out"), appends the resulting depth-1 deaths.
    * A Hunter who dies from a depth-1 shot is intentionally NEVER passed back
-   * into this method for further chaining — the caller only invokes this
+   * into this method for further chaining - the caller only invokes this
    * once per night/execution, which structurally guarantees the "no
    * domino" rule since there is no recursive re-entry point.
    */

@@ -30,7 +30,7 @@ export class InMemoryStorageAdapter implements StoragePort {
    */
   constructor(private readonly defaultDmReachable: boolean = true) {}
 
-  /** Deep clone via JSON round-trip — avoids relying on the structuredClone
+  /** Deep clone via JSON round-trip - avoids relying on the structuredClone
    * global, keeping this adapter compatible with older Node/runtime targets. */
   private clone(room: RoomState): RoomState {
     return JSON.parse(JSON.stringify(room));

@@ -4,7 +4,7 @@ import { PlayerState } from './Player';
 /**
  * Game rule configuration for a Room. All values are configurable per SRS
  * section 6/7/11 requirements ("Có cấu hình...", "Có khả năng thay đổi thứ tự
- * bằng cấu hình Game Engine") — nothing here is hard-coded in the engine logic.
+ * bằng cấu hình Game Engine") - nothing here is hard-coded in the engine logic.
  */
 export interface GameSettings {
   /** Minimum players required to start a match (Suggestion #3). */
@@ -19,7 +19,7 @@ export interface GameSettings {
    * Special roles (Seer/Bodyguard/Hunter/Witch as RoleId strings) the host
    * has opted into for this match. Villager always fills remaining slots;
    * Werewolf count is always computed by the distribution strategy. Business
-   * rule (confirmed with product owner): special roles are NOT auto-filled —
+   * rule (confirmed with product owner): special roles are NOT auto-filled -
    * only the ones listed here are used, giving the host explicit control.
    * By default, a fresh room starts with no special roles enabled so small
    * games such as 3 players can still begin without hitting role-capacity errors.
@@ -124,7 +124,7 @@ export interface RoomState {
    * Night actions submitted so far for the CURRENT night, awaiting
    * resolution at end of night. Persisted on RoomState (not just in-memory)
    * so a bot restart mid-night (Suggestion #6) does not lose already-submitted
-   * actions — players would otherwise have to resubmit even though their
+   * actions - players would otherwise have to resubmit even though their
    * action was already accepted.
    */
   pendingNightActions: Array<{

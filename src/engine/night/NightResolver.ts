@@ -25,7 +25,7 @@ function groupByType(
  *
  * Processing order is driven entirely by `settings.nightActionOrder`
  * (a configurable list of NightActionType strings) rather than a hard-coded
- * sequence — this satisfies the SRS requirement that night order be
+ * sequence - this satisfies the SRS requirement that night order be
  * changeable via Game Engine configuration, and lets a future game mode
  * reorder or omit steps without touching this class's code.
  *
@@ -38,7 +38,7 @@ function groupByType(
  *   2. The Witch MAY target herself with the save potion (e.g. if she was
  *      the werewolves' victim) and will survive if so.
  *   3. The Seer's inspection result is computed and attached to the
- *      resolution result BEFORE the death queue is applied — so a Seer who
+ *      resolution result BEFORE the death queue is applied - so a Seer who
  *      is killed the same night still receives their private result. This
  *      is achieved structurally by computing seerResults in the same pass
  *      as other actions, prior to the death-queue step, and returning both
@@ -55,14 +55,14 @@ export class NightResolver {
    * Step 1 of the split resolution flow (see DeathQueue's class doc for the
    * rationale): runs the entire configured night-action pipeline (werewolf
    * vote, bodyguard protect, seer inspect, witch save/poison) and determines
-   * original (depth-0) deaths, but does NOT yet apply Hunter revenge shots —
+   * original (depth-0) deaths, but does NOT yet apply Hunter revenge shots -
    * it only identifies which Hunters (if any) died from a trigger cause and
    * therefore need to be prompted. The caller is expected to await a real
    * Telegram interaction for each pending Hunter, then call
    * `applyHunterRevengeAndFinalize` with the collected decisions.
    *
    * Player state mutations (killPlayer, resetNightFlags) are intentionally
-   * NOT applied yet at this step — finalizing player state before Hunter
+   * NOT applied yet at this step - finalizing player state before Hunter
    * revenge is resolved would require a second mutation pass anyway, so all
    * state application is deferred to `applyHunterRevengeAndFinalize` to keep
    * "when is the room state actually finalized" unambiguous (exactly once,

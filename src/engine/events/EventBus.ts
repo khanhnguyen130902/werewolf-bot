@@ -9,7 +9,7 @@ export type EventListener = (event: DomainEvent) => void | Promise<void>;
  *
  * Kept intentionally dependency-free (no external event-emitter lib) so the
  * engine package has zero coupling to Node-specific APIs beyond what TS/JS
- * gives natively — this matters for the "reusable on other platforms"
+ * gives natively - this matters for the "reusable on other platforms"
  * requirement (SRS instruction #7), e.g. if the engine ever runs in a
  * browser or a different JS runtime.
  */

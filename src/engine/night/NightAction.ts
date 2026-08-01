@@ -3,7 +3,7 @@ import { NightActionType } from '../domain/enums';
 /**
  * A single night action submitted by a player, as received from the
  * Telegram layer (or any future front-end). This is intentionally decoupled
- * from PlayerState — a player may submit zero, one, or (for Witch) two
+ * from PlayerState - a player may submit zero, one, or (for Witch) two
  * actions in the same night, so actions are modeled as discrete events
  * rather than a single field on the player.
  *
