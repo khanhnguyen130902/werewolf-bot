@@ -308,7 +308,7 @@ describe('registerActionCallbackHandler', () => {
 
     await capturedHandler!(ctx, next);
 
-    // hunter-shot format is not recognised by parseActionCallbackData ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ handler calls next()
+    // hunter-shot callbacks use a different prefix and are intentionally passed through to next()
     expect(next).toHaveBeenCalled();
     // No submission or UI changes should occur here
     expect(services.nightActionService.submitNightAction).not.toHaveBeenCalled();

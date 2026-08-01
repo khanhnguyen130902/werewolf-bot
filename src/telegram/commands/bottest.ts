@@ -49,7 +49,7 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
         if (parsedCount >= 4 && parsedCount <= 15) {
           targetPlayerCount = parsedCount;
         } else {
-          await ctx.reply('âš ï¸ Sá»‘ lÆ°á»£ng ngÆ°á»i chÆ¡i cho phÃ²ng test pháº£i tá»« 4 Ä‘áº¿n 15. Máº·c Ä‘á»‹nh dÃ¹ng 6.');
+          await ctx.reply('⚠️ Số lượng người chơi cho phòng test phải từ 4 đến 15. Mặc định dùng 6.');
         }
         if (args[1]) {
           requestedRole = parseRoleAlias(args[1]);
@@ -69,7 +69,7 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
       const existingRoom = await services.roomService.getRoom(roomId);
       if (existingRoom && existingRoom.status !== RoomStatus.CLOSED && existingRoom.gameState !== GameState.GAME_OVER) {
         await ctx.reply(
-          'âŒ PhÃ²ng hiá»‡n táº¡i Ä‘ang cÃ³ vÃ¡n chÆ¡i hoáº¡t Ä‘á»™ng. Vui lÃ²ng káº¿t thÃºc vÃ¡n hiá»‡n táº¡i trÆ°á»›c khi táº¡o phÃ²ng test.',
+          '❌ Phòng hiện tại đang có ván chơi hoạt động. Vui lòng kết thúc ván hiện tại trước khi tạo phòng test.',
         );
         return;
       }
@@ -92,13 +92,13 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
 
       const room = await services.roomService.getRoom(roomId);
       if (!room) {
-        throw new Error('KhÃ´ng thá»ƒ táº¡o phÃ²ng test.');
+        throw new Error('Không thể tạo phòng test.');
       }
 
       const existingCount = Object.keys(room.players).length;
       const needed = Math.max(0, targetPlayerCount - existingCount);
 
-      await ctx.reply(`ðŸŽ® PhÃ²ng test Ä‘Ã£ Ä‘Æ°á»£c táº¡o. Äang thÃªm ${needed} bot Ä‘á»ƒ phÃ²ng cÃ³ ${targetPlayerCount} ngÆ°á»i...`);
+      await ctx.reply(`🧪 Phòng test đã được tạo. Đang thêm ${needed} bot để phòng có ${targetPlayerCount} người...`);
 
       for (let i = 0; i < needed; i += 1) {
         const botId = `${BOT_ID_PREFIX}${i}`;
@@ -110,7 +110,7 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
       const updatedRoom = await services.roomService.getRoom(roomId);
       const finalCount = updatedRoom ? Object.keys(updatedRoom.players).length : existingCount;
       await ctx.reply(
-        `âœ… PhÃ²ng test sáºµn sÃ ng vá»›i ${finalCount} ngÆ°á»i chÆ¡i. Host gÃµ /startgame Ä‘á»ƒ báº¯t Ä‘áº§u.`,
+        `✅ Phòng test sẵn sàng với ${finalCount} người chơi. Host gõ /startgame để bắt đầu.`,
       );
 
       if (requestedRoleOverride) {

@@ -157,7 +157,7 @@ async function notifyWerewolfVoteStatus(
   await Promise.all(
     aliveWerewolves.map(async (werewolf) => {
       try {
-        // Skip sending keyboard to bots â€” they don't interact via Telegram
+        // Skip sending keyboard to bots — they don't interact via Telegram
         if (isDisagreement && isWerewolfBot(werewolf.telegramId)) return;
         if (keyboard) {
           await bot.telegram.sendMessage(werewolf.telegramId, message, keyboard);
@@ -195,7 +195,7 @@ export function registerActionCallbackHandler(
     try {
       const roomId = await services.storage.getPlayerSession(telegramId);
       if (!roomId) {
-        await ctx.answerCbQuery('KhÃ´ng tÃ¬m tháº¥y phÃ²ng chÆ¡i cá»§a báº¡n.').catch(() => undefined);
+        await ctx.answerCbQuery('Không tìm thấy phòng chơi của bạn.').catch(() => undefined);
         return;
       }
 
@@ -315,10 +315,10 @@ export function registerActionCallbackHandler(
             telegramId,
             parsed.targetTelegramId
               ? Messages.targetSelected(
-                  ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Báº¡n Ä‘Ã£ chá»n má»¥c tiÃªu',
+                  ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
                   targetNickname(updatedRoom, parsed.targetTelegramId),
                 )
-              : Messages.nightActionSkipped(ACTION_LABELS[parsed.actionType as NightActionType] ?? 'HÃ nh Ä‘á»™ng cá»§a báº¡n'),
+              : Messages.nightActionSkipped(ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Hành động của bạn'),
           )
           .catch(() => undefined);
 
@@ -326,7 +326,7 @@ export function registerActionCallbackHandler(
         // The keyboard has already been re-sent to human wolves above.
         // They will continue voting until consensus or timeout.
         if (werewolfDisagreement) {
-          logger.debug('Werewolf disagreement detected â€” skipping early advance, awaiting re-vote', { roomId });
+          logger.debug('Werewolf disagreement detected — skipping early advance, awaiting re-vote', { roomId });
           return;
         }
 
