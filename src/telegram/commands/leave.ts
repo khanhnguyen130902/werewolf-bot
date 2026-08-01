@@ -7,7 +7,7 @@ import { translateError } from '../presenters/translateError';
 export function registerLeaveCommand(services: BotServices, bot: Telegraf<BotContext>): void {
   bot.command('leave', async (ctx) => {
     if (ctx.chat.type === 'private') {
-      await ctx.reply('❌ Lệnh /leave chỉ dùng được trong group chat.');
+      await ctx.reply(Messages.groupOnly('/leave'));
       return;
     }
 

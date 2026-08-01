@@ -14,9 +14,7 @@ import { translateError } from '../presenters/translateError';
 export function registerCreateCommand(services: BotServices, bot: Telegraf<BotContext>): void {
   bot.command('create', async (ctx) => {
     if (ctx.chat.type === 'private') {
-      await ctx.reply(
-        '❌ Lệnh /create chỉ dùng được trong group chat, không dùng trong tin nhắn riêng.',
-      );
+      await ctx.reply(Messages.groupOnly('/create'));
       return;
     }
 

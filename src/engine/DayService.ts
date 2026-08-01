@@ -246,10 +246,14 @@ export class DayService {
 
     const voteResolver = new VoteResolver();
     const alivePlayers = Object.values(room.players).filter((p) => p.alive);
-    const submissions: VoteSubmission[] = alivePlayers.map((p) => ({
-      voterTelegramId: p.telegramId,
-      targetTelegramId: p.voteTarget,
-    }));
+    const submissions: VoteSubmission[] = alivePlayers
+      // A null target only represents Skip after the player has explicitly voted.
+      // Players who have not voted do not affect the result.
+      .filter((p) => p.hasVotedThisRound)
+      .map((p) => ({
+        voterTelegramId: p.telegramId,
+        targetTelegramId: p.voteTarget,
+      }));
     const voteResult = voteResolver.resolve(submissions);
 
     const depth0Deaths: Array<{ telegramId: string; cause: DeathCause }> = [];

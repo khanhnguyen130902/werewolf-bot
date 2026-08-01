@@ -1,140 +1,125 @@
 import { RoleId, Team, DeathCause, WinnerTeam } from '../../engine/domain/enums';
 
-/**
- * Centralized Vietnamese display strings, kept entirely separate from the
- * Game Engine (which only knows RoleId/Team/DeathCause enum values, never
- * display text). This module is the ONLY place natural-language strings
- * live, so a future localization pass (Suggestion #9: i18n layer) is a
- * matter of adding a sibling `messages.en.ts` and a locale switch, without
- * touching any engine or service code.
- */
-
+/** Player-facing Vietnamese text for the Telegram interface. */
 export const RoleNames: Record<RoleId, string> = {
-  [RoleId.WEREWOLF]: 'Sói',
-  [RoleId.VILLAGER]: 'Dân thường',
-  [RoleId.SEER]: 'Tiên tri',
-  [RoleId.BODYGUARD]: 'Bảo vệ',
-  [RoleId.HUNTER]: 'Thợ săn',
-  [RoleId.WITCH]: 'Phù thủy',
+  [RoleId.WEREWOLF]: 'S�i',
+  [RoleId.VILLAGER]: 'D�n l�ng',
+  [RoleId.SEER]: 'Ti�n tri',
+  [RoleId.BODYGUARD]: 'B?o v?',
+  [RoleId.HUNTER]: 'Th? san',
+  [RoleId.WITCH]: 'Ph� th?y',
 };
 
 export const RoleDescriptions: Record<RoleId, string> = {
   [RoleId.WEREWOLF]:
-    'Mỗi đêm, bạn cùng các Sói khác chọn 1 người để cắn chết. Bạn thắng khi số Sói còn sống ≥ số Dân còn sống.',
+    'M?i d�m, b?n c�ng phe S�i ch?n m?t ngu?i d? h?. Phe S�i th?ng khi s? S�i c�n s?ng b?ng ho?c nhi?u hon s? D�n l�ng c�n s?ng.',
   [RoleId.VILLAGER]:
-    'Bạn không có kỹ năng đặc biệt. Hãy dùng lý luận vào ban ngày để tìm ra Sói.',
+    'B?n kh�ng c� k? nang d?c bi?t. H�y quan s�t, th?o lu?n v� b? phi?u d? t�m ra S�i.',
   [RoleId.SEER]:
-    'Mỗi đêm, bạn soi 1 người để biết họ thuộc phe Sói hay phe Dân.',
+    'M?i d�m, b?n c� th? soi m?t ngu?i d? bi?t h? thu?c phe S�i hay phe D�n l�ng.',
   [RoleId.BODYGUARD]:
-    'Mỗi đêm, bạn chọn 1 người để bảo vệ khỏi bị Sói cắn chết.',
+    'M?i d�m, b?n c� th? b?o v? m?t ngu?i kh?i d�n t?n c�ng c?a S�i.',
   [RoleId.HUNTER]:
-    'Mỗi đêm, bạn chọn trước 1 người để bắn trả nếu đêm đó bạn bị hạ. Nếu không chết, lựa chọn này không có hiệu lực.',
+    'Khi b? h?, b?n du?c ch?n m?t ngu?i d? b?n tr?. B?n cung c� th? b? qua.',
   [RoleId.WITCH]:
-    'Bạn có 1 bình thuốc cứu và 1 bình thuốc độc, mỗi loại chỉ dùng được 1 lần trong cả ván. Bạn có thể dùng cả 2 trong cùng 1 đêm nếu muốn.',
+    'B?n c� m?t b�nh thu?c c?u v� m?t b�nh thu?c d?c. M?i b�nh ch? d�ng du?c m?t l?n trong c? v�n; b?n c� th? d�ng c? hai trong c�ng m?t d�m.',
 };
 
 export const TeamNames: Record<Team, string> = {
-  [Team.WEREWOLF]: 'phe Sói',
-  [Team.VILLAGE]: 'phe Dân làng',
+  [Team.WEREWOLF]: 'phe S�i',
+  [Team.VILLAGE]: 'phe D�n l�ng',
 };
 
 export const DeathCauseNames: Record<string, string> = {
-  [DeathCause.WEREWOLF_KILL]: 'bị Sói cắn chết',
-  [DeathCause.VOTE_EXECUTION]: 'bị dân làng treo cổ',
-  [DeathCause.WITCH_POISON]: 'bị đầu độc',
-  [DeathCause.HUNTER_SHOT]: 'bị Thợ săn bắn hạ',
+  [DeathCause.WEREWOLF_KILL]: 'b? S�i h? trong d�m',
+  [DeathCause.VOTE_EXECUTION]: 'b? treo c? sau cu?c b? phi?u',
+  [DeathCause.WITCH_POISON]: 'tr�ng thu?c d?c c?a Ph� th?y',
+  [DeathCause.HUNTER_SHOT]: 'b? Th? san b?n h?',
 };
 
 export const WinnerNames: Record<string, string> = {
-  [WinnerTeam.VILLAGE]: 'phe Dân làng',
-  [WinnerTeam.WEREWOLF]: 'phe Sói',
-  [WinnerTeam.NONE]: 'không ai',
+  [WinnerTeam.VILLAGE]: 'phe D�n l�ng',
+  [WinnerTeam.WEREWOLF]: 'phe S�i',
+  [WinnerTeam.NONE]: 'kh�ng b�n n�o',
 };
 
 export const Messages = {
+  groupOnly: (command: string) => `? ${command} ch? d�ng du?c trong nh�m.`,
+  roomClosed: () => '?? Ph�ng d� du?c d�ng. B?n c� th? t?o v�n m?i trong nh�m n�y.',
   roomCreated: (roomId: string) => {
     const safeRoomId = String(roomId).replace(/^-/, '');
-    return `🎮 Đã tạo phòng chơi Ma Sói!\n\nMọi người gõ /join để tham gia. Khi đủ người, Host gõ /startgame để bắt đầu.\n\nMã phòng: ${safeRoomId}`;
+    return `?? �� m? ph�ng Ma S�i.\n\nM?i ngu?i g� /join d? tham gia. Khi d� d? ngu?i, ch? ph�ng g� /startgame d? b?t d?u.\n\nM� ph�ng: ${safeRoomId}`;
   },
   needDmFirst: (botUsername: string) =>
-    `⚠️ Bạn cần nhắn /start cho bot ở tin nhắn riêng trước khi tham gia, để bot có thể gửi vai trò và hành động riêng cho bạn.\n\n👉 Nhấn vào đây: https://t.me/${botUsername}?start=join`,
-  joined: (nickname: string, count: number) => `✅ ${nickname} đã tham gia! (${count} người chơi)`,
-  alreadyJoined: () => `Bạn đã tham gia phòng này rồi.`,
-  left: (nickname: string) => `👋 ${nickname} đã rời phòng.`,
-  roomFull: () => `❌ Phòng đã đủ người chơi tối đa.`,
-  roomLocked: () => `❌ Ván đang diễn ra, không thể tham gia lúc này.`,
+    `?? H�y nh?n /start cho bot trong tin nh?n ri�ng tru?c, d? bot c� th? g?i vai tr� v� c�c l?a ch?n ban d�m cho b?n.\n\n?? https://t.me/${botUsername}?start=join`,
+  joined: (nickname: string, count: number) => `? ${nickname} d� v�o ph�ng. Hi?n c� ${count} ngu?i choi.`,
+  alreadyJoined: () => 'B?n d� ? trong ph�ng n�y r?i.',
+  left: (nickname: string) => `?? ${nickname} d� r?i ph�ng.`,
+  roomFull: () => '? Ph�ng d� d? ngu?i choi.',
+  roomLocked: () => '? V�n choi d� b?t d?u n�n kh�ng th? tham gia th�m.',
   notEnoughPlayers: (current: number, min: number) =>
-    `❌ Cần tối thiểu ${min} người chơi để bắt đầu (hiện có ${current}).`,
-  notHost: () => `❌ Chỉ Host mới có thể thực hiện hành động này.`,
-  gameStarting: (playerCount: number) =>  
-    `🌙 Bắt đầu ván chơi với ${playerCount} người! Vai trò đã được gửi riêng cho từng người qua tin nhắn riêng. Đêm đầu tiên bắt đầu...`,
+    `? C?n �t nh?t ${min} ngu?i d? b?t d?u; hi?n m?i c� ${current} ngu?i.`,
+  notHost: () => '? Ch? ch? ph�ng m?i c� th? th?c hi?n vi?c n�y.',
+  gameStarting: (playerCount: number) =>
+    `?? V�n Ma S�i v?i ${playerCount} ngu?i d� b?t d?u. Vai tr� d� du?c g?i ri�ng; d�m d?u ti�n b?t d?u ngay b�y gi?.`,
   roleDistributionSummary: (playerCount: number, roleCounts: Array<{ roleId: RoleId; count: number }>) => {
-    const lines = roleCounts
-      .map((entry) => `- ${RoleNames[entry.roleId]}: ${entry.count}`)
-      .join('\n');
-    return `📋 Phân bổ vai trò cho ván này (${playerCount} người):\n${lines}`;
+    const lines = roleCounts.map((entry) => `� ${RoleNames[entry.roleId]}: ${entry.count}`).join('\n');
+    return `?? Ph�n vai cho ${playerCount} ngu?i:\n${lines}`;
   },
   roleAssigned: (roleId: RoleId) =>
-    `🎭 Vai trò của bạn là: **${RoleNames[roleId]}**\n\n${RoleDescriptions[roleId]}`,
+    `?? B?n l� **${RoleNames[roleId]}**.\n\n${RoleDescriptions[roleId]}`,
   nightBegins: (round: number) =>
-    `🌙 Đêm ${round} bắt đầu. Những ai có hành động đêm, vui lòng thực hiện qua tin nhắn riêng.`,
-  actionRecorded: () => `✅ Đã ghi nhận hành động của bạn.`,
+    `?? ��m ${round} b?t d?u. Nh?ng ngu?i c� k? nang ban d�m h�y ki?m tra tin nh?n ri�ng v� dua ra l?a ch?n.`,
+  actionRecorded: () => '? �� ghi nh?n l?a ch?n c?a b?n.',
   dayBegins: (round: number, deaths: Array<{ nickname: string; cause: string }>) => {
     if (deaths.length === 0) {
-      return `☀️ Trời sáng rồi! Đêm ${round} không có ai thiệt mạng.`;
+      return `?? Tr?i s�ng, ng�y ${round} b?t d?u. ��m qua kh�ng ai b? h?.`;
     }
-    const lines = deaths.map((d) => `💀 ${d.nickname} đã chết.`).join('\n');
-    return `☀️ Trời sáng rồi!\n\n${lines}`;
+    const lines = deaths.map((death) => `?? ${death.nickname} ${DeathCauseNames[death.cause] ?? 'd� ch?t'}.`).join('\n');
+    return `?? Tr?i s�ng, ng�y ${round} b?t d?u.\n\n${lines}`;
   },
   discussionStarted: (seconds: number) =>
-    `💬 Bắt đầu thảo luận trong ${seconds} giây. Hãy cùng bàn bạc xem ai là Sói!`,
+    `?? M?i ngu?i c� ${seconds} gi�y d? th?o lu?n. H�y chia s? th�ng tin v� t�m ra S�i.`,
   votingStarted: (seconds: number) =>
-    `🗳 Bắt đầu bỏ phiếu trong ${seconds} giây. Chọn người bạn muốn treo cổ.`,
-  voteRecorded: () => `✅ Đã bỏ phiếu.`,
-  voteAlreadyCast: () =>
-    '⚠️ Bạn đã bỏ phiếu trong round này và không thể thay đổi lựa chọn.',
+    `??? B? phi?u b?t d?u. B?n c� ${seconds} gi�y d? ch?n ngu?i mu?n treo c?, ho?c ch?n B? qua.`,
+  voteRecorded: () => '? Phi?u c?a b?n d� du?c ghi nh?n.',
+  voteAlreadyCast: () => '?? B?n d� b? phi?u trong lu?t n�y n�n kh�ng th? thay d?i.',
   targetSelected: (action: string, targetNickname: string | null) =>
     targetNickname
-      ? `✅ ${action}: **${targetNickname}**.`
-      : `✅ ${action}: **Bỏ qua**.`,
-  nightActionSkipped: (action: string) => `✅ ${action} quyết định không ${action.includes('cứu') ? 'cứu' : action.includes('đầu độc') ? 'đầu độc' : action.includes('soi') ? 'soi' : action.includes('bảo vệ') ? 'bảo vệ' : action.includes('bắn trả') ? 'bắn ai' : 'thực hiện hành động'} ai đêm nay.`,
+      ? `? �� ghi nh?n l?a ch?n ${action}: **${targetNickname}**.`
+      : `? B?n d� ch?n b? qua ${action}.`,
+  nightActionSkipped: (action: string) => `? B?n d� ch?n b? qua ${action}.`,
   executionResult: (nickname: string | null) =>
     nickname
-      ? `⚖️ Dân làng đã quyết định treo cổ **${nickname}**.`
-      : `⚖️ Không đạt đa số phiếu — không ai bị treo cổ hôm nay.`,
+      ? `?? K?t qu? b? phi?u: **${nickname}** b? treo c?.`
+      : '?? K?t qu? b? phi?u: kh�ng ai b? treo c? h�m nay.',
   executionRoleReveal: (nickname: string, roleId: RoleId) =>
-    `🎭 Vai trò của ${nickname}: **${RoleNames[roleId]}**.`,
+    `?? ${nickname} l� **${RoleNames[roleId]}**.`,
   hunterPrompt: (seconds: number) =>
-    `🏹 Bạn là Thợ săn và vừa bị hạ! Bạn có ${seconds} giây để chọn 1 người bắn trả (hoặc bỏ qua).`,
+    `?? B?n l� Th? san v� v?a b? h?. B?n c� ${seconds} gi�y d? ch?n m?t ngu?i b?n tr?, ho?c b? qua.`,
   hunterShotResult: (hunterNickname: string, targetNickname: string) =>
-    `🏹 ${hunterNickname} đã bắn trả và hạ gục ${targetNickname} trước khi ngã xuống!`,
+    `?? Tru?c khi ng� xu?ng, ${hunterNickname} d� b?n h? ${targetNickname}.`,
   seerResult: (targetNickname: string, teamName: string) =>
-    `🔮 Kết quả soi: **${targetNickname}** thuộc **${teamName}**.`,
+    `?? K?t qu? soi: **${targetNickname}** thu?c **${teamName}**.`,
   gameOver: (winner: string) =>
-    `🏆 Ván đấu kết thúc! Chiến thắng thuộc về **${WinnerNames[winner] ?? winner}**!`,
+    `?? V�n choi k?t th�c. **${WinnerNames[winner] ?? winner}** chi?n th?ng!`,
   finalRoleSummary: (entries: Array<{ nickname: string; roleId: RoleId }>) => {
     const groupedByRole = entries.reduce<Record<RoleId, string[]>>((acc, entry) => {
       if (!acc[entry.roleId]) acc[entry.roleId] = [];
       acc[entry.roleId].push(entry.nickname);
       return acc;
     }, {} as Record<RoleId, string[]>);
-
     const roleSections = Object.entries(groupedByRole)
-      .map(([roleId, nicknames]) => {
-        const roleName = RoleNames[roleId as RoleId];
-        const names = nicknames.join(' & ');
-        return `• ${roleName}: ${names}`;
-      })
+      .map(([roleId, nicknames]) => `� ${RoleNames[roleId as RoleId]}: ${nicknames.join(', ')}`)
       .join('\n');
-
-    return `🎭 Vai trò sau ván:\n\n${roleSections}`;
+    return `?? Vai tr� c?a m?i ngu?i:\n\n${roleSections}`;
   },
-  werewolfTeammates: (teammates: string[]) => {
-    if (teammates.length === 0) return '';
-    return `🧠 Bạn là Sói. Những Sói khác trong ván là: ${teammates.join(', ')}.`;
-  },
-  hostKicked: (nickname: string) => `🚫 ${nickname} đã bị Host mời ra khỏi phòng.`,
-  invalidTarget: () => `❌ Mục tiêu không hợp lệ. Vui lòng chọn lại.`,
-  genericError: (message: string) => `❌ Đã xảy ra lỗi: ${message}`,
-  actionTimeout: () => `⌛ Hết giờ! Hành động của bạn được coi là bỏ qua.`,
+  werewolfTeammates: (teammates: string[]) =>
+    teammates.length > 0
+      ? `?? Nh?ng S�i c�ng phe v?i b?n: ${teammates.join(', ')}.`
+      : '?? B?n l� S�i duy nh?t trong v�n n�y.',
+  hostKicked: (nickname: string) => `?? ${nickname} d� b? ch? ph�ng m?i ra kh?i ph�ng.`,
+  invalidTarget: () => '? M?c ti�u kh�ng h?p l?. H�y ch?n l?i.',
+  genericError: () => '? C� l?i x?y ra. Vui l�ng th? l?i.',
+  actionTimeout: () => '? H?t gi?. L?a ch?n c?a b?n du?c t�nh l� b? qua.',
 } as const;

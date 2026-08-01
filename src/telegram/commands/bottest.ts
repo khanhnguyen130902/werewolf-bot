@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
+import { Messages } from '../presenters/messages';
 import { translateError } from '../presenters/translateError';
 import { GameState, RoomStatus, RoleId } from '../../engine/domain/enums';
 import { logger } from '../../infrastructure/logging/logger';
@@ -29,7 +30,7 @@ function parseRoleAlias(token: string): RoleId | null {
 export function registerbottestCommand(services: BotServices, bot: Telegraf<BotContext>): void {
   bot.command('bottest', async (ctx) => {
     if (ctx.chat.type === 'private') {
-      await ctx.reply('❌ Lệnh /bottest chỉ dùng được trong group chat.');
+      await ctx.reply(Messages.groupOnly('/bottest'));
       return;
     }
 

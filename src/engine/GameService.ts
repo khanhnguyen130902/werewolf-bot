@@ -128,6 +128,16 @@ export class GameService {
           overrideTargetBefore: overrideTarget,
         });
         if (overrideTarget) {
+          const existingRoleHolder = assignments.find(
+            (assignment) => assignment.roleId === requestedRoleOverride,
+          );
+
+          // Swap rather than overwrite: overwriting a player who was assigned
+          // a special role would otherwise leave its original holder with the
+          // same role, producing two copies in one game.
+          if (existingRoleHolder && existingRoleHolder !== overrideTarget) {
+            existingRoleHolder.roleId = overrideTarget.roleId;
+          }
           overrideTarget.roleId = requestedRoleOverride;
         }
       }

@@ -83,7 +83,7 @@ describe('registerActionCallbackHandler', () => {
         inline_keyboard: expect.any(Array),
       }),
     );
-    expect(ctx.reply).toHaveBeenCalledWith('✅ Bạn đã bỏ phiếu cho: **Target One**.');
+    expect(ctx.reply).not.toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();
   });
 

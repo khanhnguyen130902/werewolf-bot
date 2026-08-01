@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
+import { Messages } from '../presenters/messages';
 import { GameFlowController } from '../GameFlowController';
 import { translateError } from '../presenters/translateError';
 
@@ -11,7 +12,7 @@ export function registerVoteCommand(
 ): void {
   bot.command('vote', async (ctx) => {
     if (ctx.chat.type === 'private') {
-      await ctx.reply('❌ Lệnh /vote chỉ dùng được trong group chat.');
+      await ctx.reply(Messages.groupOnly('/vote'));
       return;
     }
 

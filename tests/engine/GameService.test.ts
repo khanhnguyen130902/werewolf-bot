@@ -114,6 +114,9 @@ describe('GameService.startGame', () => {
     });
 
     expect(room.players['p0'].role).toBe(RoleId.BODYGUARD);
+    expect(
+      Object.values(room.players).filter((player) => player.role === RoleId.BODYGUARD),
+    ).toHaveLength(1);
   });
 
   it('initializes witch potions when Witch role is in play', async () => {

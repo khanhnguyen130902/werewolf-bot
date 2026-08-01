@@ -1,38 +1,29 @@
 import { DomainError } from '../../engine/errors/DomainError';
 
-/**
- * Maps DomainError codes to Vietnamese messages. This is the ONLY place
- * that translates engine error codes into display text, keeping the engine
- * itself free of any language-specific strings (see messages.ts doc for the
- * same rationale applied to success-path messages).
- */
+/** Converts domain errors into concise, player-friendly Vietnamese. */
 const ERROR_MESSAGES: Record<string, string> = {
-  ROOM_NOT_FOUND: 'Không tìm thấy phòng chơi này. Có thể phòng đã bị đóng.',
-  ROOM_FULL: 'Phòng đã đủ người chơi tối đa.',
-  ROOM_LOCKED: 'Ván đang diễn ra, không thể tham gia lúc này.',
-  PLAYER_ALREADY_IN_ROOM: 'Bạn đã tham gia phòng này rồi.',
-  PLAYER_NOT_IN_ROOM: 'Bạn chưa tham gia phòng này.',
-  NOT_ENOUGH_PLAYERS: 'Chưa đủ người chơi để bắt đầu ván.',
-  TOO_MANY_PLAYERS: 'Số người chơi vượt quá giới hạn cho phép.',
-  NOT_HOST: 'Chỉ Host (người tạo phòng) mới có thể thực hiện thao tác này.',
-  DEAD_PLAYER_ACTION: 'Bạn đã bị loại, không thể thực hiện hành động này.',
-  INVALID_PHASE_ACTION: 'Hành động này không hợp lệ ở giai đoạn hiện tại.',
-  INVALID_TARGET: 'Mục tiêu không hợp lệ. Vui lòng chọn lại.',
-  WRONG_ROLE_FOR_ACTION: 'Vai trò của bạn không thể thực hiện hành động này.',
-  NO_POTION_LEFT: 'Bạn đã dùng hết bình thuốc này rồi.',
-  CONCURRENT_MODIFICATION: 'Có xung đột dữ liệu, vui lòng thử lại.',
-  DUPLICATE_ACTION: 'Hành động này đã được ghi nhận trước đó rồi.',
-  INVALID_STATE_TRANSITION: 'Không thể thực hiện thao tác này lúc này.',
-  DM_NOT_REACHABLE: 'Bạn cần nhắn /start cho bot ở tin nhắn riêng trước khi tham gia phòng.',
+  ROOM_NOT_FOUND: 'Kh�ng t�m th?y ph�ng choi n�y. C� th? ph�ng d� b? d�ng.',
+  ROOM_FULL: 'Ph�ng d� d? ngu?i choi.',
+  ROOM_LOCKED: 'V�n choi d� b?t d?u n�n kh�ng th? tham gia th�m.',
+  PLAYER_ALREADY_IN_ROOM: 'B?n d� ? trong ph�ng n�y r?i.',
+  PLAYER_NOT_IN_ROOM: 'B?n chua tham gia ph�ng n�y.',
+  NOT_ENOUGH_PLAYERS: 'Chua d? ngu?i d? b?t d?u v�n choi.',
+  TOO_MANY_PLAYERS: 'S? ngu?i choi d� vu?t qu� gi?i h?n c?a ph�ng.',
+  NOT_HOST: 'Ch? ch? ph�ng m?i c� th? th?c hi?n vi?c n�y.',
+  DEAD_PLAYER_ACTION: 'B?n d� b? lo?i n�n kh�ng th? th?c hi?n h�nh d?ng n�y.',
+  INVALID_PHASE_ACTION: 'H�nh d?ng n�y chua th? th?c hi?n ? giai do?n hi?n t?i.',
+  INVALID_TARGET: 'M?c ti�u kh�ng h?p l?. H�y ch?n l?i.',
+  WRONG_ROLE_FOR_ACTION: 'Vai tr� c?a b?n kh�ng th? th?c hi?n h�nh d?ng n�y.',
+  NO_POTION_LEFT: 'B?n d� d�ng b�nh thu?c n�y r?i.',
+  CONCURRENT_MODIFICATION: 'Ph�ng v?a c� thay d?i. Vui l�ng th? l?i.',
+  DUPLICATE_ACTION: 'L?a ch?n n�y d� du?c ghi nh?n tru?c d�.',
+  INVALID_STATE_TRANSITION: 'Kh�ng th? th?c hi?n thao t�c n�y v�o l�c n�y.',
+  DM_NOT_REACHABLE: 'H�y nh?n /start cho bot trong tin nh?n ri�ng tru?c khi tham gia ph�ng.',
 };
 
-/** Converts any error into a user-facing Vietnamese message. Falls back to a
- * generic message for non-DomainError exceptions (e.g. unexpected bugs),
- * since exposing raw internal error text to end users is poor UX and can
- * leak implementation details. */
 export function translateError(err: unknown): string {
   if (err instanceof DomainError) {
-    return ERROR_MESSAGES[err.code] ?? `❌ Đã xảy ra lỗi: ${err.message}`;
+    return ERROR_MESSAGES[err.code] ?? '? Kh�ng th? th?c hi?n thao t�c n�y. Vui l�ng th? l?i.';
   }
-  return `❌ Đã xảy ra lỗi không xác định. Vui lòng thử lại.`;
+  return '? C� l?i x?y ra. Vui l�ng th? l?i.';
 }

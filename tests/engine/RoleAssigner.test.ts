@@ -60,4 +60,15 @@ describe('RoleAssigner', () => {
       /not registered/,
     );
   });
+
+  it('rejects distribution plans with duplicate special roles', () => {
+    const assigner = new RoleAssigner(new ReverseFakeRandom(), registry);
+
+    expect(() =>
+      assigner.assign(['p1', 'p2', 'p3'], {
+        [RoleId.SEER]: 2,
+        [RoleId.VILLAGER]: 1,
+      }),
+    ).toThrow(/Special role SEER cannot be assigned more than once/);
+  });
 });

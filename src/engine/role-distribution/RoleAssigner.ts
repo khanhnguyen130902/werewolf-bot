@@ -36,6 +36,20 @@ export class RoleAssigner {
       );
     }
 
+    // Villagers and Werewolves are the only roles that may have more than
+    // one slot. Keep this invariant at the assignment boundary so custom
+    // distribution strategies cannot accidentally create duplicate special
+    // roles.
+    for (const [roleId, count] of Object.entries(plan) as [RoleId, number][]) {
+      if (
+        roleId !== RoleId.VILLAGER &&
+        roleId !== RoleId.WEREWOLF &&
+        (count ?? 0) > 1
+      ) {
+        throw new Error(`Special role ${roleId} cannot be assigned more than once`);
+      }
+    }
+
     // Build a flat pool of role ids repeated per their planned count.
     const rolePool: RoleId[] = [];
     for (const [roleId, count] of Object.entries(plan) as [RoleId, number][]) {

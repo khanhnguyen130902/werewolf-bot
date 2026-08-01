@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
+import { Messages } from '../presenters/messages';
 import { GameState } from '../../engine/domain/enums';
 import { translateError } from '../presenters/translateError';
 
@@ -20,7 +21,7 @@ const STATE_LABELS: Record<string, string> = {
 export function registerStatusCommand(services: BotServices, bot: Telegraf<BotContext>): void {
   bot.command('status', async (ctx) => {
     if (ctx.chat.type === 'private') {
-      await ctx.reply('❌ Lệnh /status chỉ dùng được trong group chat.');
+      await ctx.reply(Messages.groupOnly('/status'));
       return;
     }
 

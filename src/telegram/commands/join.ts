@@ -8,7 +8,7 @@ import { DmNotReachableError } from '../../engine/errors/DomainError';
 export function registerJoinCommand(services: BotServices, bot: Telegraf<BotContext>): void {
   bot.command('join', async (ctx) => {
     if (ctx.chat.type === 'private') {
-      await ctx.reply('❌ Lệnh /join chỉ dùng được trong group chat.');
+      await ctx.reply(Messages.groupOnly('/join'));
       return;
     }
 

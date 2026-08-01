@@ -22,12 +22,12 @@ const NIGHT_ACTION_TYPES: Set<string> = new Set([
 ]);
 
 const ACTION_LABELS: Partial<Record<NightActionType, string>> = {
-  [NightActionType.WEREWOLF_VOTE_KILL]: 'Bạn chọn cắn',
-  [NightActionType.SEER_INSPECT]: 'Tiên tri chọn soi',
-  [NightActionType.BODYGUARD_PROTECT]: 'Bảo vệ chọn bảo vệ',
-  [NightActionType.HUNTER_SHOOT]: 'Thợ săn chọn mục tiêu bắn trả',
-  [NightActionType.WITCH_SAVE]: 'Phù thủy chọn cứu',
-  [NightActionType.WITCH_POISON]: 'Phù thủy chọn đầu độc',
+  [NightActionType.WEREWOLF_VOTE_KILL]: 'm?c ti�u b? c?n',
+  [NightActionType.SEER_INSPECT]: 'm?c ti�u du?c soi',
+  [NightActionType.BODYGUARD_PROTECT]: 'ngu?i du?c b?o v?',
+  [NightActionType.HUNTER_SHOOT]: 'm?c ti�u b? b?n',
+  [NightActionType.WITCH_SAVE]: 'ngu?i du?c c?u',
+  [NightActionType.WITCH_POISON]: 'm?c ti�u b? d?u d?c',
 };
 
 function targetNickname(room: RoomState, targetTelegramId: string | null): string | null {
@@ -226,9 +226,6 @@ export function registerActionCallbackHandler(
           });
           await ctx.answerCbQuery(Messages.voteRecorded()).catch(() => undefined);
           await ctx.editMessageReplyMarkup(buildCurrentVoteKeyboard(updatedRoom).reply_markup).catch(() => undefined);
-          await ctx.reply(
-            Messages.targetSelected('Bạn đã bỏ phiếu cho', targetNickname(updatedRoom, parsed.targetTelegramId)),
-          );
 
           // Check if all alive players have voted to resolve early
           const alivePlayers = Object.values(updatedRoom.players).filter((p) => p.alive);
