@@ -78,6 +78,7 @@ export class NightResolver {
     rejectedActions: NightResolutionResult['rejectedActions'];
     witchPotions: RoomState['witchPotions'];
     lastProtectedByBodyguard: RoomState['lastProtectedByBodyguard'];
+    lastInspectedBySeer: RoomState['lastInspectedBySeer'];
   } {
     const { room } = params;
     const settings = room.settings;
@@ -88,6 +89,7 @@ export class NightResolver {
 
     let witchPotions = room.witchPotions ? { ...room.witchPotions } : null;
     const lastProtectedByBodyguard = { ...room.lastProtectedByBodyguard };
+    const lastInspectedBySeer = { ...(room.lastInspectedBySeer ?? {}) };
 
     const rejectedActions: NightResolutionResult['rejectedActions'] = [];
     const seerResults: NightResolutionResult['seerResults'] = [];
@@ -120,6 +122,7 @@ export class NightResolver {
 
         case NightActionType.SEER_INSPECT: {
           for (const action of actionsOfType) {
+            lastInspectedBySeer[action.actorTelegramId] = action.targetTelegramId;
             if (!action.targetTelegramId) continue;
             const targetPlayer = room.players[action.targetTelegramId];
             if (!targetPlayer || !targetPlayer.role || !targetPlayer.team) continue;
@@ -207,6 +210,7 @@ export class NightResolver {
       rejectedActions,
       witchPotions,
       lastProtectedByBodyguard,
+      lastInspectedBySeer,
     };
   }
 
@@ -263,6 +267,7 @@ export class NightResolver {
       players: updatedPlayers,
       witchPotions: stepOneResult.witchPotions,
       lastProtectedByBodyguard: stepOneResult.lastProtectedByBodyguard,
+      lastInspectedBySeer: stepOneResult.lastInspectedBySeer,
     };
 
     const result: NightResolutionResult = {

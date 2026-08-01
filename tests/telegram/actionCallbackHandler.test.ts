@@ -204,6 +204,74 @@ describe('registerActionCallbackHandler', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  it('submits hunter night actions and confirms them instead of leaving the UI stuck', async () => {
+    const services = {
+      storage: {
+        getPlayerSession: jest.fn().mockResolvedValue('room1'),
+      },
+      dayService: {
+        submitVote: jest.fn(),
+      },
+      nightActionService: {
+        submitNightAction: jest.fn().mockResolvedValue({
+          players: {
+            '123': {
+              telegramId: '123',
+              nickname: 'Hunter',
+              role: 'HUNTER',
+              alive: true,
+            },
+          },
+          pendingNightActions: [],
+          currentRound: 1,
+        }),
+      },
+      orchestrator: {
+        allNightActionsSubmitted: jest.fn().mockResolvedValue(false),
+      },
+    } as any;
+
+    const flowController = {
+      promptWitchSaveForVictim: jest.fn(),
+      onNightResolved: jest.fn(),
+    } as any;
+
+    let capturedHandler: ((ctx: any, next: any) => Promise<void>) | undefined;
+    const bot = {
+      on: jest.fn((_event: string, handler: (ctx: any, next: any) => Promise<void>) => {
+        capturedHandler = handler;
+      }),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+
+    registerActionCallbackHandler(services, flowController, bot);
+
+    const answerCbQuery = jest.fn().mockResolvedValue(undefined);
+    const ctx = {
+      callbackQuery: { data: 'action:HUNTER_SHOOT:target1' },
+      from: { id: '123' },
+      answerCbQuery,
+      editMessageReplyMarkup: jest.fn().mockResolvedValue(undefined),
+      reply: jest.fn().mockResolvedValue(undefined),
+      telegram: { sendMessage: jest.fn() },
+    } as any;
+    const next = jest.fn();
+
+    await capturedHandler!(ctx, next);
+
+    expect(services.nightActionService.submitNightAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorTelegramId: '123',
+        actionType: 'HUNTER_SHOOT',
+        targetTelegramId: 'target1',
+      }),
+    );
+    expect(answerCbQuery).toHaveBeenCalledWith('Đã ghi nhận hành động.');
+    expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith({ inline_keyboard: [] });
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith('123', '✅ Thợ săn chọn mục tiêu bắn trả: **target1**.');
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('passes hunter-shot callbacks through to next() since they use a different prefix', async () => {
     // hunter-shot:X:Y callbacks are handled by GameFlowController.registerHunterCallbackHandler,
     // NOT by registerActionCallbackHandler (which only handles "action:TYPE:TARGET" format).

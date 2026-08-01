@@ -73,9 +73,9 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
   ],
   defaultTimeoutBehavior: TimeoutBehavior.SKIP,
   timers: {
-    nightActionSeconds: 45,
+    nightActionSeconds: 60,
     discussionSeconds: 180,
-    votingSeconds: 15,
+    votingSeconds: 60,
   },
 };
 
@@ -116,6 +116,10 @@ export interface RoomState {
    * night, or null if they didn't protect anyone / it's the first night.
    */
   lastProtectedByBodyguard: Record<string, string | null>;
+  /** Tracks each Seer's previous-night inspection target. */
+  lastInspectedBySeer: Record<string, string | null>;
+  /** Tracks each Hunter's previous-night preselected revenge target. */
+  lastTargetedByHunter: Record<string, string | null>;
   /**
    * Night actions submitted so far for the CURRENT night, awaiting
    * resolution at end of night. Persisted on RoomState (not just in-memory)
@@ -159,6 +163,8 @@ export class RoomFactory {
       matchId: null,
       witchPotions: null,
       lastProtectedByBodyguard: {},
+      lastInspectedBySeer: {},
+      lastTargetedByHunter: {},
       pendingNightActions: [],
       nightPhase: NightPhase.ACTIONS,
     };

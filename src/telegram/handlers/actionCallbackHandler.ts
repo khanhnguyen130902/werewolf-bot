@@ -10,10 +10,13 @@ import { RoomState } from '../../engine/domain/Room';
 import { translateError } from '../presenters/translateError';
 import { logger } from '../../infrastructure/logging/logger';
 
+const resolvingExecutionRooms = new Set<string>();
+
 const NIGHT_ACTION_TYPES: Set<string> = new Set([
   NightActionType.WEREWOLF_VOTE_KILL,
   NightActionType.SEER_INSPECT,
   NightActionType.BODYGUARD_PROTECT,
+  NightActionType.HUNTER_SHOOT,
   NightActionType.WITCH_SAVE,
   NightActionType.WITCH_POISON,
 ]);
@@ -231,6 +234,12 @@ export function registerActionCallbackHandler(
           const alivePlayers = Object.values(updatedRoom.players).filter((p) => p.alive);
           const allVoted = alivePlayers.every((p) => p.hasVotedThisRound);
           if (allVoted) {
+            if (resolvingExecutionRooms.has(roomId)) {
+              logger.debug('Execution resolution already in progress for room, skipping duplicate follow-up', { roomId });
+              return;
+            }
+
+            resolvingExecutionRooms.add(roomId);
             void (async () => {
               try {
                 logger.debug('Resolving execution early because all alive players have voted', { roomId });
@@ -245,6 +254,8 @@ export function registerActionCallbackHandler(
                 await flowController.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
               } catch (err) {
                 logger.error('Error during early execution-resolution follow-up', { roomId, err });
+              } finally {
+                resolvingExecutionRooms.delete(roomId);
               }
             })();
           }

@@ -343,6 +343,50 @@ describe('NightActionService.submitNightAction', () => {
       }),
     ).rejects.toBeInstanceOf(InvalidTargetError);
   });
+
+  it('rejects a Seer inspecting the same target on consecutive nights', async () => {
+    const { roomService, gameService, nightActionService, storage } = setup();
+    const room = await createAndStartGame(roomService, gameService);
+    const seer = findByRole(room, RoleId.SEER);
+    const target = Object.values(room.players).find((p) => p.telegramId !== seer.telegramId)!;
+
+    const current = await storage.getRoom('room1');
+    current!.currentRound = 2;
+    current!.lastInspectedBySeer[seer.telegramId] = target.telegramId;
+    await storage.saveRoom(current!, current!.version);
+
+    await expect(
+      nightActionService.submitNightAction({
+        roomId: 'room1',
+        actionId: 'seer-repeat',
+        actorTelegramId: seer.telegramId,
+        actionType: NightActionType.SEER_INSPECT,
+        targetTelegramId: target.telegramId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTargetError);
+  });
+
+  it('rejects a Hunter selecting the same target on consecutive nights', async () => {
+    const { roomService, gameService, nightActionService, storage } = setup();
+    const room = await createAndStartGame(roomService, gameService);
+    const hunter = findByRole(room, RoleId.HUNTER);
+    const target = Object.values(room.players).find((p) => p.telegramId !== hunter.telegramId)!;
+
+    const current = await storage.getRoom('room1');
+    current!.currentRound = 2;
+    current!.lastTargetedByHunter[hunter.telegramId] = target.telegramId;
+    await storage.saveRoom(current!, current!.version);
+
+    await expect(
+      nightActionService.submitNightAction({
+        roomId: 'room1',
+        actionId: 'hunter-repeat',
+        actorTelegramId: hunter.telegramId,
+        actionType: NightActionType.HUNTER_SHOOT,
+        targetTelegramId: target.telegramId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTargetError);
+  });
 });
 
 describe('NightActionService.resolveNight', () => {

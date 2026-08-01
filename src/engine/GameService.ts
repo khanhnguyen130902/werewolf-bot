@@ -203,6 +203,8 @@ export class GameService {
         matchId,
         witchPotions: hasWitch ? { saveUsed: false, poisonUsed: false } : null,
         lastProtectedByBodyguard: {},
+        lastInspectedBySeer: {},
+        lastTargetedByHunter: {},
         pendingNightActions: [],
         nightPhase: NightPhase.ACTIONS,
         updatedAt: now,

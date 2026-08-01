@@ -190,10 +190,20 @@ export class NightActionService {
         role.validateNightAction(context);
       }
 
-      if (params.actionType === NightActionType.BODYGUARD_PROTECT && params.targetTelegramId !== null) {
-        const previousTarget = room.lastProtectedByBodyguard[params.actorTelegramId];
-        if (room.currentRound > 1 && previousTarget !== undefined && previousTarget === params.targetTelegramId) {
-          throw new InvalidTargetError('Bodyguard cannot protect the same target consecutively');
+      if (params.targetTelegramId !== null && room.currentRound > 1) {
+        const previousTargetByActionType: Partial<Record<NightActionType, string | null | undefined>> = {
+          [NightActionType.BODYGUARD_PROTECT]: room.lastProtectedByBodyguard[params.actorTelegramId],
+          [NightActionType.SEER_INSPECT]: room.lastInspectedBySeer?.[params.actorTelegramId],
+          [NightActionType.HUNTER_SHOOT]: room.lastTargetedByHunter?.[params.actorTelegramId],
+        };
+        const previousTarget = previousTargetByActionType[params.actionType];
+        if (previousTarget !== undefined && previousTarget === params.targetTelegramId) {
+          const actionNameByType: Partial<Record<NightActionType, string>> = {
+            [NightActionType.BODYGUARD_PROTECT]: 'Bodyguard cannot protect the same target consecutively',
+            [NightActionType.SEER_INSPECT]: 'Seer cannot inspect the same target consecutively',
+            [NightActionType.HUNTER_SHOOT]: 'Hunter cannot select the same target consecutively',
+          };
+          throw new InvalidTargetError(actionNameByType[params.actionType] ?? 'Cannot select the same target consecutively');
         }
       }
 
@@ -374,9 +384,17 @@ export class NightActionService {
         };
       }
 
+      const lastTargetedByHunter = { ...(room.lastTargetedByHunter ?? {}) };
+      for (const action of room.pendingNightActions) {
+        if (action.actionType === NightActionType.HUNTER_SHOOT && action.round === room.currentRound) {
+          lastTargetedByHunter[action.actorTelegramId] = action.targetTelegramId;
+        }
+      }
+
       const roomWithPersistedHunterTargets = {
         ...room,
         players: updatedPlayers,
+        lastTargetedByHunter,
       };
 
       const { room: afterNight, result } = resolver.applyHunterRevengeAndFinalize({
