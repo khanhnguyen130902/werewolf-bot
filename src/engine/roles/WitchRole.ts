@@ -76,11 +76,8 @@ export class WitchRole implements IRole {
     if (!hasPoisonPotionLeft) {
       throw new NoPotionLeftError('poison');
     }
-    if (!allowDualPotion && alreadyUsedOtherPotionThisNight) {
-      throw new InvalidTargetError(
-        'Only one potion may be used per night under current settings',
-      );
-    }
+    void allowDualPotion;
+    void alreadyUsedOtherPotionThisNight;
     if (context.targetTelegramId === context.actorTelegramId) {
       throw new InvalidTargetError('Witch cannot poison themselves');
     }

@@ -329,26 +329,6 @@ export function registerActionCallbackHandler(
           }
         }
 
-        if (parsed.actionType === NightActionType.WITCH_SAVE && parsed.targetTelegramId !== null) {
-          const witchPotions = updatedRoom.witchPotions;
-          if (witchPotions && !witchPotions.poisonUsed) {
-            const poisonTargets = Object.values(updatedRoom.players)
-              .filter((player) => player.alive && player.telegramId !== telegramId)
-              .map((player) => ({ telegramId: player.telegramId, nickname: player.nickname }));
-            const poisonKeyboard = buildTargetKeyboard({
-              actionType: NightActionType.WITCH_POISON,
-              targets: poisonTargets,
-            });
-            await bot.telegram
-              .sendMessage(
-                telegramId,
-                '🧪 Bạn còn bình thuốc độc. Bạn có muốn đầu độc ai không?',
-                poisonKeyboard,
-              )
-              .catch(() => undefined);
-          }
-        }
-
         await ctx.answerCbQuery('Đã ghi nhận hành động.').catch(() => undefined);
         await bot.telegram
           .sendMessage(

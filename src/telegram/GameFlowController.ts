@@ -393,90 +393,67 @@ export class GameFlowController {
       .map((a) => a.targetTelegramId)
       .filter((id): id is string => Boolean(id));
     const victimId = wolfChoices.length > 0 && new Set(wolfChoices).size === 1 ? wolfChoices[0] : null;
-    const rows: Array<Array<{ text: string; callback_data: string }>> = [];
-    if (victimId && room.witchPotions && !room.witchPotions.saveUsed) {
-      const victim = room.players[victimId];
-      if (victim) rows.push([{ text: `🧪 Cứu ${victim.nickname}`, callback_data: `action:WITCH_SAVE:${victimId}` }]);
-    }
-    if (room.witchPotions && !room.witchPotions.poisonUsed) {
-      for (const player of Object.values(room.players).filter((p) => p.alive && p.telegramId !== witch.telegramId)) {
-        rows.push([{ text: `☠️ Độc ${player.nickname}`, callback_data: `action:WITCH_POISON:${player.telegramId}` }]);
-      }
-    }
-    rows.push([{ text: '⏭ Bỏ qua', callback_data: 'action:WITCH_SAVE:SKIP' }]);
+    const saveKeyboard = victimId && room.witchPotions && !room.witchPotions.saveUsed
+      ? buildTargetKeyboard({
+          actionType: NightActionType.WITCH_SAVE,
+          targets: [{ telegramId: victimId, nickname: room.players[victimId]?.nickname ?? victimId }],
+        })
+      : null;
+    const poisonKeyboard = room.witchPotions && !room.witchPotions.poisonUsed
+      ? buildTargetKeyboard({
+          actionType: NightActionType.WITCH_POISON,
+          targets: Object.values(room.players)
+            .filter((player) => player.alive && player.telegramId !== witch.telegramId)
+            .map((player) => ({ telegramId: player.telegramId, nickname: player.nickname })),
+        })
+      : null;
     if (isTestBot(witch.telegramId)) {
-      const hasSave = victimId !== null && room.witchPotions && !room.witchPotions.saveUsed;
-      const hasPoison = room.witchPotions && !room.witchPotions.poisonUsed;
-      let acted = false;
-
-      const shouldSave = hasSave && Math.random() < 0.7;
-      if (shouldSave) {
-        try {
-          await this.services.nightActionService.submitNightAction({
-            roomId: room.id,
-            actionId: `bot-witch-save-${witch.telegramId}-${room.currentRound}-${victimId}`,
-            actorTelegramId: witch.telegramId,
-            actionType: NightActionType.WITCH_SAVE,
-            targetTelegramId: victimId,
-          });
-          acted = true;
-        } catch {
-          // Ignore invalid bot action.
-        }
+      if (saveKeyboard) {
+        const shouldSave = Math.random() < 0.7;
+        await this.services.nightActionService.submitNightAction({
+          roomId: room.id,
+          actionId: `bot-witch-save-${witch.telegramId}-${room.currentRound}`,
+          actorTelegramId: witch.telegramId,
+          actionType: NightActionType.WITCH_SAVE,
+          targetTelegramId: shouldSave ? victimId : null,
+        }).catch(() => undefined);
       }
-
-      if (hasPoison) {
-        const poisonTargets = Object.values(room.players).filter(
-          (player) => player.alive && player.telegramId !== witch.telegramId,
-        );
-        const poisonTarget = pickRandomTarget(poisonTargets.map((player) => ({
-          telegramId: player.telegramId,
-          nickname: player.nickname,
-        })));
-        if (poisonTarget && Math.random() < 0.4) {
-          try {
-            await this.services.nightActionService.submitNightAction({
-              roomId: room.id,
-              actionId: `bot-witch-poison-${witch.telegramId}-${room.currentRound}-${poisonTarget.telegramId}`,
-              actorTelegramId: witch.telegramId,
-              actionType: NightActionType.WITCH_POISON,
-              targetTelegramId: poisonTarget.telegramId,
-            });
-            acted = true;
-          } catch {
-            // Ignore invalid bot action.
-          }
-        }
-      }
-
-      // If Witch Bot decided not to do anything, submit a skip action so the game can resolve
-      if (!acted) {
-        try {
-          await this.services.nightActionService.submitNightAction({
-            roomId: room.id,
-            actionId: `bot-witch-skip-${witch.telegramId}-${room.currentRound}`,
-            actorTelegramId: witch.telegramId,
-            actionType: NightActionType.WITCH_SAVE,
-            targetTelegramId: null, // skip
-          });
-        } catch {
-          // Ignore
-        }
+      if (poisonKeyboard) {
+        const poisonTargets = Object.values(room.players)
+          .filter((player) => player.alive && player.telegramId !== witch.telegramId)
+          .map((player) => ({ telegramId: player.telegramId, nickname: player.nickname }));
+        const poisonTarget = pickRandomTarget(poisonTargets);
+        const shouldPoison = poisonTarget !== undefined && Math.random() < 0.4;
+        await this.services.nightActionService.submitNightAction({
+          roomId: room.id,
+          actionId: `bot-witch-poison-${witch.telegramId}-${room.currentRound}`,
+          actorTelegramId: witch.telegramId,
+          actionType: NightActionType.WITCH_POISON,
+          targetTelegramId: shouldPoison ? poisonTarget!.telegramId : null,
+        }).catch(() => undefined);
       }
       return;
     }
-
-    try {
-      await this.bot.telegram.sendMessage(
-        witch.telegramId,
-        victimId
-          ? `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId]?.nickname ?? victimId}. Hãy chọn một hành động.`
-          : `🌙 Đêm ${room.currentRound}: Sói chưa thống nhất mục tiêu. Hãy chọn một hành động.`,
-        { reply_markup: { inline_keyboard: rows } },
+    const prompts: Array<Promise<unknown>> = [];
+    if (saveKeyboard) {
+      prompts.push(
+        this.bot.telegram.sendMessage(
+          witch.telegramId,
+          `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId!]?.nickname ?? victimId}. Bạn có muốn dùng thuốc CỨU không?`,
+          saveKeyboard,
+        ).catch(() => undefined),
       );
-    } catch {
-      // A failed DM must not prevent the Phase 2 timer from resolving.
     }
+    if (poisonKeyboard) {
+      prompts.push(
+        this.bot.telegram.sendMessage(
+          witch.telegramId,
+          `🌙 Đêm ${room.currentRound}: Bạn có muốn dùng thuốc ĐỘC không?`,
+          poisonKeyboard,
+        ).catch(() => undefined),
+      );
+    }
+    await Promise.all(prompts);
   }
 
   async promptWitchSaveForVictim(roomId: string, victimTelegramId: string | null): Promise<void> {

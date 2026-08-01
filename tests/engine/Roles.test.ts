@@ -175,12 +175,11 @@ describe('WitchRole', () => {
       );
     });
 
-    it('rejects using poison after save when dual potion disabled', () => {
+    it('allows using poison after save even when a legacy room disables dual potions', () => {
       expect(() =>
         role.validatePoisonAction(baseContext(), true, false, true),
-      ).toThrow(InvalidTargetError);
+      ).not.toThrow();
     });
-
     it('allows using poison after save when dual potion enabled (confirmed default)', () => {
       expect(() =>
         role.validatePoisonAction(baseContext(), true, true, true),

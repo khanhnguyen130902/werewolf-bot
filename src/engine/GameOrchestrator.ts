@@ -144,12 +144,37 @@ export class GameOrchestrator {
         : p.role !== RoleId.WITCH && this.roleHasNightAction(p.role);
     });
 
+    if (phase === NightPhase.WITCH) {
+      return this.witchActionsSubmitted(room);
+    }
+
     const actedTelegramIds = new Set(room.pendingNightActions.map((a) => a.actorTelegramId));
-
     const allActed = alivePlayersWithNightAction.every((p) => actedTelegramIds.has(p.telegramId));
-    if (!allActed) return false;
+    return allActed && this.werewolfConsensusSettled(room);
+  }
 
-    return phase === NightPhase.WITCH || this.werewolfConsensusSettled(room);
+  /** A Witch must decide independently for each potion that is currently usable. */
+  private witchActionsSubmitted(room: RoomState): boolean {
+    const witch = Object.values(room.players).find((player) => player.alive && player.role === RoleId.WITCH);
+    if (!witch || !room.witchPotions) return true;
+
+    const wolfTargets = room.pendingNightActions
+      .filter((action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound)
+      .map((action) => action.targetTelegramId)
+      .filter((target): target is string => target !== null);
+    const victimId = wolfTargets.length > 0 && new Set(wolfTargets).size === 1 ? wolfTargets[0] : null;
+    const submittedActionTypes = new Set(
+      room.pendingNightActions
+        .filter((action) => action.actorTelegramId === witch.telegramId && action.round === room.currentRound)
+        .map((action) => action.actionType),
+    );
+
+    const saveDecisionRequired = victimId !== null && !room.witchPotions.saveUsed;
+    const poisonDecisionRequired = !room.witchPotions.poisonUsed;
+    return (
+      (!saveDecisionRequired || submittedActionTypes.has(NightActionType.WITCH_SAVE)) &&
+      (!poisonDecisionRequired || submittedActionTypes.has(NightActionType.WITCH_POISON))
+    );
   }
 
   private werewolfConsensusSettled(room: RoomState): boolean {

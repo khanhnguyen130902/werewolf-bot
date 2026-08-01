@@ -12,7 +12,7 @@ import { SchedulerPort, ScheduledJobHandle } from '../../src/engine/ports/Schedu
 import { createPhase1RoleRegistry } from '../../src/engine/roles/RoleRegistry';
 import { createDefaultDistributionStrategyRegistry } from '../../src/engine/role-distribution/RoleDistributionStrategyRegistry';
 import { GameStateMachine } from '../../src/engine/state-machine/GameStateMachine';
-import { GameState, RoleId, NightActionType } from '../../src/engine/domain/enums';
+import { GameState, RoleId, NightActionType, NightPhase } from '../../src/engine/domain/enums';
 
 class FakeClock implements ClockPort {
   private t = 1000;
@@ -342,6 +342,44 @@ describe('GameOrchestrator.allNightActionsSubmitted', () => {
       });
     }
 
+    expect(await deps.orchestrator.allNightActionsSubmitted('room1')).toBe(true);
+  });
+  it('waits for separate save and poison decisions before resolving the Witch phase early', async () => {
+    const deps = setup();
+    await createAndStartGame(deps);
+    const room = await deps.storage.getRoom('room1');
+    const witch = room!.players.p0;
+    const wolf = room!.players.p1;
+    const victim = room!.players.p2;
+    room!.nightPhase = NightPhase.WITCH;
+    room!.witchPotions = { saveUsed: false, poisonUsed: false };
+    witch.role = RoleId.WITCH;
+    wolf.role = RoleId.WEREWOLF;
+    room!.pendingNightActions = [{
+      actionId: 'wolf-choice',
+      actorTelegramId: wolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL,
+      targetTelegramId: victim.telegramId,
+      round: room!.currentRound,
+    }];
+    await deps.storage.saveRoom(room!, room!.version);
+
+    await deps.nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'witch-save',
+      actorTelegramId: witch.telegramId,
+      actionType: NightActionType.WITCH_SAVE,
+      targetTelegramId: victim.telegramId,
+    });
+    expect(await deps.orchestrator.allNightActionsSubmitted('room1')).toBe(false);
+
+    await deps.nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'witch-poison-skip',
+      actorTelegramId: witch.telegramId,
+      actionType: NightActionType.WITCH_POISON,
+      targetTelegramId: null,
+    });
     expect(await deps.orchestrator.allNightActionsSubmitted('room1')).toBe(true);
   });
 });
