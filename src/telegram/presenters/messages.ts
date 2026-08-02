@@ -7,7 +7,7 @@ export const RoleNames: Record<RoleId, string> = {
   [RoleId.SEER]: '🔮 Tiên tri',
   [RoleId.BODYGUARD]: '🛡️ Bảo vệ',
   [RoleId.HUNTER]: '🏹 Thợ săn',
-  [RoleId.WITCH]: '🧪 Phù thủy',
+  [RoleId.WITCH]: '🧙‍♂️ Phù thủy',
 };
 
 export const RoleDescriptions: Record<RoleId, string> = {

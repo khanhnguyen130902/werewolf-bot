@@ -8,6 +8,7 @@ import { createPhase1RoleRegistry } from '../engine/roles/RoleRegistry';
 import { Messages, RoleNames, DeathCauseNames } from './presenters/messages';
 import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presenters/keyboards';
 import { TimerJobType } from '../engine/RoomTimerService';
+import { logger } from '../infrastructure/logging/logger';
 
 const roleRegistry = createPhase1RoleRegistry();
 const TEST_BOT_ID_PREFIX = '999999900';
@@ -62,14 +63,26 @@ function pickImmediateBotTarget(
 
   // Bodyguard bot: prioritize protecting the revealed Seer Bot
   if (actor.role === RoleId.BODYGUARD) {
+    const eligibleTargets = targets.filter(
+      (target) => room.lastProtectedByBodyguard[actor.telegramId] !== target.telegramId,
+    );
+    if (eligibleTargets.length === 0) return null;
     if (botState?.seerBotTelegramId) {
       const seerId = botState.seerBotTelegramId;
       const isSeerAlive = room.players[seerId]?.alive;
-      const seerTarget = targets.find((t) => t.telegramId === seerId);
+      const seerTarget = eligibleTargets.find((t) => t.telegramId === seerId);
       if (isSeerAlive && seerTarget && Math.random() < 0.9) {
         return seerTarget;
       }
     }
+    return pickRandomTarget(eligibleTargets);
+  }
+
+  if (actor.role === RoleId.HUNTER) {
+    const eligibleTargets = targets.filter(
+      (target) => room.lastTargetedByHunter?.[actor.telegramId] !== target.telegramId,
+    );
+    return pickRandomTarget(eligibleTargets);
   }
 
   // Seer bot: inspect players whose team is not yet known, avoiding self or known targets
@@ -126,6 +139,51 @@ export class GameFlowController {
     private readonly bot: Telegraf<BotContext>,
   ) {
     this.registerHunterCallbackHandler();
+  }
+
+  /** Records a bot's action, falling back to an explicit Skip if its chosen
+   * target became invalid between prompt construction and submission. Bot
+   * actions must never abort the prompt loop for the remaining roles. */
+  private async submitBotNightAction(params: {
+    room: RoomState;
+    player: PlayerState;
+    actionType: NightActionType;
+    targetTelegramId: string | null;
+  }): Promise<void> {
+    const submit = async (targetTelegramId: string | null) => {
+      await this.services.nightActionService.submitNightAction({
+        roomId: params.room.id,
+        actionId: `bot-${params.player.telegramId}-${params.room.currentRound}-${params.actionType}-${targetTelegramId ?? 'SKIP'}`,
+        actorTelegramId: params.player.telegramId,
+        actionType: params.actionType,
+        targetTelegramId,
+      });
+    };
+
+    try {
+      await submit(params.targetTelegramId);
+    } catch (err) {
+      if (params.targetTelegramId === null) {
+        logger.error('Bot failed to submit an explicit night skip', {
+          roomId: params.room.id,
+          actorTelegramId: params.player.telegramId,
+          actionType: params.actionType,
+          err,
+        });
+        return;
+      }
+
+      try {
+        await submit(null);
+      } catch (skipErr) {
+        logger.error('Bot failed to submit a night action and its fallback skip', {
+          roomId: params.room.id,
+          actorTelegramId: params.player.telegramId,
+          actionType: params.actionType,
+          err: skipErr,
+        });
+      }
+    }
   }
 
   /** Registered exactly once per bot instance (in the constructor). Handles
@@ -320,15 +378,12 @@ export class GameFlowController {
         const selection = player.role === RoleId.WEREWOLF
           ? botWerewolfTarget
           : pickImmediateBotTarget(room, player, targets, this.activeBotStates.get(room.id));
-        if (selection) {
-          await this.services.nightActionService.submitNightAction({
-            roomId: room.id,
-            actionId: `bot-${player.telegramId}-${room.currentRound}-${actionType}-${selection.telegramId}`,
-            actorTelegramId: player.telegramId,
-            actionType,
-            targetTelegramId: selection.telegramId,
-          });
-        }
+        await this.submitBotNightAction({
+          room,
+          player,
+          actionType,
+          targetTelegramId: selection?.telegramId ?? null,
+        });
         continue;
       }
 
@@ -467,27 +522,25 @@ export class GameFlowController {
     if (isTestBot(witch.telegramId)) {
       if (saveKeyboard) {
         const shouldSave = Math.random() < 0.7;
-        await this.services.nightActionService.submitNightAction({
-          roomId: room.id,
-          actionId: `bot-witch-save-${witch.telegramId}-${room.currentRound}`,
-          actorTelegramId: witch.telegramId,
+        await this.submitBotNightAction({
+          room,
+          player: witch,
           actionType: NightActionType.WITCH_SAVE,
           targetTelegramId: shouldSave ? victimId : null,
-        }).catch(() => undefined);
+        });
       }
       if (poisonKeyboard) {
         const poisonTargets = Object.values(room.players)
           .filter((player) => player.alive && player.telegramId !== witch.telegramId)
           .map((player) => ({ telegramId: player.telegramId, nickname: player.nickname }));
         const poisonTarget = pickRandomTarget(poisonTargets);
-        const shouldPoison = poisonTarget !== undefined && Math.random() < 0.4;
-        await this.services.nightActionService.submitNightAction({
-          roomId: room.id,
-          actionId: `bot-witch-poison-${witch.telegramId}-${room.currentRound}`,
-          actorTelegramId: witch.telegramId,
+        const shouldPoison = poisonTarget !== null && Math.random() < 0.4;
+        await this.submitBotNightAction({
+          room,
+          player: witch,
           actionType: NightActionType.WITCH_POISON,
-          targetTelegramId: shouldPoison ? poisonTarget!.telegramId : null,
-        }).catch(() => undefined);
+          targetTelegramId: shouldPoison ? poisonTarget.telegramId : null,
+        });
       }
       return;
     }

@@ -102,7 +102,7 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
       const existingCount = Object.keys(room.players).length;
       const needed = Math.max(0, targetPlayerCount - existingCount);
 
-      await ctx.reply(`🧪 Phòng test đã được tạo. Đang thêm ${needed} bot để phòng có ${targetPlayerCount} người...`);
+      await ctx.reply(`🤖 Phòng test đã được tạo. Đang thêm ${needed} bot để phòng có ${targetPlayerCount} người...`);
 
       for (let i = 0; i < needed; i += 1) {
         const botId = `${BOT_ID_PREFIX}${i}`;
