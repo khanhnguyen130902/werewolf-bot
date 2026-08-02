@@ -39,12 +39,12 @@ describe('WerewolfRole', () => {
     expect(() => role.validateNightAction(ctx)).toThrow(InvalidTargetError);
   });
 
-  it('rejects targeting another werewolf', () => {
+  it('allows targeting another werewolf', () => {
     const ctx = baseContext({
       targetTelegramId: 'other',
       rolesByPlayer: { actor: RoleId.WEREWOLF, other: RoleId.WEREWOLF },
     });
-    expect(() => role.validateNightAction(ctx)).toThrow(InvalidTargetError);
+    expect(() => role.validateNightAction(ctx)).not.toThrow();
   });
 
   it('allows null target (abstain)', () => {

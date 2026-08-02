@@ -403,6 +403,13 @@ describe('NightActionService.resolveNight', () => {
       actionType: NightActionType.WEREWOLF_VOTE_KILL,
       targetTelegramId: villager.telegramId,
     });
+    const otherWolf = Object.values(room.players).find(
+      (player) => player.role === RoleId.WEREWOLF && player.telegramId !== wolf.telegramId,
+    )!;
+    await nightActionService.submitNightAction({
+      roomId: 'room1', actionId: 'k1-other', actorTelegramId: otherWolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: villager.telegramId,
+    });
 
     const { room: resolvedRoom, deaths } = await nightActionService.resolveNight({
       roomId: 'room1',
@@ -472,6 +479,13 @@ describe('NightActionService.resolveNight', () => {
       actionType: NightActionType.WEREWOLF_VOTE_KILL,
       targetTelegramId: seer.telegramId,
     });
+    const otherWolf = Object.values(room.players).find(
+      (player) => player.role === RoleId.WEREWOLF && player.telegramId !== wolf.telegramId,
+    )!;
+    await nightActionService.submitNightAction({
+      roomId: 'room1', actionId: 'other-wolf-kills-seer', actorTelegramId: otherWolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: seer.telegramId,
+    });
     await nightActionService.submitNightAction({
       roomId: 'room1',
       actionId: 'seer-inspects',
@@ -505,6 +519,13 @@ describe('NightActionService split API (prepareNightResolution / finalizeNightRe
       actionType: NightActionType.WEREWOLF_VOTE_KILL,
       targetTelegramId: hunter.telegramId,
     });
+    const otherWolf = Object.values(room.players).find(
+      (player) => player.role === RoleId.WEREWOLF && player.telegramId !== wolf.telegramId,
+    )!;
+    await nightActionService.submitNightAction({
+      roomId: 'room1', actionId: 'other-wolf-kills-hunter', actorTelegramId: otherWolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: hunter.telegramId,
+    });
 
     const { stepOneResult } = await nightActionService.prepareNightResolution('room1');
 
@@ -531,6 +552,13 @@ describe('NightActionService split API (prepareNightResolution / finalizeNightRe
       actorTelegramId: wolf.telegramId,
       actionType: NightActionType.WEREWOLF_VOTE_KILL,
       targetTelegramId: hunter.telegramId,
+    });
+    const otherWolf = Object.values(room.players).find(
+      (player) => player.role === RoleId.WEREWOLF && player.telegramId !== wolf.telegramId,
+    )!;
+    await nightActionService.submitNightAction({
+      roomId: 'room1', actionId: 'other-wolf-kills-hunter-2', actorTelegramId: otherWolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: hunter.telegramId,
     });
 
     const { stepOneResult } = await nightActionService.prepareNightResolution('room1');
@@ -572,6 +600,13 @@ describe('NightActionService split API (prepareNightResolution / finalizeNightRe
       actorTelegramId: wolf.telegramId,
       actionType: NightActionType.WEREWOLF_VOTE_KILL,
       targetTelegramId: villager.telegramId,
+    });
+    const otherWolf = Object.values(room.players).find(
+      (player) => player.role === RoleId.WEREWOLF && player.telegramId !== wolf.telegramId,
+    )!;
+    await nightActionService.submitNightAction({
+      roomId: 'room1', actionId: 'other-wolf-kills-villager', actorTelegramId: otherWolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: villager.telegramId,
     });
 
     const { stepOneResult } = await nightActionService.prepareNightResolution('room1');

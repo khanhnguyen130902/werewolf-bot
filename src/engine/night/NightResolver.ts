@@ -1,6 +1,6 @@
 import { RoomState } from '../domain/Room';
 import { PlayerState, killPlayer, resetNightFlags } from '../domain/Player';
-import { DeathCause, NightActionType } from '../domain/enums';
+import { DeathCause, NightActionType, RoleId } from '../domain/enums';
 import { NightActionSubmission, NightResolutionResult } from './NightAction';
 import { DeathQueue } from './DeathQueue';
 import { RandomPort } from '../ports/RandomPort';
@@ -104,7 +104,7 @@ export class NightResolver {
 
       switch (actionType) {
         case NightActionType.WEREWOLF_VOTE_KILL: {
-          werewolfVictimId = this.resolveWerewolfVote(actionsOfType);
+          werewolfVictimId = this.resolveWerewolfVote(room, actionsOfType);
           break;
         }
 
@@ -312,27 +312,22 @@ export class NightResolver {
    * Resolves the werewolf consensus target.
    *
    * Business rule: if multiple werewolves are present, their choices must
-   * agree on the same target before a kill is finalized. If only one
-   * werewolf has submitted a target, that single choice is used as the
-   * fallback. If multiple werewolves submitted conflicting targets, the
-   * result is unresolved and no kill is finalized.
+   * agree on the same target before a kill is finalized. Every living wolf
+   * must submit a vote; Skip is an explicit null vote. Missing, mixed, or
+   * unanimously skipped votes result in no kill.
    */
-  private resolveWerewolfVote(actions: NightActionSubmission[]): string | null {
+  private resolveWerewolfVote(room: RoomState, actions: NightActionSubmission[]): string | null {
     const latestByActor = new Map<string, NightActionSubmission>();
     for (const action of actions) {
-      if (!action.targetTelegramId) continue;
       latestByActor.set(action.actorTelegramId, action);
     }
 
-    const targets = Array.from(latestByActor.values()).map((action) => action.targetTelegramId!);
-    if (targets.length === 0) return null;
-    if (targets.length === 1) return targets[0];
+    const aliveWerewolfIds = Object.values(room.players)
+      .filter((player) => player.alive && player.role === RoleId.WEREWOLF)
+      .map((player) => player.telegramId);
+    if (!aliveWerewolfIds.every((id) => latestByActor.has(id))) return null;
 
-    const uniqueTargets = new Set(targets);
-    if (uniqueTargets.size === 1) {
-      return targets[0];
-    }
-
-    return null;
+    const targets = aliveWerewolfIds.map((id) => latestByActor.get(id)!.targetTelegramId);
+    return new Set(targets).size === 1 ? targets[0] : null;
   }
 }

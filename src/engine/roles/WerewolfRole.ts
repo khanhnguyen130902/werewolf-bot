@@ -4,7 +4,7 @@ import { InvalidTargetError } from '../errors/DomainError';
 
 /**
  * Werewolf (Sói). Every night the werewolf faction collectively votes to
- * kill one target. Cannot target a dead player. The actual "majority vote
+ * kill one target. May choose any living player or Skip. The actual "majority vote
  * among wolves" tallying is handled by NightResolver (Phase 3), since it
  * requires aggregating multiple wolves' submissions - this class only
  * validates a single wolf's individual vote submission.
@@ -28,9 +28,8 @@ export class WerewolfRole implements IRole {
     if (!context.alivePlayerIds.includes(context.targetTelegramId)) {
       throw new InvalidTargetError('Target must be alive');
     }
-    const targetRole = context.rolesByPlayer[context.targetTelegramId];
-    if (targetRole === RoleId.WEREWOLF) {
-      throw new InvalidTargetError('Werewolves cannot target another werewolf');
-    }
+    // The faction vote deliberately exposes every living player, including
+    // the acting wolf and their teammates. A unanimous vote is resolved by
+    // NightResolver just like any other agreed target.
   }
 }

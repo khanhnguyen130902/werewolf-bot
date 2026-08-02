@@ -103,6 +103,48 @@ describe('NightResolver', () => {
     expect(result.deaths).toEqual([]);
   });
 
+  it('does not kill when Skip is mixed with a player target', () => {
+    const room = buildRoom({
+      players: [
+        { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'wolf2', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'villager1', role: RoleId.VILLAGER, team: Team.VILLAGE },
+      ],
+    });
+    const resolver = new NightResolver(new FirstPickRandom());
+    const { result } = resolver.resolve({
+      room,
+      submissions: [
+        { actionId: 'skip', actorTelegramId: 'wolf1', actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: null, round: 1 },
+        { actionId: 'target', actorTelegramId: 'wolf2', actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: 'villager1', round: 1 },
+      ],
+      getHunterDecision: noHunterDecision,
+    });
+
+    expect(result.deaths).toEqual([]);
+  });
+
+  it('does not kill when all werewolves choose Skip', () => {
+    const room = buildRoom({
+      players: [
+        { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'wolf2', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'villager1', role: RoleId.VILLAGER, team: Team.VILLAGE },
+      ],
+    });
+    const resolver = new NightResolver(new FirstPickRandom());
+    const { result } = resolver.resolve({
+      room,
+      submissions: [
+        { actionId: 'skip1', actorTelegramId: 'wolf1', actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: null, round: 1 },
+        { actionId: 'skip2', actorTelegramId: 'wolf2', actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: null, round: 1 },
+      ],
+      getHunterDecision: noHunterDecision,
+    });
+
+    expect(result.deaths).toEqual([]);
+  });
+
   it('CONFIRMED RULE: Bodyguard protection saves the werewolf target', () => {
     const room = buildRoom({
       players: [

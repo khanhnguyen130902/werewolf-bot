@@ -146,6 +146,9 @@ describe('GameOrchestrator.resolveNight', () => {
     const room = await deps.gameService.startGame({ roomId: 'room1', requestedByTelegramId: 'p0' });
 
     const wolf = Object.values(room.players).find((p) => p.role === RoleId.WEREWOLF)!;
+    const otherWolf = Object.values(room.players).find(
+      (p) => p.role === RoleId.WEREWOLF && p.telegramId !== wolf.telegramId,
+    )!;
     const hunter = Object.values(room.players).find((p) => p.role === RoleId.HUNTER)!;
     const villager = Object.values(room.players).find((p) => p.role === RoleId.VILLAGER)!;
 
@@ -153,6 +156,13 @@ describe('GameOrchestrator.resolveNight', () => {
       roomId: 'room1',
       actionId: 'wolf-kill-hunter',
       actorTelegramId: wolf.telegramId,
+      actionType: NightActionType.WEREWOLF_VOTE_KILL,
+      targetTelegramId: hunter.telegramId,
+    });
+    await deps.nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'other-wolf-kill-hunter',
+      actorTelegramId: otherWolf.telegramId,
       actionType: NightActionType.WEREWOLF_VOTE_KILL,
       targetTelegramId: hunter.telegramId,
     });

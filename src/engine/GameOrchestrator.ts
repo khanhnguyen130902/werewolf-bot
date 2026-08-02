@@ -158,11 +158,20 @@ export class GameOrchestrator {
     const witch = Object.values(room.players).find((player) => player.alive && player.role === RoleId.WITCH);
     if (!witch || !room.witchPotions) return true;
 
-    const wolfTargets = room.pendingNightActions
-      .filter((action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound)
-      .map((action) => action.targetTelegramId)
-      .filter((target): target is string => target !== null);
-    const victimId = wolfTargets.length > 0 && new Set(wolfTargets).size === 1 ? wolfTargets[0] : null;
+    const aliveWerewolves = Object.values(room.players).filter(
+      (player) => player.alive && player.role === RoleId.WEREWOLF,
+    );
+    const wolfChoices = new Map<string, string | null>();
+    for (const action of room.pendingNightActions) {
+      if (action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound) {
+        wolfChoices.set(action.actorTelegramId, action.targetTelegramId);
+      }
+    }
+    const victimId =
+      aliveWerewolves.every((wolf) => wolfChoices.has(wolf.telegramId)) &&
+      new Set(wolfChoices.values()).size === 1
+        ? wolfChoices.values().next().value ?? null
+        : null;
     const submittedActionTypes = new Set(
       room.pendingNightActions
         .filter((action) => action.actorTelegramId === witch.telegramId && action.round === room.currentRound)
@@ -191,12 +200,11 @@ export class GameOrchestrator {
       latestByActor.set(action.actorTelegramId, action.targetTelegramId);
     }
 
-    const targets = Array.from(latestByActor.values()).filter(
-      (target): target is string => Boolean(target),
-    );
-    if (targets.length !== aliveWerewolves.length) return false;
-
-    return new Set(targets).size === 1;
+    // A Skip is a real vote, represented by null. Consensus requires an
+    // explicit vote from every living wolf, then agreement on exactly one
+    // value (a player id or null when all wolves chose Skip).
+    if (!aliveWerewolves.every((wolf) => latestByActor.has(wolf.telegramId))) return false;
+    return new Set(latestByActor.values()).size === 1;
   }
 
   private roleHasNightAction(roleId: string): boolean {

@@ -247,11 +247,15 @@ export class GameFlowController {
 
     if (aliveWerewolves.length === 0) return;
 
-    const werewolfActions = room.pendingNightActions.filter(
-      (action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound,
-    );
-    const targets = werewolfActions.map((action) => action.targetTelegramId).filter((id): id is string => Boolean(id));
-    const hasConsensus = targets.length > 0 && new Set(targets).size === 1;
+    const latestChoices = new Map<string, string | null>();
+    for (const action of room.pendingNightActions) {
+      if (action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound) {
+        latestChoices.set(action.actorTelegramId, action.targetTelegramId);
+      }
+    }
+    const hasConsensus =
+      aliveWerewolves.every((werewolf) => latestChoices.has(werewolf.telegramId)) &&
+      new Set(latestChoices.values()).size === 1;
 
     if (hasConsensus) return;
 
@@ -299,14 +303,10 @@ export class GameFlowController {
       const roleDef = roleRegistry.get(player.role).definition;
       if (!roleDef.hasNightAction) continue;
 
-      // Werewolves should not be offered another werewolf as a target
-      // (WerewolfRole.validateNightAction enforces this too; filtering here
-      // keeps the keyboard from offering an invalid choice in the first
-      // place). Seer should not be offered themselves as a target.
+      // Werewolf faction voting deliberately includes every living player:
+      // Skip, self, fellow wolves, and other living players. Seer should not
+      // be offered themselves as a target.
       const targets = aliveTargets.filter((t) => {
-        if (player.role === RoleId.WEREWOLF) {
-          return room.players[t.telegramId]?.role !== RoleId.WEREWOLF;
-        }
         if (player.role === RoleId.SEER) {
           return t.telegramId !== player.telegramId;
         }
@@ -436,11 +436,20 @@ export class GameFlowController {
   private async promptWitchPhase(room: RoomState): Promise<void> {
     const witch = Object.values(room.players).find((p) => p.alive && p.role === RoleId.WITCH);
     if (!witch) return;
-    const wolfChoices = room.pendingNightActions
-      .filter((a) => a.actionType === NightActionType.WEREWOLF_VOTE_KILL && a.round === room.currentRound)
-      .map((a) => a.targetTelegramId)
-      .filter((id): id is string => Boolean(id));
-    const victimId = wolfChoices.length > 0 && new Set(wolfChoices).size === 1 ? wolfChoices[0] : null;
+    const aliveWerewolves = Object.values(room.players).filter(
+      (player) => player.alive && player.role === RoleId.WEREWOLF,
+    );
+    const wolfChoices = new Map<string, string | null>();
+    for (const action of room.pendingNightActions) {
+      if (action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound) {
+        wolfChoices.set(action.actorTelegramId, action.targetTelegramId);
+      }
+    }
+    const victimId =
+      aliveWerewolves.every((wolf) => wolfChoices.has(wolf.telegramId)) &&
+      new Set(wolfChoices.values()).size === 1
+        ? wolfChoices.values().next().value ?? null
+        : null;
     const saveKeyboard = victimId && room.witchPotions && !room.witchPotions.saveUsed
       ? buildTargetKeyboard({
           actionType: NightActionType.WITCH_SAVE,

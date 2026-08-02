@@ -75,6 +75,24 @@ function formatWerewolfTarget(room: RoomState, targetTelegramId: string | null):
   return targetTelegramId ? room.players[targetTelegramId]?.nickname ?? targetTelegramId : 'chưa chọn';
 }
 
+function getWerewolfVoteState(room: RoomState, aliveWerewolves: Array<{ telegramId: string }>) {
+  const choices = aliveWerewolves.map((wolf) => {
+    const action = room.pendingNightActions.find(
+      (candidate) =>
+        candidate.actorTelegramId === wolf.telegramId &&
+        candidate.actionType === NightActionType.WEREWOLF_VOTE_KILL &&
+        candidate.round === room.currentRound,
+    );
+    return { submitted: Boolean(action), target: action?.targetTelegramId ?? null };
+  });
+  const allChosen = choices.every((choice) => choice.submitted);
+  return {
+    choices,
+    allChosen,
+    hasConsensus: allChosen && new Set(choices.map((choice) => choice.target)).size === 1,
+  };
+}
+
 function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
   const aliveWerewolves = Object.values(room.players).filter(
     (player) => player.alive && player.role === RoleId.WEREWOLF,
@@ -89,20 +107,18 @@ function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
     );
     return `• ${wolf.nickname}: ${formatWerewolfTarget(room, action?.targetTelegramId ?? null)}`;
   });
-  const chosenTargets = aliveWerewolves
-    .map((wolf) => room.pendingNightActions.find((candidate) =>
-      candidate.actorTelegramId === wolf.telegramId &&
-      candidate.actionType === NightActionType.WEREWOLF_VOTE_KILL &&
-      candidate.round === room.currentRound,
-    )?.targetTelegramId)
-    .filter((target): target is string => Boolean(target));
-  const allChosen = chosenTargets.length === aliveWerewolves.length;
-  const uniqueTargets = new Set(chosenTargets);
+  const { choices, allChosen, hasConsensus } = getWerewolfVoteState(room, aliveWerewolves);
+  const chosenTargets = choices
+    .filter((choice) => choice.submitted && choice.target !== null)
+    .map((choice) => choice.target as string);
 
-  if (chosenTargets.length === 0) {
+  if (!choices.some((choice) => choice.submitted)) {
     return '🐺 Phe Sói chưa chọn mục tiêu. Hãy thống nhất một người để cắn.';
   }
-  if (allChosen && uniqueTargets.size === 1) {
+  if (hasConsensus && chosenTargets.length === 0) {
+    return '🐺 Tất cả Sói đã chọn bỏ qua. Đêm nay sẽ không có ai bị cắn.';
+  }
+  if (hasConsensus) {
     return `🐺 Phe Sói đã thống nhất đêm nay cắn ${formatWerewolfTarget(room, chosenTargets[0])}.`;
   }
   if (!allChosen) {
@@ -127,31 +143,19 @@ async function notifyWerewolfVoteStatus(
   const message = buildWerewolfVoteStatusMessage(room);
   if (!message) return false;
 
-  const chosenTargets = aliveWerewolves
-    .map((wolf) => {
-      const action = room.pendingNightActions.find(
-        (a) =>
-          a.actorTelegramId === wolf.telegramId &&
-          a.actionType === NightActionType.WEREWOLF_VOTE_KILL &&
-          a.round === room.currentRound,
-      );
-      return action?.targetTelegramId;
-    })
-    .filter((target): target is string => Boolean(target));
-  const uniqueTargets = new Set(chosenTargets);
-  const allChosen = chosenTargets.length === aliveWerewolves.length;
-  const isDisagreement = allChosen && uniqueTargets.size !== 1;
+  const { allChosen, hasConsensus } = getWerewolfVoteState(room, aliveWerewolves);
+  const isDisagreement = allChosen && !hasConsensus;
 
   // Only send the re-vote keyboard to HUMAN (non-bot) werewolves.
   // Bot werewolves will be realigned on the NEXT human vote to avoid
   // immediately creating consensus and advancing the game prematurely.
   const aliveTargets: TargetOption[] = isDisagreement
     ? Object.values(room.players)
-        .filter((p) => p.alive && p.role !== RoleId.WEREWOLF)
+        .filter((p) => p.alive)
         .map((p) => ({ telegramId: p.telegramId, nickname: p.nickname }))
     : [];
   const keyboard = isDisagreement
-    ? buildTargetKeyboard({ actionType: NightActionType.WEREWOLF_VOTE_KILL, targets: aliveTargets, includeSkip: false })
+    ? buildTargetKeyboard({ actionType: NightActionType.WEREWOLF_VOTE_KILL, targets: aliveTargets })
     : undefined;
 
   await Promise.all(
