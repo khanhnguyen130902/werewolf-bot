@@ -688,12 +688,12 @@ export class GameFlowController {
       if (revealedTeam === Team.WEREWOLF) {
         await this.bot.telegram.sendMessage(
           room.chatId,
-          `👁 **[Tiên Tri]** ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và phát hiện hắn chính là **Sói** 🐺! Mọi người hãy vote treo hắn ngay hôm nay!"`,
+          `👁 [Tiên Tri] ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và phát hiện hắn chính là **Sói** 🐺! Mọi người hãy vote treo hắn ngay hôm nay!"`,
         );
       } else {
         await this.bot.telegram.sendMessage(
           room.chatId,
-          `👁 **[Tiên Tri]** ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và thấy họ là **Người tốt** 😇 (phe Dân làng)."`,
+          `👁 [Tiên Tri] ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và thấy họ là **Người tốt** 😇 (phe Dân làng)."`,
         );
       }
 

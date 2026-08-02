@@ -101,7 +101,7 @@ export const Messages = {
 
   targetSelected: (action: string, targetNickname: string | null) =>
     targetNickname
-      ? `✅ Quyết định ${action} đã được ghi nhận: ${targetNickname} sẽ đối mặt với số phận của mình.`
+      ? `✅ Quyết định ${action} đã được ghi nhận: ${targetNickname}`
       : `✅ Bạn đã chọn án binh bất động, bỏ qua ${action} đêm nay.`,
 
   nightActionSkipped: (action: string) => `✅ Bạn đã chọn án binh bất động, bỏ qua ${action} đêm nay.`,
