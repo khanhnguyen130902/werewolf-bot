@@ -240,6 +240,32 @@ export class GameFlowController {
     await this.startNightPrompts(room);
   }
 
+  async notifyWerewolfNoConsensus(room: RoomState): Promise<void> {
+    const aliveWerewolves = Object.values(room.players).filter(
+      (player) => player.alive && player.role === RoleId.WEREWOLF,
+    );
+
+    if (aliveWerewolves.length === 0) return;
+
+    const werewolfActions = room.pendingNightActions.filter(
+      (action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound,
+    );
+    const targets = werewolfActions.map((action) => action.targetTelegramId).filter((id): id is string => Boolean(id));
+    const hasConsensus = targets.length > 0 && new Set(targets).size === 1;
+
+    if (hasConsensus) return;
+
+    await Promise.all(
+      aliveWerewolves.map(async (werewolf) => {
+        try {
+          await this.bot.telegram.sendMessage(werewolf.telegramId, Messages.werewolfNoConsensusNotice(), { parse_mode: 'Markdown' });
+        } catch {
+          // Best-effort notification; ignore DM failures.
+        }
+      }),
+    );
+  }
+
   /** Sends each role's night-action prompt (inline keyboard) via DM, and
    * schedules the night's timeout. */
   private async startNightPrompts(room: RoomState): Promise<void> {
@@ -874,6 +900,18 @@ export class GameFlowController {
       if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) return;
 
       if (room.nightPhase !== NightPhase.WITCH) {
+        if (room.pendingNightActions.some(
+          (action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound,
+        )) {
+          const werewolfActions = room.pendingNightActions.filter(
+            (action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound,
+          );
+          const targets = werewolfActions.map((action) => action.targetTelegramId).filter((id): id is string => Boolean(id));
+          const hasConsensus = targets.length > 0 && new Set(targets).size === 1;
+          if (!hasConsensus) {
+            await this.notifyWerewolfNoConsensus(room);
+          }
+        }
         await this.beginWitchPhase(roomId);
         return;
       }

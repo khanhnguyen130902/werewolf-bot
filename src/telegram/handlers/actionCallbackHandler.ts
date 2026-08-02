@@ -310,17 +310,25 @@ export function registerActionCallbackHandler(
         }
 
         await ctx.answerCbQuery(Messages.actionRecorded());
-        await bot.telegram
-          .sendMessage(
-            telegramId,
-            parsed.targetTelegramId
-              ? Messages.targetSelected(
-                  ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
-                  targetNickname(updatedRoom, parsed.targetTelegramId),
-                )
-              : Messages.nightActionSkipped(ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Hành động của bạn'),
-          )
-          .catch(() => undefined);
+
+        const shouldSendTargetConfirmation = ![
+          NightActionType.WEREWOLF_VOTE_KILL,
+          NightActionType.SEER_INSPECT,
+        ].includes(parsed.actionType as NightActionType);
+
+        if (shouldSendTargetConfirmation) {
+          await bot.telegram
+            .sendMessage(
+              telegramId,
+              parsed.targetTelegramId
+                ? Messages.targetSelected(
+                    ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
+                    targetNickname(updatedRoom, parsed.targetTelegramId),
+                  )
+                : Messages.nightActionSkipped(ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Hành động của bạn'),
+            )
+            .catch(() => undefined);
+        }
 
         // If werewolves are still disagreeing, do NOT advance the game.
         // The keyboard has already been re-sent to human wolves above.

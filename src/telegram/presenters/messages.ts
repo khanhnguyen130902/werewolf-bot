@@ -1,6 +1,6 @@
 import { RoleId, Team, DeathCause, WinnerTeam } from '../../engine/domain/enums';
 
-/** Player-facing Vietnamese text for the Telegram interface. */
+/ Player-facing Vietnamese text for the Telegram interface. */
 export const RoleNames: Record<RoleId, string> = {
   [RoleId.WEREWOLF]: '🐺 Sói',
   [RoleId.VILLAGER]: '🧑‍🌾 Dân làng',
@@ -38,7 +38,7 @@ export const TeamNames: Record<Team, string> = {
 export const DeathCauseNames: Record<string, string> = {
   [DeathCause.WEREWOLF_KILL]: 'bị bầy Sói xé xác trong đêm',
   [DeathCause.VOTE_EXECUTION]: 'bị dân làng treo cổ trên quảng trường',
-  [DeathCause.WITCH_POISON]: 'trúng độc dược của Phù thủy và trút hơi thở cuối cùng',
+  [DeathCause.WITCH_POISON]: 'trúng độc của Phù thủy và trút hơi thở cuối cùng',
   [DeathCause.HUNTER_SHOT]: 'ngã gục dưới phát súng cuối cùng của Thợ săn',
 };
 
@@ -80,7 +80,7 @@ export const Messages = {
   roleDistributionSummary: (playerCount: number, roleCounts: Array<{ roleId: RoleId; count: number }>) =>
     `📜 DANH SÁCH PHÂN VAI - ${playerCount} người chơi:\n${roleCounts.map((entry) => `• ${RoleNames[entry.roleId]}: ${entry.count}`).join('\n')}`,
 
-  roleAssigned: (roleId: RoleId) => `🎭 SỐ PHẬN CỦA BẠN ĐÃ ĐƯỢC ĐỊNH ĐOẠT\n\nBạn là **${RoleNames[roleId]}**.\n\n${RoleDescriptions[roleId]}`,
+  roleAssigned: (roleId: RoleId) => `🎭 SỐ PHẬN CỦA BẠN ĐÃ ĐƯỢC ĐỊNH ĐOẠT\n\nBạn là ${RoleNames[roleId]}.\n\n${RoleDescriptions[roleId]}`,
 
   nightBegins: (round: number) => `🌙 ĐÊM THỨ ${round} BUÔNG XUỐNG\n\nNhững kẻ mang sức mạnh bóng tối, hãy mở tin nhắn riêng và đưa ra lựa chọn của mình. Mỗi quyết định có thể định đoạt cả sinh mạng.`,
 
@@ -101,25 +101,25 @@ export const Messages = {
 
   targetSelected: (action: string, targetNickname: string | null) =>
     targetNickname
-      ? `✅ Quyết định ${action} đã được ghi nhận: **${targetNickname}** sẽ đối mặt với số phận của mình.`
+      ? `✅ Quyết định ${action} đã được ghi nhận: ${targetNickname} sẽ đối mặt với số phận của mình.`
       : `✅ Bạn đã chọn án binh bất động, bỏ qua ${action} đêm nay.`,
 
   nightActionSkipped: (action: string) => `✅ Bạn đã chọn án binh bất động, bỏ qua ${action} đêm nay.`,
 
   executionResult: (nickname: string | null) =>
     nickname
-      ? `⚖️ PHÁN QUYẾT CUỐI CÙNG: **${nickname}** bị treo cổ giữa quảng trường, dưới ánh mắt của cả ngôi làng.`
+      ? `⚖️ PHÁN QUYẾT CUỐI CÙNG: ${nickname} bị treo cổ giữa quảng trường, dưới ánh mắt của cả ngôi làng.`
       : '⚖️ PHÁN QUYẾT CUỐI CÙNG: Ngôi làng chưa đủ dũng khí để định đoạt - không ai phải chết hôm nay.',
 
-  executionRoleReveal: (nickname: string, roleId: RoleId) => `🎭 SỰ THẬT PHƠI BÀY: ${nickname} chính là **${RoleNames[roleId]}**.`,
+  executionRoleReveal: (nickname: string, roleId: RoleId) => `🎭 SỰ THẬT PHƠI BÀY: ${nickname} chính là ${RoleNames[roleId]}.`,
 
   hunterPrompt: (seconds: number) => `🏹 VIÊN ĐẠN CUỐI CÙNG\n\nBạn là Thợ săn và vừa gục ngã. Bạn còn ${seconds} giây để bóp cò lần cuối, kéo theo một kẻ khác - hoặc buông súng trong im lặng.`,
 
   hunterShotResult: (hunterNickname: string, targetNickname: string) => `🏹 Trong hơi thở cuối cùng, ${hunterNickname} đã siết cò, hạ gục ${targetNickname} cùng mình.`,
 
-  seerResult: (targetNickname: string, teamName: string) => `🔮 THỊ KIẾN HIỆN RA: **${targetNickname}** thuộc về **${teamName}**.`,
+  seerResult: (targetNickname: string, teamName: string) => `🔮 THỊ KIẾN HIỆN RA: ${targetNickname} thuộc về ${teamName}.`,
 
-  gameOver: (winner: string) => `🏆 MÀN ĐÊM ĐÃ KẾT THÚC\n\n**${WinnerNames[winner] ?? winner}** đã giành chiến thắng tuyệt đối!`,
+  gameOver: (winner: string) => `🏆 MÀN ĐÊM ĐÃ KẾT THÚC\n\n${WinnerNames[winner] ?? winner} đã giành chiến thắng tuyệt đối!`,
 
   finalRoleSummary: (entries: Array<{ nickname: string; roleId: RoleId }>) => {
     const groupedByRole = entries.reduce<Record<RoleId, string[]>>((acc, entry) => {
@@ -136,6 +136,9 @@ export const Messages = {
     teammates.length > 0
       ? `🐺 Những kẻ săn mồi cùng bầy với bạn: ${teammates.join(', ')}. Hãy phối hợp, và đừng để lộ sơ hở.`
       : '🐺 Bạn là con Sói cô độc duy nhất trong đêm nay - mọi quyết định đều nằm trong tay bạn.',
+
+  werewolfNoConsensusNotice: () =>
+    `🐺 [THÔNG BÁO PHE SÓI]\nĐêm nay, phe Sói đã không đạt được sự đồng thuận về mục tiêu cắn.\n➡️ Do đó, phe Sói sẽ KHÔNG cắn ai trong đêm nay.`,
 
   hostKicked: (nickname: string) => `🚫 ${nickname} đã bị chủ phòng trục xuất khỏi ngôi làng.`,
 
