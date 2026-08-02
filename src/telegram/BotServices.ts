@@ -13,6 +13,7 @@ import { createDefaultDistributionStrategyRegistry } from '../engine/role-distri
 import { GameStateMachine } from '../engine/state-machine/GameStateMachine';
 import { RedisStorageAdapter } from '../infrastructure/redis/RedisStorageAdapter';
 import { BullMqSchedulerPort } from '../infrastructure/scheduler/BullMqSchedulerPort';
+import { logger } from '../infrastructure/logging/logger';
 
 /**
  * Composition root for the Telegram bot process: constructs every engine
@@ -53,7 +54,11 @@ export class BotServices {
     this.scheduler = new BullMqSchedulerPort({
       host: url.hostname,
       port: Number(url.port) || 6379,
+      username: url.username || undefined,
       password: url.password || undefined,
+      tls: url.protocol === 'rediss:' ? {} : undefined,
+      // BullMQ Workers must be allowed to keep retrying a Redis connection.
+      maxRetriesPerRequest: null,
     });
 
     this.roomService = new RoomService(this.storage, clock, this.eventBus);
@@ -88,6 +93,49 @@ export class BotServices {
 
   async shutdown(): Promise<void> {
     await this.scheduler.shutdown();
-    this.redis.disconnect();
+    await this.redis.quit();
+  }
+
+  /**
+   * Verifies the Redis setting BullMQ requires before any Queue or Worker is
+   * created. Self-hosted Redis and providers that expose CONFIG can be fixed
+   * safely here. Managed providers that reject CONFIG retain control of the
+   * setting; in that case we emit an actionable error rather than hiding the
+   * BullMQ warning or pretending volatile eviction is safe.
+   */
+  async initialize(): Promise<void> {
+    const readPolicy = async (): Promise<string | null> => {
+      try {
+        const result = await this.redis.config('GET', 'maxmemory-policy');
+        return Array.isArray(result) && typeof result[1] === 'string'
+          ? result[1].toLowerCase()
+          : null;
+      } catch (err) {
+        logger.error('Redis provider does not allow CONFIG GET maxmemory-policy', { err });
+        return null;
+      }
+    };
+
+    const policy = await readPolicy();
+    if (policy === 'noeviction') {
+      logger.info('Redis maxmemory-policy verified as noeviction for BullMQ');
+      return;
+    }
+
+    try {
+      await this.redis.config('SET', 'maxmemory-policy', 'noeviction');
+      const updatedPolicy = await readPolicy();
+      if (updatedPolicy === 'noeviction') {
+        logger.warn('Redis maxmemory-policy was changed to noeviction for BullMQ');
+        return;
+      }
+    } catch (err) {
+      logger.error('Redis provider does not allow CONFIG SET maxmemory-policy', { err });
+    }
+
+    logger.error(
+      'Redis maxmemory-policy is not noeviction. Configure noeviction in the provider dashboard or Redis configuration; BullMQ job durability cannot be guaranteed otherwise.',
+      { policy },
+    );
   }
 }

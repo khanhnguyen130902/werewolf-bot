@@ -22,6 +22,7 @@ async function main(): Promise<void> {
   logger.info('Starting Werewolf Telegram Bot...');
 
   const services = new BotServices(config.redisUrl);
+  await services.initialize();
   const bot = new Telegraf<BotContext>(config.telegramBotToken);
   const flowController = new GameFlowController(services, bot);
 

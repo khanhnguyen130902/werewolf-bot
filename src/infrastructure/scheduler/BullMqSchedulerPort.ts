@@ -1,5 +1,6 @@
 import { Queue, Worker, ConnectionOptions } from 'bullmq';
 import { SchedulerPort, ScheduledJobHandle } from '../../engine/ports/SchedulerPort';
+import { logger } from '../logging/logger';
 
 /**
  * Production SchedulerPort implementation backed by BullMQ. Each distinct
@@ -24,7 +25,17 @@ export class BullMqSchedulerPort implements SchedulerPort {
   private getOrCreateQueue(jobType: string): Queue {
     let queue = this.queues.get(jobType);
     if (!queue) {
-      queue = new Queue(jobType, { connection: this.connection });
+      queue = new Queue(jobType, {
+        connection: this.connection,
+        // Timers are short-lived. Bound completed, failed, and event-stream
+        // retention so Redis memory cannot grow indefinitely under load.
+        defaultJobOptions: {
+          removeOnComplete: { age: 3600, count: 1000 },
+          removeOnFail: { age: 86400, count: 5000 },
+        },
+        streams: { events: { maxLen: 1000 } },
+      });
+      queue.on('error', (err) => logger.error('BullMQ queue error', { jobType, err }));
       this.queues.set(jobType, queue);
     }
     return queue;
@@ -42,8 +53,10 @@ export class BullMqSchedulerPort implements SchedulerPort {
       { roomId: params.roomId, payload: params.payload },
       {
         delay: params.delayMs,
-        removeOnComplete: { age: 3600 },
-        removeOnFail: { age: 86400 },
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: { age: 3600, count: 1000 },
+        removeOnFail: { age: 86400, count: 5000 },
       },
     );
     return { jobId: job.id! };
@@ -76,6 +89,13 @@ export class BullMqSchedulerPort implements SchedulerPort {
       },
       { connection: this.connection },
     );
+    worker.on('error', (err) => logger.error('BullMQ worker error', { jobType, err }));
+    worker.on('failed', (job, err) => logger.error('BullMQ job failed', {
+      jobType,
+      jobId: job?.id,
+      attemptsMade: job?.attemptsMade,
+      err,
+    }));
     this.workers.set(jobType, worker);
   }
 
