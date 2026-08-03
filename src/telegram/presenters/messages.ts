@@ -86,10 +86,10 @@ export const Messages = {
 
   actionRecorded: () => '🌒 Lựa chọn của bạn đã chìm vào bóng tối và được ghi nhận.',
 
-  dayBegins: (round: number, deaths: Array<{ nickname: string; cause: string }>) =>
+  dayBegins: (round: number, deaths: Array<{ nickname: string }>) =>
     deaths.length === 0
       ? `☀️ BÌNH MINH NGÀY ${round}\n\nMột đêm yên bình hiếm hoi - không ai phải trả giá bằng mạng sống.`
-      : `☀️ BÌNH MINH NGÀY ${round}\n\nĐêm qua, bóng tối đã cướp đi những sinh mạng...\n\n${deaths.map((death) => `💀 ${death.nickname} ${DeathCauseNames[death.cause] ?? 'đã ra đi mãi mãi'}.`).join('\n')}`,
+      : `☀️ BÌNH MINH NGÀY ${round}\n\n💀 Những người đã ra đi đêm qua:\n${deaths.map((death) => `• ${death.nickname}`).join('\n')}`,
 
   discussionStarted: (seconds: number) => `💬 GIỜ TRANH LUẬN BẮT ĐẦU\n\nCác người có ${seconds} giây để lật tẩy dối trá, bảo vệ sự thật và tìm ra kẻ đang ẩn mình giữa các người.`,
 

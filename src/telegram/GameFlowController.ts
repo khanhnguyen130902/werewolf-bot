@@ -690,7 +690,6 @@ export class GameFlowController {
 
     const deathsWithNicknames = deaths.map((d) => ({
       nickname: room.players[d.telegramId]?.nickname ?? d.telegramId,
-      cause: d.cause,
     }));
     await this.bot.telegram.sendMessage(
       room.chatId,
