@@ -7,6 +7,6 @@ describe('Messages.dayBegins', () => {
         { nickname: 'Bot1' },
         { nickname: 'Bot3' },
       ]),
-    ).toBe('☀️ BÌNH MINH NGÀY 1\n\n💀 Những người đã ra đi đêm qua: Bot1, Bot3');
+    ).toBe('☀️ BÌNH MINH NGÀY 1\n\n💀 Người đã ra đi đêm qua: Bot1, Bot3');
   });
 });

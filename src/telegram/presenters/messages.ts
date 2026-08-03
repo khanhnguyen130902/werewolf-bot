@@ -92,7 +92,7 @@ export const Messages = {
   dayBegins: (round: number, deaths: Array<{ nickname: string }>) =>
     deaths.length === 0
       ? `☀️ BÌNH MINH NGÀY ${round}\n\nMột đêm yên bình hiếm hoi - không ai phải trả giá bằng mạng sống.`
-      : `☀️ BÌNH MINH NGÀY ${round}\n\n💀 Những người đã ra đi đêm qua: ${deaths.map((death) => death.nickname).join(', ')}`,
+      : `☀️ BÌNH MINH NGÀY ${round}\n\n💀 Người đã ra đi đêm qua: ${deaths.map((death) => death.nickname).join(', ')}`,
 
   discussionStarted: (seconds: number) => `💬 GIỜ TRANH LUẬN BẮT ĐẦU\n\nCác người có ${seconds} giây để lật tẩy dối trá, bảo vệ sự thật và tìm ra kẻ đang ẩn mình giữa các người.`,
 
