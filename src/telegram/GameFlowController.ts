@@ -390,7 +390,7 @@ export class GameFlowController {
       try {
         const promptText =
           player.role === RoleId.WEREWOLF && room.players[player.telegramId]?.role === RoleId.WEREWOLF
-            ? `🌙 Đêm ${room.currentRound}: Hãy chọn mục tiêu giết. Hai Sói cần thống nhất cùng một mục tiêu.`
+            ? `🌙 Đêm ${room.currentRound}: Hãy chọn mục tiêu giết. Phe Sói cần thống nhất cùng một mục tiêu.`
             : `🌙 Đêm ${room.currentRound}: Hãy chọn hành động của bạn (${RoleNames[player.role]}):`;
 
         await this.bot.telegram.sendMessage(
