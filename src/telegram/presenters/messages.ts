@@ -53,6 +53,9 @@ export const Messages = {
 
   roomClosed: () => '🛑 Phòng chơi đã khép lại. Một ván mới có thể được mở ra bất cứ lúc nào tại đây.',
 
+  noActiveGame: () =>
+    '👀 Hiện chưa có ván chơi nào đang diễn ra tại đây.\n\nGõ /create để mở một ván mới và triệu tập dân làng.',
+
   roomCreated: (roomId: string) => {
     const safeRoomId = String(roomId).replace(/^-/, '');
     return `🌕 MỘT VÁN MA SÓI MỚI VỪA MỞ RA...\n\nBóng tối đang chờ đợi những kẻ dũng cảm. Gõ /join để bước chân vào ngôi làng. Khi đã đủ người, chủ phòng gõ /startgame để màn đêm buông xuống.\n\n🎫 Mã phòng: ${safeRoomId}`;

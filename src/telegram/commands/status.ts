@@ -2,7 +2,7 @@ import { Telegraf } from 'telegraf';
 import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
 import { Messages } from '../presenters/messages';
-import { GameState } from '../../engine/domain/enums';
+import { GameState, RoomStatus } from '../../engine/domain/enums';
 import { translateError } from '../presenters/translateError';
 
 const STATE_LABELS: Record<string, string> = {
@@ -28,8 +28,8 @@ export function registerStatusCommand(services: BotServices, bot: Telegraf<BotCo
     const roomId = String(ctx.chat.id);
     try {
       const room = await services.roomService.getRoom(roomId);
-      if (!room) {
-        await ctx.reply('Chưa có phòng chơi nào ở đây. Gõ /create để tạo phòng mới.');
+      if (!room || room.gameState === GameState.GAME_OVER || room.status === RoomStatus.CLOSED) {
+        await ctx.reply(Messages.noActiveGame());
         return;
       }
 
