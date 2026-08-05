@@ -241,6 +241,53 @@ describe('RoomService', () => {
     expect(Object.keys(recreated.players)).toEqual(['host1']);
   });
 
+  it('does not clear player sessions of other rooms when recreating or closing a room', async () => {
+    const { service, storage } = setup();
+    
+    // 1. Host creates room1
+    await service.createRoom({
+      roomId: 'room1',
+      hostTelegramId: 'host1',
+      hostNickname: 'Host1',
+      chatId: 'chat1',
+    });
+    // 2. p2 joins room1
+    await service.joinRoom({ roomId: 'room1', telegramId: 'p2', nickname: 'P2' });
+    expect(await storage.getPlayerSession('p2')).toBe('room1');
+
+    // 3. p2 joins room2
+    await service.createRoom({
+      roomId: 'room2',
+      hostTelegramId: 'host2',
+      hostNickname: 'Host2',
+      chatId: 'chat2',
+    });
+    await service.joinRoom({ roomId: 'room2', telegramId: 'p2', nickname: 'P2' });
+    expect(await storage.getPlayerSession('p2')).toBe('room2');
+
+    // 4. room1 game finishes
+    const existing = await storage.getRoom('room1');
+    await storage.saveRoom(
+      {
+        ...existing!,
+        gameState: GameState.GAME_OVER,
+        status: RoomStatus.LOCKED,
+      },
+      existing!.version,
+    );
+
+    // 5. room1 is recreated
+    await service.createRoom({
+      roomId: 'room1',
+      hostTelegramId: 'host1',
+      hostNickname: 'Host1',
+      chatId: 'chat1',
+    });
+
+    // 6. Confirm p2's session still points to room2 (was NOT cleared by room1's recreation!)
+    expect(await storage.getPlayerSession('p2')).toBe('room2');
+  });
+
   it('handles concurrent joins without losing an update (optimistic locking)', async () => {
     const { service } = setup();
     await service.createRoom({

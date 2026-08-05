@@ -3,6 +3,7 @@ import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
 import { Messages } from '../presenters/messages';
 import { translateError } from '../presenters/translateError';
+import { buildFullName } from '../utils/buildFullName';
 
 export function registerLeaveCommand(services: BotServices, bot: Telegraf<BotContext>): void {
   bot.command('leave', async (ctx) => {
@@ -13,7 +14,7 @@ export function registerLeaveCommand(services: BotServices, bot: Telegraf<BotCon
 
     const telegramId = String(ctx.from.id);
     const roomId = String(ctx.chat.id);
-    const nickname = ctx.from.first_name ?? ctx.from.username ?? 'Player';
+    const nickname = buildFullName(ctx.from);
 
     try {
       await services.roomService.leaveRoom({ roomId, telegramId });

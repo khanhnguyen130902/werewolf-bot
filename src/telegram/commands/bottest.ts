@@ -5,6 +5,7 @@ import { Messages } from '../presenters/messages';
 import { translateError } from '../presenters/translateError';
 import { GameState, RoomStatus, RoleId } from '../../engine/domain/enums';
 import { logger } from '../../infrastructure/logging/logger';
+import { buildFullName } from '../utils/buildFullName';
 
 const BOT_ID_PREFIX = '999999900';
 
@@ -40,7 +41,7 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
 
     const roomId = String(ctx.chat.id);
     const hostTelegramId = String(ctx.from.id);
-    const hostNickname = ctx.from.first_name ?? ctx.from.username ?? 'Host';
+    const hostNickname = buildFullName(ctx.from, 'Host');
 
     const args = ctx.message.text.trim().split(/\s+/).slice(1);
     let targetPlayerCount = 6;

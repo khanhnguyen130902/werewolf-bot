@@ -6,6 +6,9 @@ describe('registerEndCommand', () => {
     const closeRoom = jest.fn().mockResolvedValue(undefined);
     const services = { roomService: { closeRoom } } as unknown as BotServices;
 
+    const unmuteAllPlayers = jest.fn().mockResolvedValue(undefined);
+    const flowController = { unmuteAllPlayers } as any;
+
     const registeredHandlers: Array<(ctx: any) => Promise<void>> = [];
     const bot = {
       command: (_name: string, handler: (ctx: any) => Promise<void>) => {
@@ -13,7 +16,7 @@ describe('registerEndCommand', () => {
       },
     } as any;
 
-    registerEndCommand(services, bot);
+    registerEndCommand(services, flowController, bot);
 
     const ctx = {
       chat: { type: 'group', id: 'room-1' },
@@ -28,6 +31,7 @@ describe('registerEndCommand', () => {
       hostTelegramId: 'host-1',
       reason: 'host-ended-room',
     });
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('đã bị đóng'));
+    expect(unmuteAllPlayers).toHaveBeenCalledWith('room-1');
+    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('khép lại'));
   });
 });

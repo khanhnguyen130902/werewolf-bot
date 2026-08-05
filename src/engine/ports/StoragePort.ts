@@ -27,7 +27,7 @@ export interface StoragePort {
   /** Maps a Telegram user id to the room they are currently in (session lookup). */
   getPlayerSession(telegramId: string): Promise<string | null>;
   setPlayerSession(telegramId: string, roomId: string): Promise<void>;
-  clearPlayerSession(telegramId: string): Promise<void>;
+  clearPlayerSession(telegramId: string, roomId?: string): Promise<void>;
 
   /** Append-only event log per match (SRS section 12, Suggestion #11). */
   appendEvents(matchId: string, events: DomainEvent[]): Promise<void>;

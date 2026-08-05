@@ -3,8 +3,13 @@ import { BotContext } from '../BotContext';
 import { BotServices } from '../BotServices';
 import { Messages } from '../presenters/messages';
 import { translateError } from '../presenters/translateError';
+import { GameFlowController } from '../GameFlowController';
 
-export function registerEndCommand(services: BotServices, bot: Telegraf<BotContext>): void {
+export function registerEndCommand(
+  services: BotServices,
+  flowController: GameFlowController,
+  bot: Telegraf<BotContext>,
+): void {
   bot.command('end', async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/end'));
@@ -20,6 +25,7 @@ export function registerEndCommand(services: BotServices, bot: Telegraf<BotConte
         hostTelegramId,
         reason: 'host-ended-room',
       });
+      await flowController.unmuteAllPlayers(roomId);
       await ctx.reply(Messages.roomClosed());
     } catch (err) {
       await ctx.reply(translateError(err));

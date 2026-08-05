@@ -92,7 +92,7 @@ export class RoomService {
       }
 
       for (const telegramId of Object.keys(existingRoom.players)) {
-        await this.storage.clearPlayerSession(telegramId);
+        await this.storage.clearPlayerSession(telegramId, existingRoom.id);
       }
       await this.storage.clearTimerDeadline(params.roomId);
       await this.storage.deleteRoom(params.roomId);
@@ -227,7 +227,7 @@ export class RoomService {
       return { room: updated, events };
     });
 
-    await this.storage.clearPlayerSession(params.telegramId);
+    await this.storage.clearPlayerSession(params.telegramId, params.roomId);
     await this.eventBus.publishAll(events);
     return room;
   }
@@ -269,7 +269,7 @@ export class RoomService {
       return { room: updated, events };
     });
 
-    await this.storage.clearPlayerSession(params.targetTelegramId);
+    await this.storage.clearPlayerSession(params.targetTelegramId, params.roomId);
     await this.eventBus.publishAll(events);
     return room;
   }
@@ -288,7 +288,7 @@ export class RoomService {
       throw new NotHostError(params.hostTelegramId);
     }
     for (const telegramId of Object.keys(room.players)) {
-      await this.storage.clearPlayerSession(telegramId);
+      await this.storage.clearPlayerSession(telegramId, room.id);
     }
     await this.storage.deleteRoom(params.roomId);
     await this.eventBus.publish(

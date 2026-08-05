@@ -10,7 +10,7 @@ import { RoomState } from '../../engine/domain/Room';
 import { translateError } from '../presenters/translateError';
 import { logger } from '../../infrastructure/logging/logger';
 
-const resolvingExecutionRooms = new Set<string>();
+import { resolvingExecutionRooms } from '../resolvingExecutionRooms';
 
 const NIGHT_ACTION_TYPES: Set<string> = new Set([
   NightActionType.WEREWOLF_VOTE_KILL,

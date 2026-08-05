@@ -68,7 +68,13 @@ export class InMemoryStorageAdapter implements StoragePort {
     this.sessions.set(telegramId, roomId);
   }
 
-  async clearPlayerSession(telegramId: string): Promise<void> {
+  async clearPlayerSession(telegramId: string, roomId?: string): Promise<void> {
+    if (roomId) {
+      const currentRoomId = this.sessions.get(telegramId);
+      if (currentRoomId !== roomId) {
+        return;
+      }
+    }
     this.sessions.delete(telegramId);
   }
 

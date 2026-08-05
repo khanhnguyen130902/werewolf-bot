@@ -9,6 +9,8 @@ import { Messages, RoleNames, DeathCauseNames } from './presenters/messages';
 import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presenters/keyboards';
 import { TimerJobType } from '../engine/RoomTimerService';
 import { logger } from '../infrastructure/logging/logger';
+import { MuteService } from './MuteService';
+import { resolvingExecutionRooms } from './resolvingExecutionRooms';
 
 const roleRegistry = createPhase1RoleRegistry();
 const TEST_BOT_ID_PREFIX = '999999900';
@@ -133,12 +135,18 @@ const pendingHunterPrompts = new Map<string, PendingHunterPrompt>();
 
 export class GameFlowController {
   private readonly activeBotStates = new Map<string, BotGameState>();
+  public readonly muteService: MuteService;
 
   constructor(
     private readonly services: BotServices,
     private readonly bot: Telegraf<BotContext>,
   ) {
+    this.muteService = new MuteService(this.bot, this.services.redis);
     this.registerHunterCallbackHandler();
+  }
+
+  async unmuteAllPlayers(chatId: string | number): Promise<void> {
+    await this.muteService.unmuteAllPlayers(chatId);
   }
 
   /** Records a bot's action, falling back to an explicit Skip if its chosen
@@ -267,9 +275,9 @@ export class GameFlowController {
 
     const werewolves = Object.values(room.players).filter((player) => player.role === RoleId.WEREWOLF);
 
-    for (const player of Object.values(room.players)) {
-      if (!player.role) continue;
-      if (isTestBot(player.telegramId)) continue;
+    const DmPromises = Object.values(room.players).map(async (player) => {
+      if (!player.role) return;
+      if (isTestBot(player.telegramId)) return;
       try {
         const roleMessage = Messages.roleAssigned(player.role);
         const teammateMessage =
@@ -293,7 +301,9 @@ export class GameFlowController {
         // else. The group announcement above already told everyone the
         // game has started.
       }
-    }
+    });
+
+    await Promise.all(DmPromises);
 
     await this.startNightPrompts(room);
   }
@@ -350,16 +360,16 @@ export class GameFlowController {
       aliveTargets.filter((target) => room.players[target.telegramId]?.role !== RoleId.WEREWOLF),
     );
 
-    for (const player of alivePlayers) {
-      if (!player.role) continue;
+    const promptPromises = alivePlayers.map(async (player) => {
+      if (!player.role) return;
 
-      if (player.role === RoleId.WITCH) continue;
+      if (player.role === RoleId.WITCH) return;
 
       const actionType = ROLE_NIGHT_ACTION[player.role];
-      if (!actionType) continue; // Villager, Hunter: no regular night prompt
+      if (!actionType) return; // Villager, Hunter: no regular night prompt
 
       const roleDef = roleRegistry.get(player.role).definition;
-      if (!roleDef.hasNightAction) continue;
+      if (!roleDef.hasNightAction) return;
 
       // Werewolf faction voting deliberately includes every living player:
       // Skip, self, fellow wolves, and other living players. Seer should not
@@ -384,7 +394,7 @@ export class GameFlowController {
           actionType,
           targetTelegramId: selection?.telegramId ?? null,
         });
-        continue;
+        return;
       }
 
       try {
@@ -401,7 +411,9 @@ export class GameFlowController {
       } catch {
         // See onGameStarted's catch above for rationale.
       }
-    }
+    });
+
+    await Promise.all(promptPromises);
 
     await this.advanceNightIfReady(room.id);
   }
@@ -661,6 +673,10 @@ export class GameFlowController {
   ): Promise<void> {
     await this.cancelTimerIfAny(room.id);
 
+    if (deaths.length > 0) {
+      await this.muteService.mutePlayers(room.chatId, deaths.map((d) => d.telegramId));
+    }
+
     // Save Seer Bot results to memory for simulate chat
     let botState = this.activeBotStates.get(room.id);
     if (!botState) {
@@ -820,6 +836,13 @@ export class GameFlowController {
       buildVoteKeyboard({ targets: aliveTargets, voteCounts: {}, skipCount: 0 }),
     );
 
+    // Fix #2: Schedule the voting timer BEFORE bots vote so the timer uses
+    // the correct room snapshot (immediately after startVoting transitions
+    // to VOTING state). Scheduling it after bot votes would use a stale room
+    // object that doesn't reflect the bots' hasVotedThisRound flags.
+    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
+    if (jobId) activeTimerJobIds.set(room.id, jobId);
+
     const botState = this.activeBotStates.get(roomId);
 
     for (const player of Object.values(room.players)) {
@@ -866,22 +889,35 @@ export class GameFlowController {
       }
     }
 
-    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
-    if (jobId) activeTimerJobIds.set(room.id, jobId);
-
     await this.resolveExecutionIfAllVoted(room.id);
   }
 
   private async resolveExecutionIfAllVoted(roomId: string): Promise<void> {
+    // Fix #1: Guard against concurrent double-resolution. The same Set is used
+    // in actionCallbackHandler so both entry points share one lock.
+    if (resolvingExecutionRooms.has(roomId)) {
+      logger.debug('resolveExecutionIfAllVoted: execution already in progress, skipping', { roomId });
+      return;
+    }
     const room = await this.services.roomService.getRoom(roomId);
     if (!room || room.gameState !== GameState.VOTING) return;
-    const allVoted = Object.values(room.players).filter((player) => player.alive).every((player) => player.hasVotedThisRound);
+    const allVoted = Object.values(room.players)
+      .filter((player) => player.alive)
+      .every((player) => player.hasVotedThisRound);
     if (!allVoted) return;
-    const { room: resolvedRoom, executedTelegramId, deaths } = await this.services.orchestrator.resolveExecution({
-      roomId,
-      promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
-    });
-    await this.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
+
+    resolvingExecutionRooms.add(roomId);
+    try {
+      const { room: resolvedRoom, executedTelegramId, deaths } = await this.services.orchestrator.resolveExecution({
+        roomId,
+        promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+      });
+      await this.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
+    } catch (err) {
+      logger.error('resolveExecutionIfAllVoted: execution resolution failed', { roomId, err });
+    } finally {
+      resolvingExecutionRooms.delete(roomId);
+    }
   }
 
   async onExecutionResolved(
@@ -890,6 +926,10 @@ export class GameFlowController {
     deaths: Array<{ telegramId: string; cause: string }>,
   ): Promise<void> {
     await this.cancelTimerIfAny(room.id);
+
+    if (deaths.length > 0) {
+      await this.muteService.mutePlayers(room.chatId, deaths.map((d) => d.telegramId));
+    }
 
     const executedNickname = executedTelegramId
       ? (room.players[executedTelegramId]?.nickname ?? executedTelegramId)
@@ -937,6 +977,9 @@ export class GameFlowController {
         roleId: player.role ?? RoleId.VILLAGER,
       }));
     await this.bot.telegram.sendMessage(room.chatId, Messages.finalRoleSummary(finalRoles));
+
+    // Unmute all players in the room
+    await this.muteService.unmuteAllPlayers(room.chatId);
 
     // Clear active bot states
     this.activeBotStates.delete(room.id);
@@ -1008,15 +1051,28 @@ export class GameFlowController {
       const room = await this.services.roomService.getRoom(roomId);
       if (!room || room.gameState !== GameState.VOTING) return;
 
-      const {
-        room: resolvedRoom,
-        executedTelegramId,
-        deaths,
-      } = await this.services.orchestrator.resolveExecution({
-        roomId,
-        promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
-      });
-      await this.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
+      // Fix #3: Guard against concurrent resolution with the early-all-voted path.
+      if (resolvingExecutionRooms.has(roomId)) {
+        logger.debug('VOTING_TIMEOUT: execution already in progress, skipping timer-triggered resolution', { roomId });
+        return;
+      }
+
+      resolvingExecutionRooms.add(roomId);
+      try {
+        const {
+          room: resolvedRoom,
+          executedTelegramId,
+          deaths,
+        } = await this.services.orchestrator.resolveExecution({
+          roomId,
+          promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+        });
+        await this.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
+      } catch (err) {
+        logger.error('VOTING_TIMEOUT: execution resolution failed', { roomId, err });
+      } finally {
+        resolvingExecutionRooms.delete(roomId);
+      }
     });
   }
 }

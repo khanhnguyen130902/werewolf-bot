@@ -26,15 +26,44 @@ async function main(): Promise<void> {
   const bot = new Telegraf<BotContext>(config.telegramBotToken);
   const flowController = new GameFlowController(services, bot);
 
+  // --- Register middleware to delete messages from muted/dead players ---
+  bot.use(async (ctx, next) => {
+    if (
+      ctx.chat &&
+      (ctx.chat.type === 'group' || ctx.chat.type === 'supergroup') &&
+      ctx.message &&
+      ctx.from
+    ) {
+      const text = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
+      const isEndCommand =
+        text.startsWith('/end') && (text.length === 4 || text[4] === ' ' || text[4] === '@');
+
+      if (!isEndCommand) {
+        const chatId = ctx.chat.id;
+        const userId = String(ctx.from.id);
+        const isMuted = await flowController.muteService.isPlayerMuted(chatId, userId);
+        if (isMuted) {
+          try {
+            await ctx.deleteMessage();
+          } catch (err) {
+            logger.warn(`Failed to delete message from muted user ${userId} in chat ${chatId}`, { err });
+          }
+          return; // Stop propagation
+        }
+      }
+    }
+    return next();
+  });
+
   // --- Register commands ---
   registerStartCommand(services, bot);
-  registerCreateCommand(services, bot);
+  registerCreateCommand(services, flowController, bot);
   registerJoinCommand(services, bot);
   registerLeaveCommand(services, bot);
   registerStartGameCommand(services, flowController, bot);
   registerStatusCommand(services, bot);
   registerVoteCommand(services, flowController, bot);
-  registerEndCommand(services, bot);
+  registerEndCommand(services, flowController, bot);
   registerbottestCommand(services, bot);
   registerHelpCommand(services, bot);
 

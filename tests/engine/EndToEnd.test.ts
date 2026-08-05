@@ -102,6 +102,7 @@ describe('End-to-end match simulation', () => {
     let round = 1;
     const maxRounds = 10;
     let winnerFound = false;
+    let lastInspectedId: string | null = null;
 
     while (!winnerFound && round <= maxRounds) {
       const currentRoom = (await gameService.getRoom('e2e-room'))!;
@@ -129,14 +130,18 @@ describe('End-to-end match simulation', () => {
         });
       }
 
-      if (aliveSeer && aliveVillagers.length > 1) {
-        await nightActionService.submitNightAction({
-          roomId: 'e2e-room',
-          actionId: `night-${round}-seer`,
-          actorTelegramId: aliveSeer.telegramId,
-          actionType: NightActionType.SEER_INSPECT,
-          targetTelegramId: aliveVillagers[aliveVillagers.length - 1].telegramId,
-        });
+      if (aliveSeer) {
+        const target = aliveVillagers.find((v) => v.telegramId !== lastInspectedId);
+        if (target) {
+          lastInspectedId = target.telegramId;
+          await nightActionService.submitNightAction({
+            roomId: 'e2e-room',
+            actionId: `night-${round}-seer`,
+            actorTelegramId: aliveSeer.telegramId,
+            actionType: NightActionType.SEER_INSPECT,
+            targetTelegramId: target.telegramId,
+          });
+        }
       }
 
       const nightResult = await nightActionService.resolveNight({

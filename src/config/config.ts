@@ -20,4 +20,5 @@ export const config = {
   logLevel: process.env.LOG_LEVEL ?? 'info',
   nodeEnv: process.env.NODE_ENV ?? 'development',
   httpPort: Number(process.env.PORT ?? 3000),
+  muteDeadPlayers: process.env.MUTE_DEAD_PLAYERS !== 'false',
 };
