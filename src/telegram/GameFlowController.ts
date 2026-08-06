@@ -403,10 +403,17 @@ export class GameFlowController {
             ? `🌙 Đêm ${room.currentRound}: Hãy chọn mục tiêu giết. Phe Sói cần thống nhất cùng một mục tiêu.`
             : `🌙 Đêm ${room.currentRound}: Hãy chọn hành động của bạn (${RoleNames[player.role]}):`;
 
-        await this.bot.telegram.sendMessage(
+        const sentMsg = await this.bot.telegram.sendMessage(
           player.telegramId,
           promptText,
           buildTargetKeyboard({ actionType, targets }),
+        );
+        // Save the sent message ID to Redis to clear it later on timeout
+        await this.services.redis.set(
+          `prompt-message:${room.id}:${player.telegramId}`,
+          String(sentMsg.message_id),
+          'EX',
+          86400 // 1 day
         );
       } catch {
         // See onGameStarted's catch above for rationale.
@@ -559,20 +566,40 @@ export class GameFlowController {
     const prompts: Array<Promise<unknown>> = [];
     if (saveKeyboard) {
       prompts.push(
-        this.bot.telegram.sendMessage(
-          witch.telegramId,
-          `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId!]?.nickname ?? victimId}. Bạn có muốn dùng thuốc Cứu không?`,
-          saveKeyboard,
-        ).catch(() => undefined),
+        (async () => {
+          try {
+            const sentMsg = await this.bot.telegram.sendMessage(
+              witch.telegramId,
+              `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId!]?.nickname ?? victimId}. Bạn có muốn dùng thuốc Cứu không?`,
+              saveKeyboard,
+            );
+            await this.services.redis.set(
+              `witch-save-message:${room.id}:${witch.telegramId}`,
+              String(sentMsg.message_id),
+              'EX',
+              86400
+            );
+          } catch {}
+        })()
       );
     }
     if (poisonKeyboard) {
       prompts.push(
-        this.bot.telegram.sendMessage(
-          witch.telegramId,
-          `🌙 Đêm ${room.currentRound}: Bạn có muốn dùng thuốc Độc không?`,
-          poisonKeyboard,
-        ).catch(() => undefined),
+        (async () => {
+          try {
+            const sentMsg = await this.bot.telegram.sendMessage(
+              witch.telegramId,
+              `🌙 Đêm ${room.currentRound}: Bạn có muốn dùng thuốc Độc không?`,
+              poisonKeyboard,
+            );
+            await this.services.redis.set(
+              `witch-poison-message:${room.id}:${witch.telegramId}`,
+              String(sentMsg.message_id),
+              'EX',
+              86400
+            );
+          } catch {}
+        })()
       );
     }
     await Promise.all(prompts);
@@ -993,6 +1020,97 @@ export class GameFlowController {
     }
   }
 
+  private async cleanupTimedOutSpecialRoles(room: RoomState): Promise<void> {
+    const alivePlayers = Object.values(room.players).filter((p) => p.alive);
+    for (const player of alivePlayers) {
+      if (!player.role || player.role === RoleId.WITCH) continue;
+      const actionType = ROLE_NIGHT_ACTION[player.role];
+      if (!actionType) continue;
+
+      const submitted = room.pendingNightActions.some(
+        (action) =>
+          action.actorTelegramId === player.telegramId &&
+          action.actionType === actionType &&
+          action.round === room.currentRound,
+      );
+
+      if (!submitted) {
+        const key = `prompt-message:${room.id}:${player.telegramId}`;
+        const messageId = await this.services.redis.get(key);
+        if (messageId) {
+          await this.bot.telegram
+            .editMessageReplyMarkup(player.telegramId, Number(messageId), undefined, {
+              inline_keyboard: [],
+            })
+            .catch(() => undefined);
+          await this.services.redis.del(key);
+        }
+        await this.bot.telegram
+          .sendMessage(
+            player.telegramId,
+            `⏳ Hết thời gian thực hiện hành động! Lựa chọn của bạn đã được tính là Bỏ qua (Skip).`,
+          )
+          .catch(() => undefined);
+      }
+    }
+  }
+
+  private async cleanupTimedOutWitch(room: RoomState): Promise<void> {
+    const witch = Object.values(room.players).find((p) => p.alive && p.role === RoleId.WITCH);
+    if (!witch) return;
+
+    const submittedSave = room.pendingNightActions.some(
+      (a) =>
+        a.actorTelegramId === witch.telegramId &&
+        a.actionType === NightActionType.WITCH_SAVE &&
+        a.round === room.currentRound,
+    );
+    const submittedPoison = room.pendingNightActions.some(
+      (a) =>
+        a.actorTelegramId === witch.telegramId &&
+        a.actionType === NightActionType.WITCH_POISON &&
+        a.round === room.currentRound,
+    );
+
+    let notified = false;
+    if (!submittedSave) {
+      const key = `witch-save-message:${room.id}:${witch.telegramId}`;
+      const messageId = await this.services.redis.get(key);
+      if (messageId) {
+        await this.bot.telegram
+          .editMessageReplyMarkup(witch.telegramId, Number(messageId), undefined, {
+            inline_keyboard: [],
+          })
+          .catch(() => undefined);
+        await this.services.redis.del(key);
+      }
+      notified = true;
+    }
+
+    if (!submittedPoison) {
+      const key = `witch-poison-message:${room.id}:${witch.telegramId}`;
+      const messageId = await this.services.redis.get(key);
+      if (messageId) {
+        await this.bot.telegram
+          .editMessageReplyMarkup(witch.telegramId, Number(messageId), undefined, {
+            inline_keyboard: [],
+          })
+          .catch(() => undefined);
+        await this.services.redis.del(key);
+      }
+      notified = true;
+    }
+
+    if (notified) {
+      await this.bot.telegram
+        .sendMessage(
+          witch.telegramId,
+          `⏳ Hết thời gian thực hiện hành động! Lựa chọn của bạn đã được tính là Bỏ qua (Skip).`,
+        )
+        .catch(() => undefined);
+    }
+  }
+
   /** Registers the BullMQ timeout handlers for all three timed phases. Each
    * handler is defensive: it re-checks the room's current state before
    * acting, since a timer could theoretically fire after the phase already
@@ -1004,6 +1122,9 @@ export class GameFlowController {
       if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) return;
 
       if (room.nightPhase !== NightPhase.WITCH) {
+        // Cleanup timed out keyboards and notify players for non-Witch special roles
+        await this.cleanupTimedOutSpecialRoles(room);
+
         if (room.pendingNightActions.some(
           (action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound,
         )) {
@@ -1020,6 +1141,10 @@ export class GameFlowController {
         return;
       }
 
+      // Fallback path: if NIGHT_ACTION_TIMEOUT fired but nightPhase is already WITCH,
+      // it means the Witch timed out
+      await this.cleanupTimedOutWitch(room);
+
       const {
         room: resolvedRoom,
         deaths,
@@ -1034,6 +1159,10 @@ export class GameFlowController {
     this.services.timerService.onTimeout(TimerJobType.WITCH_ACTION_TIMEOUT, async (roomId) => {
       const room = await this.services.roomService.getRoom(roomId);
       if (!room || room.nightPhase !== NightPhase.WITCH) return;
+
+      // Witch timed out during Witch phase
+      await this.cleanupTimedOutWitch(room);
+
       const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
         roomId,
         promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),

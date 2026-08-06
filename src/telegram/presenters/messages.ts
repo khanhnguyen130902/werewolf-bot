@@ -31,8 +31,8 @@ export const RoleDescriptions: Record<RoleId, string> = {
 };
 
 export const TeamNames: Record<Team, string> = {
-  [Team.WEREWOLF]: '🐺 phe Sói',
-  [Team.VILLAGE]: '🏘️ phe Dân làng',
+  [Team.WEREWOLF]: '🐺 Phe Sói',
+  [Team.VILLAGE]: '🏘️ Phe Dân làng',
 };
 
 export const DeathCauseNames: Record<string, string> = {
