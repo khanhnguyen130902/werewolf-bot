@@ -504,6 +504,8 @@ describe('registerActionCallbackHandler', () => {
     await capturedHandler!(ctx, next);
 
     expect(services.nightActionService.submitNightAction).toHaveBeenCalled();
+    expect(answerCbQuery).toHaveBeenCalledWith(Messages.actionRecorded());
+    expect(answerCbQuery.mock.invocationCallOrder[0]).toBeLessThan((bot.telegram.sendMessage as jest.Mock).mock.invocationCallOrder[0]);
     expect(bot.telegram.sendMessage).toHaveBeenCalledTimes(2);
     expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
       'wolf1',

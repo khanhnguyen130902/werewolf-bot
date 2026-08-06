@@ -1023,7 +1023,9 @@ export class GameFlowController {
   private async cleanupTimedOutSpecialRoles(room: RoomState): Promise<void> {
     const alivePlayers = Object.values(room.players).filter((p) => p.alive);
     for (const player of alivePlayers) {
-      if (!player.role || player.role === RoleId.WITCH) continue;
+      // Werewolf timeout is handled separately by cleanupTimedOutWerewolves
+      // to respect the pack-consensus mechanic (no individual DM for wolves).
+      if (!player.role || player.role === RoleId.WITCH || player.role === RoleId.WEREWOLF) continue;
       const actionType = ROLE_NIGHT_ACTION[player.role];
       if (!actionType) continue;
 
@@ -1052,6 +1054,57 @@ export class GameFlowController {
           )
           .catch(() => undefined);
       }
+    }
+  }
+
+  /**
+   * Handles timeout cleanup specifically for the Werewolf faction, respecting
+   * the pack-consensus mechanic:
+   *
+   * - When ≥ 2 wolves are alive: silently closes all wolf keyboards that are
+   *   still open (no individual timeout DM). The engine will treat missing
+   *   votes as "no consensus → no kill". A team-wide no-consensus notice is
+   *   sent to all wolves via notifyWerewolfNoConsensus.
+   *
+   * - When exactly 1 wolf is alive: closes the keyboard and sends the normal
+   *   individual timeout DM, consistent with solo-role timeout behaviour.
+   */
+  private async cleanupTimedOutWerewolves(room: RoomState): Promise<void> {
+    const aliveWerewolves = Object.values(room.players).filter(
+      (p) => p.alive && p.role === RoleId.WEREWOLF,
+    );
+    if (aliveWerewolves.length === 0) return;
+
+    const isSoloWolf = aliveWerewolves.length === 1;
+
+    for (const wolf of aliveWerewolves) {
+      const key = `prompt-message:${room.id}:${wolf.telegramId}`;
+      const messageId = await this.services.redis.get(key);
+      if (messageId) {
+        await this.bot.telegram
+          .editMessageReplyMarkup(wolf.telegramId, Number(messageId), undefined, {
+            inline_keyboard: [],
+          })
+          .catch(() => undefined);
+        await this.services.redis.del(key);
+      }
+
+      if (isSoloWolf) {
+        // Solo wolf: send the standard individual timeout message.
+        await this.bot.telegram
+          .sendMessage(
+            wolf.telegramId,
+            `⏳ Hết thời gian thực hiện hành động! Lựa chọn của bạn đã được tính là Bỏ qua (Skip).`,
+          )
+          .catch(() => undefined);
+      }
+    }
+
+    if (!isSoloWolf) {
+      // Pack of wolves: send the team-wide no-consensus notice to every wolf.
+      // notifyWerewolfNoConsensus already checks whether consensus was actually
+      // reached and skips sending if it was (e.g. all wolves agreed before timeout).
+      await this.notifyWerewolfNoConsensus(room);
     }
   }
 
@@ -1122,21 +1175,10 @@ export class GameFlowController {
       if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) return;
 
       if (room.nightPhase !== NightPhase.WITCH) {
-        // Cleanup timed out keyboards and notify players for non-Witch special roles
+        // Cleanup timed-out keyboards and notify players for non-Witch, non-Werewolf roles.
         await this.cleanupTimedOutSpecialRoles(room);
-
-        if (room.pendingNightActions.some(
-          (action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound,
-        )) {
-          const werewolfActions = room.pendingNightActions.filter(
-            (action) => action.actionType === NightActionType.WEREWOLF_VOTE_KILL && action.round === room.currentRound,
-          );
-          const targets = werewolfActions.map((action) => action.targetTelegramId).filter((id): id is string => Boolean(id));
-          const hasConsensus = targets.length > 0 && new Set(targets).size === 1;
-          if (!hasConsensus) {
-            await this.notifyWerewolfNoConsensus(room);
-          }
-        }
+        // Handle Werewolf timeout separately to respect the pack-consensus mechanic.
+        await this.cleanupTimedOutWerewolves(room);
         await this.beginWitchPhase(roomId);
         return;
       }

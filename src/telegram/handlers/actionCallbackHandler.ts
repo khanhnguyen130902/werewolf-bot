@@ -315,6 +315,8 @@ export function registerActionCallbackHandler(
 
         let werewolfDisagreement = false;
         if (parsed.actionType === NightActionType.WEREWOLF_VOTE_KILL) {
+          await ctx.answerCbQuery(Messages.actionRecorded()).catch(() => undefined);
+
           const werewolfActions = updatedRoom.pendingNightActions.filter(
             (a) =>
               a.actionType === NightActionType.WEREWOLF_VOTE_KILL &&
@@ -352,7 +354,9 @@ export function registerActionCallbackHandler(
           }
         }
 
-        await ctx.answerCbQuery(Messages.actionRecorded());
+        if (parsed.actionType !== NightActionType.WEREWOLF_VOTE_KILL) {
+          await ctx.answerCbQuery(Messages.actionRecorded());
+        }
 
         const shouldSendTargetConfirmation = ![
           NightActionType.WEREWOLF_VOTE_KILL,
