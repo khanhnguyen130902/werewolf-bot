@@ -122,7 +122,16 @@ function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
       candidate.actionType === NightActionType.WEREWOLF_VOTE_KILL &&
       candidate.round === room.currentRound,
     );
-    return `• ${wolf.nickname}: ${formatWerewolfTarget(room, action?.targetTelegramId ?? null)}`;
+    // Three distinct states must be preserved in the display label:
+    //   1. No action record yet         → "chưa chọn"
+    //   2. Action submitted, null target → "Bỏ qua"  (was wrongly shown as "chưa chọn")
+    //   3. Action submitted, real target → player nickname
+    const statusText = !action
+      ? 'chưa chọn'
+      : action.targetTelegramId === null
+        ? 'Bỏ qua'
+        : formatWerewolfTarget(room, action.targetTelegramId);
+    return `• ${wolf.nickname}: ${statusText}`;
   });
   const { choices, allChosen, hasConsensus } = getWerewolfVoteState(room, aliveWerewolves);
   const chosenTargets = choices
