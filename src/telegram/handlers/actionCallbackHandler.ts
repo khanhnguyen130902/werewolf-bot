@@ -343,14 +343,26 @@ export function registerActionCallbackHandler(
           }
         }
 
-        if (parsed.actionType === NightActionType.SEER_INSPECT && parsed.targetTelegramId) {
-          const target = updatedRoom.players[parsed.targetTelegramId];
-          if (target?.team) {
-            await bot.telegram.sendMessage(
-              telegramId,
-              Messages.seerResult(target.nickname, target.role && updatedRoom.settings.seerRevealsExactRole ? target.role : target.team),
-              { parse_mode: 'Markdown' },
-            ).catch(() => undefined);
+        if (parsed.actionType === NightActionType.SEER_INSPECT) {
+          if (parsed.targetTelegramId) {
+            // Seer picked a real target: send the inspection result.
+            const target = updatedRoom.players[parsed.targetTelegramId];
+            if (target?.team) {
+              await bot.telegram.sendMessage(
+                telegramId,
+                Messages.seerResult(target.nickname, target.role && updatedRoom.settings.seerRevealsExactRole ? target.role : target.team),
+                { parse_mode: 'Markdown' },
+              ).catch(() => undefined);
+            }
+          } else {
+            // Seer chose Skip: send the standard skip confirmation so the
+            // player receives feedback (previously no message was sent here).
+            await bot.telegram
+              .sendMessage(
+                telegramId,
+                Messages.nightActionSkipped(ACTION_LABELS[NightActionType.SEER_INSPECT] ?? 'Hành động của bạn'),
+              )
+              .catch(() => undefined);
           }
         }
 
@@ -360,7 +372,7 @@ export function registerActionCallbackHandler(
 
         const shouldSendTargetConfirmation = ![
           NightActionType.WEREWOLF_VOTE_KILL,
-          NightActionType.SEER_INSPECT,
+          NightActionType.SEER_INSPECT, // Confirmation is handled above for both target and skip cases
         ].includes(parsed.actionType as NightActionType);
 
         if (shouldSendTargetConfirmation) {
