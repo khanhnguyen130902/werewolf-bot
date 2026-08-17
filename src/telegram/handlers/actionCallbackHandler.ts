@@ -8,9 +8,10 @@ import { Messages } from '../presenters/messages';
 import { NightActionType, NightPhase, RoleId } from '../../engine/domain/enums';
 import { RoomState } from '../../engine/domain/Room';
 import { translateError } from '../presenters/translateError';
+import { DomainError } from '../../engine/errors/DomainError';
 import { logger } from '../../infrastructure/logging/logger';
 
-import { resolvingExecutionRooms } from '../resolvingExecutionRooms';
+
 
 const NIGHT_ACTION_TYPES: Set<string> = new Set([
   NightActionType.WEREWOLF_VOTE_KILL,
@@ -266,34 +267,14 @@ export function registerActionCallbackHandler(
           const alivePlayers = Object.values(updatedRoom.players).filter((p) => p.alive);
           const allVoted = alivePlayers.every((p) => p.hasVotedThisRound);
           if (allVoted) {
-            if (resolvingExecutionRooms.has(roomId)) {
-              logger.debug('Execution resolution already in progress for room, skipping duplicate follow-up', { roomId });
-              return;
-            }
-
-            resolvingExecutionRooms.add(roomId);
             void (async () => {
-              try {
-                logger.debug('Resolving execution early because all alive players have voted', { roomId });
-                const {
-                  room: resolvedRoom,
-                  executedTelegramId,
-                  deaths,
-                } = await services.orchestrator.resolveExecution({
-                  roomId,
-                  promptHunter: (rid, hid) => flowController.promptHunterAndAwait(rid, hid),
-                });
-                await flowController.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
-              } catch (err) {
-                logger.error('Error during early execution-resolution follow-up', { roomId, err });
-              } finally {
-                resolvingExecutionRooms.delete(roomId);
-              }
+              logger.debug('Resolving execution early because all alive players have voted', { roomId });
+              await flowController.resolveExecution(roomId);
             })();
           }
           return;
         } catch (err) {
-          if ((err as any)?.code === 'DUPLICATE_ACTION') {
+          if (err instanceof DomainError && err.code === 'DUPLICATE_ACTION') {
             await ctx.answerCbQuery(Messages.voteAlreadyCast(), { show_alert: true }).catch(() => undefined);
             return;
           }
@@ -427,15 +408,7 @@ export function registerActionCallbackHandler(
             logger.debug('Resolving night early because all night actions submitted during witch phase', {
               roomId,
             });
-            const {
-              room: resolvedRoom,
-              deaths,
-              seerResults,
-            } = await services.orchestrator.resolveNight({
-              roomId,
-              promptHunter: (rid, hid) => flowController.promptHunterAndAwait(rid, hid),
-            });
-            await flowController.onNightResolved(resolvedRoom, deaths, seerResults);
+            await flowController.resolveNight(roomId);
           } catch (err) {
             logger.error('Error during early night-resolution follow-up', { roomId, err });
           }

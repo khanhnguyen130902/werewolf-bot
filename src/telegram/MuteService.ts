@@ -4,6 +4,8 @@ import { BotContext } from './BotContext';
 import { logger } from '../infrastructure/logging/logger';
 import { config } from '../config/config';
 
+function errorMessage(err: unknown): string { return err instanceof Error ? err.message : String(err); }
+
 const TEST_BOT_ID_PREFIX = '999999900';
 
 function isTestBot(telegramId: string): boolean {
@@ -70,7 +72,7 @@ export class MuteService {
       const isCreator = chatMember.status === 'creator';
       const isAdmin = chatMember.status === 'administrator';
       const hasRestrictPermission =
-        isCreator || (isAdmin && (chatMember as any).can_restrict_members === true);
+        isCreator || (isAdmin && (chatMember as unknown as { can_restrict_members?: boolean }).can_restrict_members === true);
 
       if (!hasRestrictPermission) {
         logger.warn(
@@ -107,9 +109,9 @@ export class MuteService {
       });
 
       logger.info(`Successfully muted player ${telegramId} in chat ${chatId} via Telegram API`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error(
-        `Failed to mute player ${telegramId} in chat ${chatId} via Telegram API (falling back to message deletion): ${err?.message || err}`,
+        `Failed to mute player ${telegramId} in chat ${chatId} via Telegram API (falling back to message deletion): ${errorMessage(err)}`,
         { err },
       );
     }
@@ -169,9 +171,9 @@ export class MuteService {
             },
           });
           logger.info(`Successfully unmuted player ${telegramId} in chat ${chatId}`);
-        } catch (err: any) {
+        } catch (err: unknown) {
           logger.error(
-            `Failed to unmute player ${telegramId} in chat ${chatId}: ${err?.message || err}`,
+            `Failed to unmute player ${telegramId} in chat ${chatId}: ${errorMessage(err)}`,
             { err },
           );
         }
@@ -181,8 +183,8 @@ export class MuteService {
 
       // Delete the Redis set after unmuting attempt
       await this.redis.del(key);
-    } catch (err: any) {
-      logger.error(`Error in unmuteAllPlayers for chat ${chatId}: ${err?.message || err}`, { err });
+    } catch (err: unknown) {
+      logger.error(`Error in unmuteAllPlayers for chat ${chatId}: ${errorMessage(err)}`, { err });
     }
   }
 

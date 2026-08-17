@@ -1,6 +1,6 @@
 import { RoleId, Team, DeathCause, WinnerTeam } from '../../engine/domain/enums';
 
-/ Player-facing Vietnamese text for the Telegram interface. */
+/** Player-facing Vietnamese text for the Telegram interface. */
 export const RoleNames: Record<RoleId, string> = {
   [RoleId.WEREWOLF]: '🐺 Sói',
   [RoleId.VILLAGER]: '🧑‍🌾 Dân làng',

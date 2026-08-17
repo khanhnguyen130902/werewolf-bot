@@ -10,21 +10,30 @@ import { buildFullName } from '../utils/buildFullName';
 const BOT_ID_PREFIX = '999999900';
 
 function parseRoleAlias(token: string): RoleId | null {
-  const normalized = token.toLowerCase();
+  const normalized = token
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
   switch (normalized) {
     case 'soi':
       return RoleId.WEREWOLF;
     case 'tientri':
     case 'tientriy':
+    case 'seer':
       return RoleId.SEER;
     case 'baove':
+    case 'bodyguard':
+    case 'doctor':
       return RoleId.BODYGUARD;
     case 'phuthuy':
+    case 'witch':
       return RoleId.WITCH;
     case 'thosan':
+    case 'hunter':
       return RoleId.HUNTER;
     case 'danlang':
-    case 'dânlang':
     case 'villager':
       return RoleId.VILLAGER;
     default:
@@ -48,24 +57,18 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
     let requestedRole: RoleId | null = null;
 
     if (args.length > 0) {
-      const firstArg = args[0];
-      const parsedCount = parseInt(firstArg, 10);
-      if (!isNaN(parsedCount)) {
+      const numericArgIndex = args.findIndex((token) => /^\d+$/.test(token));
+      const roleTokens = numericArgIndex >= 0
+        ? args.filter((_, index) => index !== numericArgIndex)
+        : args;
+      requestedRole = parseRoleAlias(roleTokens.join(''));
+
+      if (numericArgIndex >= 0) {
+        const parsedCount = Number(args[numericArgIndex]);
         if (parsedCount >= 4 && parsedCount <= 15) {
           targetPlayerCount = parsedCount;
         } else {
           await ctx.reply('⚠️ Số lượng người chơi cho phòng test phải từ 4 đến 15. Mặc định dùng 6.');
-        }
-        if (args[1]) {
-          requestedRole = parseRoleAlias(args[1]);
-        }
-      } else {
-        requestedRole = parseRoleAlias(firstArg);
-        if (args[1]) {
-          const parsedCountFromSecondArg = parseInt(args[1], 10);
-          if (!isNaN(parsedCountFromSecondArg) && parsedCountFromSecondArg >= 4 && parsedCountFromSecondArg <= 15) {
-            targetPlayerCount = parsedCountFromSecondArg;
-          }
         }
       }
     }
@@ -114,10 +117,6 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
 
       const updatedRoom = await services.roomService.getRoom(roomId);
       const finalCount = updatedRoom ? Object.keys(updatedRoom.players).length : existingCount;
-      await ctx.reply(
-        `✅ Phòng test sẵn sàng với ${finalCount} người chơi. Host gõ /startgame để bắt đầu.`,
-      );
-
       if (requestedRoleOverride) {
         const roomWithOverride = await services.storage.getRoom(roomId);
         if (roomWithOverride) {
@@ -127,11 +126,15 @@ export function registerbottestCommand(services: BotServices, bot: Telegraf<BotC
             existingVersion: roomWithOverride.version,
           });
           await services.storage.saveRoom(
-            { ...roomWithOverride, requestedRoleOverride: requestedRoleOverride },
+            { ...roomWithOverride, requestedRoleOverride },
             roomWithOverride.version,
           );
         }
       }
+
+      await ctx.reply(
+        `✅ Phòng test sẵn sàng với ${finalCount} người chơi. Host gõ /startgame để bắt đầu.`,
+      );
     } catch (err) {
       await ctx.reply(translateError(err));
     }

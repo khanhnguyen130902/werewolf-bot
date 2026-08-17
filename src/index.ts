@@ -16,7 +16,7 @@ import { registerEndCommand } from './telegram/commands/end';
 import { registerbottestCommand } from './telegram/commands/bottest';
 import { registerHelpCommand } from './telegram/commands/help';
 import { registerActionCallbackHandler } from './telegram/handlers/actionCallbackHandler';
-import { GameState } from './engine/domain/enums';
+import { GameState, NightPhase } from './engine/domain/enums';
 
 async function main(): Promise<void> {
   logger.info('Starting Werewolf Telegram Bot...');
@@ -91,27 +91,15 @@ async function main(): Promise<void> {
       logger.info(`Resuming overdue room ${roomId} in state ${room.gameState}`);
 
       if (room.gameState === GameState.NIGHT || room.gameState === GameState.FIRST_NIGHT) {
-        const {
-          room: resolvedRoom,
-          deaths,
-          seerResults,
-        } = await services.orchestrator.resolveNight({
-          roomId,
-          promptHunter: (rid, hid) => flowController.promptHunterAndAwait(rid, hid),
-        });
-        await flowController.onNightResolved(resolvedRoom, deaths, seerResults);
+        if (room.nightPhase !== NightPhase.WITCH) {
+          await flowController.beginWitchPhase(roomId);
+        } else {
+          await flowController.resolveNight(roomId);
+        }
       } else if (room.gameState === GameState.DISCUSSION) {
         await flowController.startVoting(roomId);
       } else if (room.gameState === GameState.VOTING) {
-        const {
-          room: resolvedRoom,
-          executedTelegramId,
-          deaths,
-        } = await services.orchestrator.resolveExecution({
-          roomId,
-          promptHunter: (rid, hid) => flowController.promptHunterAndAwait(rid, hid),
-        });
-        await flowController.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
+        await flowController.resolveExecution(roomId);
       }
     }
   } catch (err) {

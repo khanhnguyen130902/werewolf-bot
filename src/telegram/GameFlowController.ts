@@ -10,7 +10,9 @@ import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presente
 import { TimerJobType } from '../engine/RoomTimerService';
 import { logger } from '../infrastructure/logging/logger';
 import { MuteService } from './MuteService';
+import { DuplicateActionError } from '../engine/errors/DomainError';
 import { resolvingExecutionRooms } from './resolvingExecutionRooms';
+import { resolvingNightRooms } from './resolvingNightRooms';
 
 const roleRegistry = createPhase1RoleRegistry();
 const TEST_BOT_ID_PREFIX = '999999900';
@@ -28,15 +30,102 @@ interface BotInspectResult {
 }
 
 interface BotGameState {
-  revealedWerewolves: Set<string>;
-  revealedVillagers: Set<string>;
+  /** Private information is scoped to the bot that actually received it. */
+  knownWerewolvesByBot: Map<string, Set<string>>;
+  knownVillagersByBot: Map<string, Set<string>>;
+  /** Public suspicion is shared only after a bot makes a public claim. */
+  publicSuspicionByTarget: Map<string, number>;
   seerBotTelegramId?: string;
   lastInspectResult?: BotInspectResult;
+}
+
+const DEFAULT_BOT_TURN_DELAY_MS = process.env.NODE_ENV === 'test' ? 0 : 350;
+
+function getBotTurnDelayMs(): number {
+  const configured = Number(process.env.BOT_TURN_DELAY_MS);
+  return Number.isFinite(configured) && configured >= 0 ? configured : DEFAULT_BOT_TURN_DELAY_MS;
+}
+
+async function waitForBotTurn(): Promise<void> {
+  const delayMs = getBotTurnDelayMs();
+  if (delayMs === 0) return;
+  await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
 }
 
 function pickRandomTarget(targets: TargetOption[]): TargetOption | null {
   if (targets.length === 0) return null;
   return targets[Math.floor(Math.random() * targets.length)];
+}
+
+function pickSuspicionWeightedTarget(
+  targets: TargetOption[],
+  suspicionByTarget: Map<string, number>,
+  invert = false,
+): TargetOption | null {
+  if (targets.length === 0) return null;
+  const weights = targets.map((target) => {
+    const score = suspicionByTarget.get(target.telegramId) ?? 0;
+    const adjustedScore = Math.max(-3, Math.min(3, invert ? -score : score));
+    return Math.exp(adjustedScore);
+  });
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  let pick = Math.random() * totalWeight;
+  for (let index = 0; index < targets.length; index += 1) {
+    pick -= weights[index];
+    if (pick <= 0) return targets[index];
+  }
+  return targets[targets.length - 1];
+}
+
+function getKnownTargets(
+  botState: BotGameState | undefined,
+  actorTelegramId: string,
+  knownByBot: Map<string, Set<string>>,
+): Set<string> {
+  return botState ? (knownByBot.get(actorTelegramId) ?? new Set<string>()) : new Set<string>();
+}
+
+function addPublicSuspicion(botState: BotGameState, targetTelegramId: string, delta: number): void {
+  const current = botState.publicSuspicionByTarget.get(targetTelegramId) ?? 0;
+  botState.publicSuspicionByTarget.set(targetTelegramId, Math.max(-2, Math.min(2, current + delta)));
+}
+
+function pickBotVoteTarget(
+  room: RoomState,
+  player: PlayerState,
+  aliveTargets: TargetOption[],
+  botState?: BotGameState,
+): TargetOption | null {
+  const candidates = aliveTargets.filter((target) => target.telegramId !== player.telegramId);
+  if (candidates.length === 0) return null;
+
+  const suspicion = botState?.publicSuspicionByTarget ?? new Map<string, number>();
+  const knownWerewolves = getKnownTargets(
+    botState,
+    player.telegramId,
+    botState?.knownWerewolvesByBot ?? new Map(),
+  );
+
+  if (player.role === RoleId.SEER) {
+    const knownWolfTargets = candidates.filter((target) => knownWerewolves.has(target.telegramId));
+    if (knownWolfTargets.length > 0) return pickSuspicionWeightedTarget(knownWolfTargets, suspicion);
+  }
+
+  if (player.role === RoleId.WEREWOLF) {
+    // Wolves may coordinate with faction-mates, but they do not inspect the
+    // hidden role field to identify special villagers. They avoid fellow wolves
+    // because that is legitimate private faction knowledge.
+    const nonWolfTargets = candidates.filter(
+      (target) => room.players[target.telegramId]?.role !== RoleId.WEREWOLF,
+    );
+    if (nonWolfTargets.length > 0) return pickSuspicionWeightedTarget(nonWolfTargets, suspicion, true);
+  }
+
+  // A village bot should sometimes abstain when evidence is weak. This lets
+  // VoteResolver's tie/no-execution rules occur naturally instead of forcing a
+  // named target every round.
+  if (Math.random() < 0.12) return null;
+  return pickSuspicionWeightedTarget(candidates, suspicion);
 }
 
 function pickImmediateBotTarget(
@@ -47,10 +136,12 @@ function pickImmediateBotTarget(
 ): TargetOption | null {
   if (targets.length === 0) return null;
 
-  // Werewolf bot: try to align targets to achieve consensus early
+  // Werewolf bots know their faction-mates, but not every village role. They
+  // first follow an existing faction choice, then prefer a publicly revealed
+  // Seer claim; otherwise they select from living non-wolves using uncertainty.
   if (actor.role === RoleId.WEREWOLF) {
     const wolfActions = room.pendingNightActions.filter(
-      (a) => a.actionType === NightActionType.WEREWOLF_VOTE_KILL && a.round === room.currentRound
+      (a) => a.actionType === NightActionType.WEREWOLF_VOTE_KILL && a.round === room.currentRound,
     );
     if (wolfActions.length > 0) {
       const targetId = wolfActions[0].targetTelegramId;
@@ -59,7 +150,10 @@ function pickImmediateBotTarget(
     }
     const enemyTargets = targets.filter((t) => room.players[t.telegramId]?.role !== RoleId.WEREWOLF);
     if (enemyTargets.length > 0) {
-      return enemyTargets[Math.floor(Math.random() * enemyTargets.length)];
+      const claimedSeer = botState?.seerBotTelegramId
+        ? enemyTargets.find((target) => target.telegramId === botState.seerBotTelegramId)
+        : null;
+      return claimedSeer ?? pickSuspicionWeightedTarget(enemyTargets, botState?.publicSuspicionByTarget ?? new Map(), true);
     }
   }
 
@@ -89,14 +183,19 @@ function pickImmediateBotTarget(
 
   // Seer bot: inspect players whose team is not yet known, avoiding self or known targets
   if (actor.role === RoleId.SEER) {
+    const knownWerewolves = getKnownTargets(botState, actor.telegramId, botState?.knownWerewolvesByBot ?? new Map());
+    const knownVillagers = getKnownTargets(botState, actor.telegramId, botState?.knownVillagersByBot ?? new Map());
     const unknownTargets = targets.filter(
       (t) =>
         t.telegramId !== actor.telegramId &&
-        !(botState?.revealedWerewolves.has(t.telegramId)) &&
-        !(botState?.revealedVillagers.has(t.telegramId))
+        !knownWerewolves.has(t.telegramId) &&
+        !knownVillagers.has(t.telegramId),
     );
     if (unknownTargets.length > 0) {
-      return unknownTargets[Math.floor(Math.random() * unknownTargets.length)];
+      return pickSuspicionWeightedTarget(
+        unknownTargets,
+        botState?.publicSuspicionByTarget ?? new Map(),
+      );
     }
   }
 
@@ -171,6 +270,15 @@ export class GameFlowController {
     try {
       await submit(params.targetTelegramId);
     } catch (err) {
+      if (err instanceof DuplicateActionError) {
+        logger.debug('Bot night action was already submitted; ignoring duplicate', { roomId: params.room.id, actorTelegramId: params.player.telegramId, actionType: params.actionType });
+        return;
+      }
+      if (params.targetTelegramId === null) {
+        logger.error('Bot failed to submit an explicit night skip', { roomId: params.room.id, actorTelegramId: params.player.telegramId, actionType: params.actionType, err });
+        return;
+      }
+
       if (params.targetTelegramId === null) {
         logger.error('Bot failed to submit an explicit night skip', {
           roomId: params.room.id,
@@ -246,8 +354,9 @@ export class GameFlowController {
    * night. */
   async onGameStarted(room: RoomState): Promise<void> {
     this.activeBotStates.set(room.id, {
-      revealedWerewolves: new Set(),
-      revealedVillagers: new Set(),
+      knownWerewolvesByBot: new Map(),
+      knownVillagersByBot: new Map(),
+      publicSuspicionByTarget: new Map(),
     });
     const chatId = room.chatId;
     await this.bot.telegram.sendMessage(
@@ -385,6 +494,7 @@ export class GameFlowController {
       });
 
       if (isTestBot(player.telegramId)) {
+        await waitForBotTurn();
         const selection = player.role === RoleId.WEREWOLF
           ? botWerewolfTarget
           : pickImmediateBotTarget(room, player, targets, this.activeBotStates.get(room.id));
@@ -433,11 +543,7 @@ export class GameFlowController {
       await this.beginWitchPhase(roomId);
       return;
     }
-    const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
-      roomId,
-      promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
-    });
-    await this.onNightResolved(resolvedRoom, deaths, seerResults);
+    await this.resolveNight(roomId);
   }
 
   /** If bot werewolves disagree with a human werewolf, re-align them to the human's target. */
@@ -474,37 +580,103 @@ export class GameFlowController {
    * service's phase write is idempotent, while only the first caller sends
    * the prompt/timer. */
   async beginWitchPhase(roomId: string): Promise<void> {
-    const room = await this.services.roomService.getRoom(roomId);
-    if (!room || room.nightPhase === NightPhase.WITCH) return;
-    await this.cancelTimerIfAny(roomId);
-    const hasLivingWitch = Object.values(room.players).some(
-      (player) => player.alive && player.role === RoleId.WITCH,
-    );
-    if (!hasLivingWitch) {
+    if (resolvingNightRooms.has(roomId)) {
+      logger.debug('beginWitchPhase: night resolution/transition already in progress, skipping', { roomId });
+      return;
+    }
+    resolvingNightRooms.add(roomId);
+    try {
+      const room = await this.services.roomService.getRoom(roomId);
+      if (!room || room.nightPhase === NightPhase.WITCH) return;
+      await this.cancelTimerIfAny(roomId);
+      const hasLivingWitch = Object.values(room.players).some(
+        (player) => player.alive && player.role === RoleId.WITCH,
+      );
+      if (!hasLivingWitch) {
+        const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
+          roomId,
+          promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+        });
+        await this.onNightResolved(resolvedRoom, deaths, seerResults);
+        return;
+      }
+      const witchRoom = await this.services.nightActionService.beginWitchPhase(roomId);
+      await this.promptWitchPhase(witchRoom);
+
+      // If Witch is a bot, it will have submitted its action during promptWitchPhase.
+      // Check if we can resolve the night early.
+      const allSubmitted = await this.services.orchestrator.allNightActionsSubmitted(roomId);
+      if (allSubmitted) {
+        const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
+          roomId,
+          promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
+        });
+        await this.onNightResolved(resolvedRoom, deaths, seerResults);
+        return;
+      }
+
+      const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(witchRoom);
+      if (jobId) activeTimerJobIds.set(roomId, jobId);
+    } finally {
+      resolvingNightRooms.delete(roomId);
+    }
+  }
+
+  /**
+   * Resolves the current night with concurrency guard resolvingNightRooms.
+   * If a resolution is already running for the room, does nothing.
+   */
+  async resolveNight(roomId: string): Promise<void> {
+    if (resolvingNightRooms.has(roomId)) {
+      logger.debug('resolveNight: night resolution already in progress, skipping', { roomId });
+      return;
+    }
+    resolvingNightRooms.add(roomId);
+    try {
+      const room = await this.services.roomService.getRoom(roomId);
+      if (!room) return;
+      if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) return;
+
       const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
         roomId,
         promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
       });
       await this.onNightResolved(resolvedRoom, deaths, seerResults);
+    } catch (err) {
+      logger.error('resolveNight: night resolution failed', { roomId, err });
+    } finally {
+      resolvingNightRooms.delete(roomId);
+    }
+  }
+
+  /**
+   * Resolves the execution phase with concurrency guard resolvingExecutionRooms.
+   * If an execution resolution is already running for the room, does nothing.
+   */
+  async resolveExecution(roomId: string): Promise<void> {
+    if (resolvingExecutionRooms.has(roomId)) {
+      logger.debug('resolveExecution: execution already in progress, skipping', { roomId });
       return;
     }
-    const witchRoom = await this.services.nightActionService.beginWitchPhase(roomId);
-    await this.promptWitchPhase(witchRoom);
+    resolvingExecutionRooms.add(roomId);
+    try {
+      const room = await this.services.roomService.getRoom(roomId);
+      if (!room || room.gameState !== GameState.VOTING) return;
 
-    // If Witch is a bot, it will have submitted its action during promptWitchPhase.
-    // Check if we can resolve the night early.
-    const allSubmitted = await this.services.orchestrator.allNightActionsSubmitted(roomId);
-    if (allSubmitted) {
-      const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
+      const {
+        room: resolvedRoom,
+        executedTelegramId,
+        deaths,
+      } = await this.services.orchestrator.resolveExecution({
         roomId,
         promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
       });
-      await this.onNightResolved(resolvedRoom, deaths, seerResults);
-      return;
+      await this.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
+    } catch (err) {
+      logger.error('resolveExecution: execution resolution failed', { roomId, err });
+    } finally {
+      resolvingExecutionRooms.delete(roomId);
     }
-
-    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(witchRoom);
-    if (jobId) activeTimerJobIds.set(roomId, jobId);
   }
 
   private async promptWitchPhase(room: RoomState): Promise<void> {
@@ -707,28 +879,36 @@ export class GameFlowController {
     // Save Seer Bot results to memory for simulate chat
     let botState = this.activeBotStates.get(room.id);
     if (!botState) {
-      botState = { revealedWerewolves: new Set(), revealedVillagers: new Set() };
+      botState = {
+        knownWerewolvesByBot: new Map(),
+        knownVillagersByBot: new Map(),
+        publicSuspicionByTarget: new Map(),
+      };
       this.activeBotStates.set(room.id, botState);
     }
     for (const res of seerResults) {
-      if (isTestBot(res.seerTelegramId)) {
-        botState.seerBotTelegramId = res.seerTelegramId;
-        const targetPlayer = room.players[res.targetTelegramId];
-        if (targetPlayer) {
-          if (res.revealedTeam === Team.WEREWOLF) {
-            botState.revealedWerewolves.add(res.targetTelegramId);
-          } else {
-            botState.revealedVillagers.add(res.targetTelegramId);
-          }
-          botState.lastInspectResult = {
-            seerTelegramId: res.seerTelegramId,
-            targetTelegramId: res.targetTelegramId,
-            targetNickname: targetPlayer.nickname,
-            revealedTeam: res.revealedTeam,
-            revealedRole: res.revealedRole,
-          };
-        }
+      if (!isTestBot(res.seerTelegramId)) continue;
+
+      botState.seerBotTelegramId = res.seerTelegramId;
+      const targetPlayer = room.players[res.targetTelegramId];
+      if (!targetPlayer) continue;
+
+      const knownWerewolves = botState.knownWerewolvesByBot.get(res.seerTelegramId) ?? new Set<string>();
+      const knownVillagers = botState.knownVillagersByBot.get(res.seerTelegramId) ?? new Set<string>();
+      if (res.revealedTeam === Team.WEREWOLF) {
+        knownWerewolves.add(res.targetTelegramId);
+      } else {
+        knownVillagers.add(res.targetTelegramId);
       }
+      botState.knownWerewolvesByBot.set(res.seerTelegramId, knownWerewolves);
+      botState.knownVillagersByBot.set(res.seerTelegramId, knownVillagers);
+      botState.lastInspectResult = {
+        seerTelegramId: res.seerTelegramId,
+        targetTelegramId: res.targetTelegramId,
+        targetNickname: targetPlayer.nickname,
+        revealedTeam: res.revealedTeam,
+        revealedRole: res.revealedRole,
+      };
     }
 
     const deathsWithNicknames = deaths.map((d) => ({
@@ -774,18 +954,20 @@ export class GameFlowController {
         return;
       }
 
-      const { seerTelegramId, targetNickname, revealedTeam } = botState.lastInspectResult;
+      const { seerTelegramId, targetTelegramId, targetNickname, revealedTeam } = botState.lastInspectResult;
       botState.lastInspectResult = undefined; // clear so it's not announced twice
 
       const seerPlayer = room.players[seerTelegramId];
       if (!seerPlayer || !seerPlayer.alive) return;
 
       if (revealedTeam === Team.WEREWOLF) {
+        addPublicSuspicion(botState, targetTelegramId, 2);
         await this.bot.telegram.sendMessage(
           room.chatId,
           `👁 [Tiên Tri] ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và phát hiện hắn chính là **Sói** 🐺! Mọi người hãy vote treo hắn ngay hôm nay!"`,
         );
       } else {
+        addPublicSuspicion(botState, targetTelegramId, -1);
         await this.bot.telegram.sendMessage(
           room.chatId,
           `👁 [Tiên Tri] ${seerPlayer.nickname}: "Tôi là Tiên Tri! Đêm qua tôi đã soi **${targetNickname}** và thấy họ là **Người tốt** 😇 (phe Dân làng)."`,
@@ -874,45 +1056,21 @@ export class GameFlowController {
 
     for (const player of Object.values(room.players)) {
       if (!player.alive || !isTestBot(player.telegramId)) continue;
-      
-      let targetOption: TargetOption | null = null;
 
-      // Smart Vote Logic
-      if (player.role === RoleId.WEREWOLF) {
-        // Wolf bot: vote for non-wolves
-        const nonWolfTargets = aliveTargets.filter((t) => room.players[t.telegramId]?.role !== RoleId.WEREWOLF);
-        targetOption = pickRandomTarget(nonWolfTargets);
-      } else if (player.role === RoleId.SEER) {
-        // Seer bot: vote for known wolves if alive
-        const aliveKnownWolves = aliveTargets.filter((t) => botState?.revealedWerewolves.has(t.telegramId));
-        if (aliveKnownWolves.length > 0) {
-          targetOption = aliveKnownWolves[0];
-        }
-      } else {
-        // Other bots (Villager, Bodyguard, Witch, etc.)
-        const aliveKnownWolves = aliveTargets.filter((t) => botState?.revealedWerewolves.has(t.telegramId));
-        if (aliveKnownWolves.length > 0 && Math.random() < 0.85) {
-          targetOption = aliveKnownWolves[Math.floor(Math.random() * aliveKnownWolves.length)];
-        }
-      }
-
-      if (!targetOption) {
-        // Fallback: vote for anyone except self
-        const fallbackTargets = aliveTargets.filter((t) => t.telegramId !== player.telegramId);
-        targetOption = pickRandomTarget(fallbackTargets);
-      }
-
-      if (!targetOption) continue;
+      await waitForBotTurn();
+      const targetOption = pickBotVoteTarget(room, player, aliveTargets, botState);
+      const targetTelegramId = targetOption?.telegramId ?? null;
 
       try {
         await this.services.dayService.submitVote({
           roomId: room.id,
-          actionId: `bot-vote-${player.telegramId}-${room.currentRound}-${targetOption.telegramId}`,
+          actionId: `bot-vote-${player.telegramId}-${room.currentRound}-${targetTelegramId ?? 'SKIP'}`,
           voterTelegramId: player.telegramId,
-          targetTelegramId: targetOption.telegramId,
+          targetTelegramId,
         });
       } catch {
-        // Ignore duplicate or invalid bot votes.
+        // Ignore duplicate or invalid bot votes; the phase timeout will handle
+        // any genuinely missing vote according to the configured policy.
       }
     }
 
@@ -1187,15 +1345,7 @@ export class GameFlowController {
       // it means the Witch timed out
       await this.cleanupTimedOutWitch(room);
 
-      const {
-        room: resolvedRoom,
-        deaths,
-        seerResults,
-      } = await this.services.orchestrator.resolveNight({
-        roomId,
-        promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
-      });
-      await this.onNightResolved(resolvedRoom, deaths, seerResults);
+      await this.resolveNight(roomId);
     });
 
     this.services.timerService.onTimeout(TimerJobType.WITCH_ACTION_TIMEOUT, async (roomId) => {
@@ -1205,11 +1355,7 @@ export class GameFlowController {
       // Witch timed out during Witch phase
       await this.cleanupTimedOutWitch(room);
 
-      const { room: resolvedRoom, deaths, seerResults } = await this.services.orchestrator.resolveNight({
-        roomId,
-        promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
-      });
-      await this.onNightResolved(resolvedRoom, deaths, seerResults);
+      await this.resolveNight(roomId);
     });
 
     this.services.timerService.onTimeout(TimerJobType.DISCUSSION_TIMEOUT, async (roomId) => {
@@ -1222,28 +1368,7 @@ export class GameFlowController {
       const room = await this.services.roomService.getRoom(roomId);
       if (!room || room.gameState !== GameState.VOTING) return;
 
-      // Fix #3: Guard against concurrent resolution with the early-all-voted path.
-      if (resolvingExecutionRooms.has(roomId)) {
-        logger.debug('VOTING_TIMEOUT: execution already in progress, skipping timer-triggered resolution', { roomId });
-        return;
-      }
-
-      resolvingExecutionRooms.add(roomId);
-      try {
-        const {
-          room: resolvedRoom,
-          executedTelegramId,
-          deaths,
-        } = await this.services.orchestrator.resolveExecution({
-          roomId,
-          promptHunter: (rid, hid) => this.promptHunterAndAwait(rid, hid),
-        });
-        await this.onExecutionResolved(resolvedRoom, executedTelegramId, deaths);
-      } catch (err) {
-        logger.error('VOTING_TIMEOUT: execution resolution failed', { roomId, err });
-      } finally {
-        resolvingExecutionRooms.delete(roomId);
-      }
+      await this.resolveExecution(roomId);
     });
   }
 }

@@ -1,6 +1,10 @@
 node_modules/
 dist/
-.env
-*.log
 coverage/
+*.log
 .DS_Store
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example

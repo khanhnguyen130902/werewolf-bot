@@ -206,7 +206,8 @@ export class RoomService {
       if (!room.players[params.telegramId]) {
         throw new PlayerNotInRoomError(params.telegramId);
       }
-      const { [params.telegramId]: _removed, ...remainingPlayers } = room.players;
+      const remainingPlayers = { ...room.players };
+      delete remainingPlayers[params.telegramId];
       const updated: RoomState = {
         ...room,
         players: remainingPlayers,
@@ -245,7 +246,8 @@ export class RoomService {
       if (!room.players[params.targetTelegramId]) {
         throw new PlayerNotInRoomError(params.targetTelegramId);
       }
-      const { [params.targetTelegramId]: _removed, ...remainingPlayers } = room.players;
+      const remainingPlayers = { ...room.players };
+      delete remainingPlayers[params.targetTelegramId];
       const updated: RoomState = {
         ...room,
         players: remainingPlayers,
