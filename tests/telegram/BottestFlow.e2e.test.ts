@@ -13,6 +13,7 @@ import { ClockPort } from '../../src/engine/ports/ClockPort';
 import { RandomPort } from '../../src/engine/ports/RandomPort';
 import { InMemoryStorageAdapter } from '../../src/infrastructure/redis/InMemoryStorageAdapter';
 import { registerbottestCommand } from '../../src/telegram/commands/bottest';
+import { registerVoteCommand } from '../../src/telegram/commands/vote';
 import { GameFlowController } from '../../src/telegram/GameFlowController';
 import { BotServices } from '../../src/telegram/BotServices';
 
@@ -108,14 +109,14 @@ describe('bottest end-to-end flow', () => {
       orchestrator,
     } as unknown as BotServices;
 
-    const bottestHandlers: Array<(ctx: any) => Promise<void>> = [];
+    const commandHandlers: Array<(ctx: any) => Promise<void>> = [];
     bot.command.mockImplementation((_name: string, handler: (ctx: any) => Promise<void>) => {
-      bottestHandlers.push(handler);
+      commandHandlers.push(handler);
     });
     registerbottestCommand(services, bot);
 
     const roomId = 'e2e-bottest-room';
-    await bottestHandlers[0]({
+    await commandHandlers[0]({
       chat: { type: 'group', id: roomId },
       from: { id: 99999990099, first_name: 'TestHost' },
       message: { text: '/bottest 6 seer' },
@@ -135,19 +136,44 @@ describe('bottest end-to-end flow', () => {
     expect(room.players['99999990099'].role).toBe(RoleId.SEER);
 
     const controller = new GameFlowController(services, bot);
+    registerVoteCommand(services, controller, bot);
     await controller.onGameStarted(room);
 
     let current = await storage.getRoom(roomId);
     expect(current?.gameState).toBe(GameState.DISCUSSION);
 
     const phaseHistory: GameState[] = [current!.gameState];
+    let voteCommandInvocations = 0;
     for (let round = 0; round < 10 && current?.gameState !== GameState.GAME_OVER; round += 1) {
       if (current?.gameState === GameState.DISCUSSION) {
-        await controller.startVoting(roomId);
+        const voteReply = jest.fn().mockResolvedValue(undefined);
+        await commandHandlers[1]({
+          chat: { type: 'group', id: roomId },
+          from: { id: 99999990099 },
+          message: { text: '/vote' },
+          reply: voteReply,
+        });
+        voteCommandInvocations += 1;
+        // A successful start may immediately resolve in the deterministic bot
+        // scenario; either way the command itself must not throw.
+        expect(voteReply).not.toHaveBeenCalledWith(expect.stringContaining('Có lỗi xảy ra'));
       }
       current = await storage.getRoom(roomId);
       if (current) phaseHistory.push(current.gameState);
     }
+
+    // Calling /vote again after the phase has advanced must be handled as a
+    // friendly phase response, not leak an INVALID_PHASE_ACTION exception.
+    const duplicateVoteReply = jest.fn().mockResolvedValue(undefined);
+    await commandHandlers[1]({
+      chat: { type: 'group', id: roomId },
+      from: { id: 99999990099 },
+      message: { text: '/vote' },
+      reply: duplicateVoteReply,
+    });
+    expect(voteCommandInvocations).toBeGreaterThan(0);
+    expect(duplicateVoteReply).toHaveBeenCalledWith(expect.any(String));
+    expect(duplicateVoteReply.mock.calls[0][0]).not.toBe('');
 
     expect(current?.gameState).toBe(GameState.GAME_OVER);
     expect(phaseHistory).toContain(GameState.DISCUSSION);

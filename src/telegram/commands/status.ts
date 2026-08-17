@@ -4,6 +4,7 @@ import { BotServices } from '../BotServices';
 import { Messages } from '../presenters/messages';
 import { GameState, RoomStatus } from '../../engine/domain/enums';
 import { translateError } from '../presenters/translateError';
+import { logger } from '../../infrastructure/logging/logger';
 
 const STATE_LABELS: Record<string, string> = {
   [GameState.WAITING]: 'Đang chờ người chơi',
@@ -26,6 +27,7 @@ export function registerStatusCommand(services: BotServices, bot: Telegraf<BotCo
     }
 
     const roomId = String(ctx.chat.id);
+    logger.info('Command /status received', { roomId, userId: String(ctx.from?.id ?? 'unknown') });
     try {
       const room = await services.roomService.getRoom(roomId);
       if (!room || room.gameState === GameState.GAME_OVER || room.status === RoomStatus.CLOSED) {
@@ -53,7 +55,9 @@ export function registerStatusCommand(services: BotServices, bot: Telegraf<BotCo
           remainingText,
         { parse_mode: 'Markdown' },
       );
+      logger.info('Command /status completed', { roomId, gameState: room.gameState });
     } catch (err) {
+      logger.error('Command /status failed', { roomId, err });
       await ctx.reply(translateError(err));
     }
   });

@@ -26,6 +26,18 @@ async function main(): Promise<void> {
   const bot = new Telegraf<BotContext>(config.telegramBotToken);
   const flowController = new GameFlowController(services, bot);
 
+  // Never let an update-level failure disappear without a structured log.
+  // This is especially important for polling/debug sessions where a command
+  // can otherwise look like it received no response.
+  bot.catch((err, ctx) => {
+    logger.error('Unhandled Telegram update error', {
+      updateId: ctx.update.update_id,
+      chatId: ctx.chat?.id,
+      fromId: ctx.from?.id,
+      err,
+    });
+  });
+
   // --- Register middleware to delete messages from muted/dead players ---
   bot.use(async (ctx, next) => {
     if (
@@ -41,7 +53,18 @@ async function main(): Promise<void> {
       if (!isEndCommand) {
         const chatId = ctx.chat.id;
         const userId = String(ctx.from.id);
-        const isMuted = await flowController.muteService.isPlayerMuted(chatId, userId);
+        let isMuted = false;
+        try {
+          isMuted = await flowController.muteService.isPlayerMuted(chatId, userId);
+        } catch (err) {
+          // Redis availability must not make every command appear unresponsive.
+          // Continue the update and let the command handler return its own result.
+          logger.error('Mute middleware Redis check failed; continuing update', {
+            chatId,
+            userId,
+            err,
+          });
+        }
         if (isMuted) {
           try {
             await ctx.deleteMessage();

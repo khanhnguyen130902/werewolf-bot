@@ -12,23 +12,44 @@ export const RoleNames: Record<RoleId, string> = {
 
 export const RoleDescriptions: Record<RoleId, string> = {
   [RoleId.WEREWOLF]:
-    'Bóng tối là đồng minh của bạn. Mỗi đêm, bạn cùng bầy Sói lặng lẽ chọn ra một con mồi để xé toạc màn đêm. Phe Sói thắng khi số Sói còn sống ngang bằng hoặc vượt qua số người phe Dân - khi đó, làng sẽ thuộc về các người.',
+    'Bạn thuộc phe Sói và hoạt động trong bóng tối.\n\n' +
+    '🎯 Mỗi đêm: Cùng những con Sói khác chọn 1 người làm con mồi.\n' +
+    '🏆 Thắng khi: Số Sói còn sống ≥ số người phe Dân.',
 
   [RoleId.VILLAGER]:
-    'Bạn chỉ có đôi mắt, khối óc và bản năng sinh tồn. Không phép thuật, không đặc quyền - chỉ có sự quan sát sắc bén, những cuộc tranh luận nảy lửa và một lá phiếu định mệnh để lôi Sói ra ánh sáng trước khi quá muộn.',
+    'Bạn không có kỹ năng đặc biệt, nhưng có quyền quyết định số phận của cả ngôi làng.\n\n' +
+    '🎯 Nhiệm vụ: Quan sát, tranh luận và tìm ra Sói.\n' +
+    '🗳️ Mỗi ngày: Bỏ phiếu để loại người bạn nghi ngờ.\n' +
+    '🏆 Thắng khi: Tất cả Sói bị loại.',
 
   [RoleId.SEER]:
-    'Đôi mắt của bạn nhìn xuyên qua lớp mặt nạ con người. Mỗi đêm, hãy chọn một người để soi thấu bản chất thật của họ - Sói đội lốt, hay Dân làng vô tội.',
+    'Bạn có khả năng nhìn thấy thân phận thật của người khác.\n\n' +
+    '🎯 Mỗi đêm: Chọn 1 người để kiểm tra phe.\n' +
+    '👁️ Kết quả: Biết người đó thuộc phe Sói hay phe Dân.\n' +
+    '🏆 Mục tiêu: Dùng thông tin có được để giúp phe Dân tìm ra Sói.',
 
   [RoleId.BODYGUARD]:
-    'Bạn là lá chắn cuối cùng đứng giữa bóng tối và sự sống. Mỗi đêm, hãy chọn một người để bảo vệ khỏi nanh vuốt của Sói - nhưng cẩn thận, không thể che chở cùng một người hai đêm liên tiếp.',
+    'Bạn là người đứng giữa Sói và con mồi.\n\n' +
+    '🎯 Mỗi đêm: Chọn 1 người để bảo vệ khỏi Sói.\n' +
+    '⚠️ Giới hạn: Không thể bảo vệ cùng một người trong 2 đêm liên tiếp.\n' +
+    '🏆 Mục tiêu: Giữ những nhân vật quan trọng của phe Dân sống sót.',
 
   [RoleId.HUNTER]:
-    'Ngay cả khi gục ngã, bạn vẫn còn một viên đạn cuối cùng. Trước khi rời khỏi cuộc chơi, hãy chọn một người để kéo theo xuống vực - hoặc buông súng trong im lặng.',
+    'Bạn luôn giữ lại một viên đạn cho thời khắc cuối cùng.\n\n' +
+    '🎯 Khi bị loại: Có thể chọn 1 người khác để loại cùng.\n' +
+    '⚠️ Lựa chọn: Bạn cũng có thể không sử dụng phát bắn cuối cùng.\n' +
+    '🏆 Mục tiêu: Hạ Sói trước khi rời khỏi cuộc chơi.',
 
   [RoleId.WITCH]:
-    'Trong bóng tối căn nhà nhỏ, hai lọ thuốc chờ được định đoạt: một mang lại sự sống, một mang đến cái chết. Mỗi lọ chỉ dùng được một lần trong suốt ván chơi. Nếu cả hai vẫn còn nguyên, bạn có thể dùng một, dùng cả hai, hoặc cất chúng đi trong cùng một đêm.',
-};
+    'Bạn sở hữu 2 lọ thuốc, mỗi lọ chỉ được sử dụng 1 lần trong cả ván.\n\n' +
+    '💚 Thuốc cứu: Cứu 1 người khỏi bị Sói tấn công.\n' +
+    '💀 Thuốc độc: Loại 1 người khỏi cuộc chơi.\n\n' +
+    '🌙 Mỗi đêm, bạn có thể:\n' +
+    '• Dùng thuốc cứu\n' +
+    '• Dùng thuốc độc\n' +
+    '• Dùng cả 2\n' +
+    '• Không dùng thuốc nào',
+}
 
 export const TeamNames: Record<Team, string> = {
   [Team.WEREWOLF]: '🐺 Phe Sói',
@@ -120,7 +141,8 @@ export const Messages = {
 
   hunterShotResult: (hunterNickname: string, targetNickname: string) => `🏹 Trong hơi thở cuối cùng, ${hunterNickname} đã siết cò, hạ gục ${targetNickname} cùng mình.`,
 
-  seerResult: (targetNickname: string, teamName: string) => `🔮 THỊ KIẾN HIỆN RA: ${targetNickname} thuộc về ${teamName}.`,
+  seerResult: (targetNickname: string, teamName: string) =>
+    `🔮 Ánh mắt tiên tri đã xuyên thấu ${targetNickname}.\n\nPhe: ${teamName}`,
 
   gameOver: (winner: string) => `🏆 MÀN ĐÊM ĐÃ KẾT THÚC\n\n${WinnerNames[winner] ?? winner} đã giành chiến thắng tuyệt đối!`,
 
