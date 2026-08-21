@@ -1,4 +1,6 @@
 import { Telegraf } from 'telegraf';
+
+type SendMessageExtra = Parameters<Telegraf<BotContext>['telegram']['sendMessage']>[2];
 import { BotContext } from './BotContext';
 import { BotServices } from './BotServices';
 import { RoomState } from '../engine/domain/Room';
@@ -103,11 +105,11 @@ export class GameFlowController {
   private async safeSendMessage(
     chatId: string | number,
     text: string,
-    extra?: unknown,
+    extra?: SendMessageExtra,
     operation = 'sendMessage',
   ): Promise<void> {
     try {
-      await this.bot.telegram.sendMessage(chatId, text, extra as any);
+      await this.bot.telegram.sendMessage(chatId, text, extra);
     } catch (err) {
       logger.error('Telegram delivery failed; continuing game flow', {
         operation,

@@ -1,4 +1,5 @@
 import { RoleId, Team, DeathCause, WinnerTeam } from '../../engine/domain/enums';
+import { CANONICAL_MESSAGES } from './canonicalContent';
 
 /** Player-facing Vietnamese text for the Telegram interface. */
 export const RoleNames: Record<RoleId, string> = {
@@ -94,7 +95,7 @@ export const Messages = {
   },
 
   needDmFirst: (botUsername: string) =>
-    `⚠️ Trước khi bước vào cuộc chơi, hãy nhắn /start cho bot trong tin nhắn riêng - đó là cách duy nhất để nhận vai trò bí mật và đưa ra quyết định trong đêm.\n\n👉 https://t.me/${botUsername}?start=join`,
+    `${CANONICAL_MESSAGES.DM_REQUIRED.text}\n\n👉 https://t.me/${botUsername}?start=join`,
 
   joined: (nickname: string, count: number) => `✨ ${nickname} đã bước vào ngôi làng. Hiện có ${count} người chơi đang chờ đợi số phận.`,
 
@@ -184,7 +185,7 @@ export const Messages = {
 
   hostKicked: (nickname: string) => `🚫 ${nickname} đã bị chủ phòng trục xuất khỏi ngôi làng.`,
 
-  invalidTarget: () => '❌ Mục tiêu không tồn tại hoặc không hợp lệ. Hãy chọn lại.',
+  invalidTarget: () => CANONICAL_MESSAGES.INVALID_TARGET.text,
 
   genericError: () => '⚠️ Một điều gì đó đã đi sai hướng trong bóng tối. Vui lòng thử lại.',
 
