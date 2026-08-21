@@ -9,13 +9,16 @@ export type ContentAudience =
   | 'ADMIN_ONLY';
 
 export type ContentPriority = 'INFO' | 'HIGH' | 'CRITICAL';
+export type ContentLayer = 'PURE_SYSTEM' | 'GAMEPLAY' | 'NARRATIVE' | 'CLIMAX';
 
 export interface CanonicalMessage {
   readonly id: string;
   readonly event: string;
   readonly audience: ContentAudience;
   readonly priority: ContentPriority;
+  readonly layer: ContentLayer;
   readonly text: string;
+  readonly variants?: readonly string[];
 }
 
 export const ROLE_DISPLAY_NAMES: Record<RoleId, string> = {
@@ -60,7 +63,7 @@ export const ACTION_BUTTON_LABELS: Partial<Record<NightActionType, string>> = {
 
 export const CANONICAL_HELP_TEXT = [
   '🐺 WEREWOLF BOT',
-  'Trợ lý điều hành game Ma Sói trên Telegram',
+  'Một ngôi làng nhỏ. Một màn đêm dài. Không ai biết người bên cạnh mình thực sự là ai.',
   '━━━━━━━━━━━━━━━━━━',
   '',
   '🚀 BẮT ĐẦU NHANH',
@@ -71,14 +74,14 @@ export const CANONICAL_HELP_TEXT = [
   '5. Làm theo nút hành động bot gửi trong DM.',
   '',
   '🎮 LỆNH NGƯỜI CHƠI',
-  '/start — Kích hoạt DM để nhận role và thông báo riêng.',
+  '/start — Kích hoạt DM để nhận vai trò và thông báo riêng.',
   '/join — Tham gia phòng đang mở trong group.',
   '/leave — Rời phòng trước khi ván bắt đầu.',
   '/status — Xem trạng thái phòng và số người chơi.',
   '/vote — Gửi phiếu thủ công khi cần.',
   '',
   '👑 LỆNH HOST',
-  '/create — Tạo phòng mới trong group.',
+  '/create — Mở một phòng chơi mới.',
   '/startgame — Khóa phòng và bắt đầu ván.',
   '/end — Kết thúc phòng hiện tại.',
   '',
@@ -88,8 +91,8 @@ export const CANONICAL_HELP_TEXT = [
   '',
   '🌙 CÁCH CHƠI',
   '• Ban đêm: role đặc biệt chọn hành động qua nút trong DM.',
-  '• Ban ngày: mọi người thảo luận và bỏ phiếu trong group.',
-  '• Người chết: không tiếp tục hành động hoặc tiết lộ role.',
+  '• Ban ngày: người còn sống thảo luận và bỏ phiếu trong group.',
+  '• Người đã chết không tiếp tục hành động trong ván.',
   '• Ván kết thúc khi một phe đạt điều kiện chiến thắng.',
   '',
   '🔒 QUY TẮC QUAN TRỌNG',
@@ -99,7 +102,7 @@ export const CANONICAL_HELP_TEXT = [
   '• Nếu chưa tạo game, /join sẽ báo phòng chưa tồn tại.',
   '',
   '💡 CẦN TRỢ GIÚP?',
-  'Dùng /help bất cứ lúc nào để mở lại hướng dẫn này.',
+  'Dùng /help bất cứ lúc nào. Đêm có thể bí ẩn, nhưng bước tiếp theo của bạn luôn phải rõ ràng.',
 ].join('\n');
 
 export const CANONICAL_MESSAGES = {
@@ -108,6 +111,7 @@ export const CANONICAL_MESSAGES = {
     event: 'HELP_REQUESTED',
     audience: 'PUBLIC',
     priority: 'INFO',
+    layer: 'GAMEPLAY',
     text: CANONICAL_HELP_TEXT,
   },
   ROOM_NOT_FOUND: {
@@ -115,56 +119,68 @@ export const CANONICAL_MESSAGES = {
     event: 'JOIN_REQUESTED',
     audience: 'PUBLIC',
     priority: 'HIGH',
-    text: '⚠️ Không tìm thấy phòng chơi này. Có thể phòng đã bị đóng.',
+    layer: 'PURE_SYSTEM',
+    text: '⚠️ Khoan đã. Không tìm thấy phòng chơi này. Có thể phòng đã được đóng.',
   },
   DM_REQUIRED: {
     id: 'ERROR.DM_REQUIRED',
     event: 'JOIN_REQUESTED',
     audience: 'PLAYER_PRIVATE',
     priority: 'HIGH',
-    text: '⚠️ Trước khi bước vào cuộc chơi, hãy nhắn /start cho bot trong tin nhắn riêng để nhận vai trò và thông báo.',
+    layer: 'PURE_SYSTEM',
+    text: '⚠️ Một bước trước khi vào làng. Hãy nhắn /start cho bot trong tin nhắn riêng để nhận vai trò và thông báo.',
   },
   INVALID_TARGET: {
     id: 'ERROR.INVALID_TARGET',
     event: 'ACTION_REJECTED',
     audience: 'PLAYER_PRIVATE',
     priority: 'HIGH',
-    text: '⚠️ Mục tiêu này không hợp lệ. Hãy chọn một người còn sống trong ván.',
+    layer: 'PURE_SYSTEM',
+    text: '⚠️ Mục tiêu chưa hợp lệ. Hãy chọn một người còn sống trong ván.',
   },
   ACTION_COMPLETED: {
     id: 'ACTION.COMPLETED',
     event: 'ACTION_SUBMITTED',
     audience: 'PLAYER_PRIVATE',
     priority: 'INFO',
-    text: '✅ Hành động của bạn đã được ghi nhận.',
+    layer: 'GAMEPLAY',
+    text: '✅ Đã ghi nhận. Lựa chọn của bạn sẽ được xử lý theo luật của ván.',
   },
   GAME_STARTED: {
     id: 'GAME.STARTED',
     event: 'GAME_STARTED',
     audience: 'PUBLIC',
     priority: 'HIGH',
-    text: '🌙 Ván chơi bắt đầu. Hãy kiểm tra tin nhắn riêng để xem vai trò và hành động của bạn.',
+    layer: 'NARRATIVE',
+    text: '🌙 Màn đêm buông xuống. Hãy kiểm tra tin nhắn riêng để xem vai trò và hành động của bạn.',
+    variants: [
+      '🌙 Ngôi làng chìm vào bóng tối. Vai trò và hành động của bạn đang chờ trong tin nhắn riêng.',
+      '🌙 Đêm lại đến. Hãy mở tin nhắn riêng; đừng để lựa chọn đầu tiên của bạn bị bỏ lỡ.',
+    ],
   },
   PLAYER_DIED: {
     id: 'PLAYER.DEAD',
     event: 'PLAYER_DIED',
     audience: 'PUBLIC',
     priority: 'HIGH',
-    text: '💀 Một người chơi đã chết trong ván.',
+    layer: 'CLIMAX',
+    text: '💀 Một người đã không còn thức dậy. Người chơi đã chết và không thể tiếp tục hành động trong ván.',
   },
   VILLAGE_WIN: {
     id: 'GAME.WIN.VILLAGE',
     event: 'WIN_CONDITION_MET',
     audience: 'PUBLIC',
     priority: 'HIGH',
-    text: '✅ Phe Dân đã chiến thắng!',
+    layer: 'CLIMAX',
+    text: '☀️ Bình minh cuối cùng cũng đến. Những bóng tối còn sót lại đã biến mất. Phe Dân chiến thắng.',
   },
   WOLF_WIN: {
     id: 'GAME.WIN.WOLF',
     event: 'WIN_CONDITION_MET',
     audience: 'PUBLIC',
     priority: 'HIGH',
-    text: '🐺 Phe Sói đã chiến thắng!',
+    layer: 'CLIMAX',
+    text: '🌑 Ngôi làng đã im tiếng. Không còn ai đủ sức chống lại bóng tối. Phe Sói chiến thắng.',
   },
 } as const satisfies Record<string, CanonicalMessage>;
 

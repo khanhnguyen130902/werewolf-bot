@@ -1,28 +1,32 @@
 import { DomainError } from '../../engine/errors/DomainError';
+import { CANONICAL_MESSAGES } from './canonicalContent';
 
 /** Converts domain errors into concise, player-friendly Vietnamese. */
 const ERROR_MESSAGES: Record<string, string> = {
-  ROOM_NOT_FOUND: 'Không tìm thấy phòng chơi này. Có thể phòng đã bị đóng.',
-  ROOM_FULL: 'Phòng đã đủ người chơi.',
-  ROOM_LOCKED: 'Ván chơi đã bắt đầu nên không thể tham gia thêm.',
-  PLAYER_ALREADY_IN_ROOM: 'Bạn đã ở trong phòng này rồi.',
-  PLAYER_NOT_IN_ROOM: 'Bạn chưa tham gia phòng này.',
-  NOT_ENOUGH_PLAYERS: 'Chưa đủ người để bắt đầu ván chơi.',
-  TOO_MANY_PLAYERS: 'Số người chơi đã vượt quá giới hạn của phòng.',
-  NOT_HOST: 'Chỉ chủ phòng mới có thể thực hiện việc này.',
-  DEAD_PLAYER_ACTION: 'Bạn đã bị loại nên không thể thực hiện hành động này.',
-  INVALID_PHASE_ACTION: 'Hành động này chưa thể thực hiện ở giai đoạn hiện tại.',
-  INVALID_TARGET: 'Mục tiêu không hợp lệ. Hãy chọn lại.',
-  WRONG_ROLE_FOR_ACTION: 'Vai trò của bạn không thể thực hiện hành động này.',
-  NO_POTION_LEFT: 'Bạn đã dùng bình thuốc này rồi.',
-  CONCURRENT_MODIFICATION: 'Phòng vừa có thay đổi. Vui lòng thử lại.',
-  STALE_RESOLUTION: 'Kết quả xử lý này đã cũ vì ván chơi vừa thay đổi. Vui lòng thử lại.',
-  DUPLICATE_ACTION: 'Lựa chọn này đã được ghi nhận trước đó.',
-  INVALID_STATE_TRANSITION: 'Không thể thực hiện thao tác này vào lúc này.',
-  DM_NOT_REACHABLE: 'Hãy nhắn /start cho bot trong tin nhắn riêng trước khi tham gia phòng.',
+  ROOM_NOT_FOUND: CANONICAL_MESSAGES.ROOM_NOT_FOUND.text,
+  ROOM_FULL: '🔒 Phòng đã đủ người. Hiện không thể nhận thêm người chơi.',
+  ROOM_LOCKED: '🔒 Cánh cửa làng đã đóng. Ván chơi đã bắt đầu nên không thể tham gia thêm.',
+  PLAYER_ALREADY_IN_ROOM: '🌙 Bạn đã ở trong phòng này rồi.',
+  PLAYER_NOT_IN_ROOM: '⚠️ Bạn chưa tham gia phòng này.',
+  NOT_ENOUGH_PLAYERS: '⏳ Chưa đủ người để bắt đầu ván.',
+  TOO_MANY_PLAYERS: '⚠️ Phòng đã vượt quá giới hạn người chơi.',
+  NOT_HOST: '⚠️ Chỉ host mới có quyền thực hiện việc này.',
+  DEAD_PLAYER_ACTION: '💀 Bạn đã chết. Bạn không thể tiếp tục thực hiện hành động trong ván.',
+  INVALID_PHASE_ACTION: '🌙 Chưa đến lúc. Bạn không thể thực hiện hành động này ở giai đoạn hiện tại.',
+  INVALID_TARGET: CANONICAL_MESSAGES.INVALID_TARGET.text,
+  WRONG_ROLE_FOR_ACTION: '⚠️ Vai trò của bạn không có hành động này.',
+  NO_POTION_LEFT: '🧪 Lọ thuốc này đã được sử dụng.',
+  CONCURRENT_MODIFICATION: '⚠️ Phòng vừa có thay đổi. Vui lòng thử lại.',
+  STALE_RESOLUTION: '⚠️ Ván vừa thay đổi. Kết quả này không còn được áp dụng; vui lòng thử lại.',
+  DUPLICATE_ACTION: '✅ Lựa chọn này đã được ghi nhận.',
+  INVALID_STATE_TRANSITION: '⚠️ Chưa thể thực hiện thao tác này lúc này.',
+  DM_NOT_REACHABLE: CANONICAL_MESSAGES.DM_REQUIRED.text,
 };
 
+const GENERIC_DOMAIN_ERROR = '⚠️ Khoan đã. Không thể thực hiện thao tác này lúc này. Vui lòng thử lại.';
+const GENERIC_SYSTEM_ERROR = '❌ Có lỗi vừa xảy ra. Vui lòng thử lại.';
+
 export function translateError(err: unknown): string {
-  if (err instanceof DomainError) return ERROR_MESSAGES[err.code] ?? '❌ Không thể thực hiện thao tác này. Vui lòng thử lại.';
-  return '❌ Có lỗi xảy ra. Vui lòng thử lại.';
+  if (err instanceof DomainError) return ERROR_MESSAGES[err.code] ?? GENERIC_DOMAIN_ERROR;
+  return GENERIC_SYSTEM_ERROR;
 }

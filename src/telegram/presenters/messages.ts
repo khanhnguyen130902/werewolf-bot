@@ -1,168 +1,176 @@
 import { RoleId, Team, DeathCause, WinnerTeam } from '../../engine/domain/enums';
-import { CANONICAL_MESSAGES } from './canonicalContent';
+import { CANONICAL_MESSAGES, ROLE_DISPLAY_NAMES, ROLE_EMOJIS } from './canonicalContent';
 
-/** Player-facing Vietnamese text for the Telegram interface. */
+/** Canonical player-facing Vietnamese text for the Telegram interface. */
+const roleLabel = (roleId: RoleId): string => `${ROLE_EMOJIS[roleId]} ${ROLE_DISPLAY_NAMES[roleId]}`;
+
 export const RoleNames: Record<RoleId, string> = {
-  [RoleId.WEREWOLF]: '🐺 Sói',
-  [RoleId.VILLAGER]: '🧑‍🌾 Dân làng',
-  [RoleId.SEER]: '🔮 Tiên tri',
-  [RoleId.BODYGUARD]: '🛡️ Bảo vệ',
-  [RoleId.HUNTER]: '🏹 Thợ săn',
-  [RoleId.WITCH]: '🧙‍♂️ Phù thủy',
-  [RoleId.SILENT_MAGE]: '🧞 Pháp sư câm',
+  [RoleId.WEREWOLF]: roleLabel(RoleId.WEREWOLF),
+  [RoleId.VILLAGER]: roleLabel(RoleId.VILLAGER),
+  [RoleId.SEER]: roleLabel(RoleId.SEER),
+  [RoleId.BODYGUARD]: roleLabel(RoleId.BODYGUARD),
+  [RoleId.HUNTER]: roleLabel(RoleId.HUNTER),
+  [RoleId.WITCH]: roleLabel(RoleId.WITCH),
+  [RoleId.SILENT_MAGE]: roleLabel(RoleId.SILENT_MAGE),
 };
 
 export const RoleDescriptions: Record<RoleId, string> = {
   [RoleId.WEREWOLF]:
-    'Bạn thuộc phe Sói và hoạt động trong bóng tối.\n\n' +
-    '🎯 Mỗi đêm: Cùng những con Sói khác chọn 1 người làm con mồi.\n' +
-    '🏆 Thắng khi: Số Sói còn sống ≥ số người phe Dân.',
+    'Đêm xuống. Bóng tối đang đứng về phía bạn.\n\n' +
+    '🎯 Mỗi đêm: Cùng những con Sói khác chọn 1 người còn sống làm mục tiêu tấn công.\n' +
+    '🏆 Thắng khi: Điều kiện chiến thắng của phe Sói được thỏa mãn.',
 
   [RoleId.VILLAGER]:
-    'Bạn không có kỹ năng đặc biệt, nhưng có quyền quyết định số phận của cả ngôi làng.\n\n' +
-    '🎯 Nhiệm vụ: Quan sát, tranh luận và tìm ra Sói.\n' +
-    '🗳️ Mỗi ngày: Bỏ phiếu để loại người bạn nghi ngờ.\n' +
-    '🏆 Thắng khi: Tất cả Sói bị loại.',
+    'Bạn không có sức mạnh đặc biệt. Nhưng trong ngôi làng này, một lá phiếu đúng có thể thay đổi tất cả.\n\n' +
+    '🎯 Nhiệm vụ: Quan sát, thảo luận và tìm ra Sói.\n' +
+    '🗳️ Mỗi ngày: Bỏ phiếu theo luật của ván.\n' +
+    '🏆 Thắng khi: Điều kiện chiến thắng của phe Dân được thỏa mãn.',
 
   [RoleId.SEER]:
-    'Bạn có khả năng nhìn thấy thân phận thật của người khác.\n\n' +
-    '🎯 Mỗi đêm: Chọn 1 người để kiểm tra phe.\n' +
-    '👁️ Kết quả: Biết người đó thuộc phe Sói hay phe Dân.\n' +
-    '🏆 Mục tiêu: Dùng thông tin có được để giúp phe Dân tìm ra Sói.',
+    'Có những điều người khác không nhìn thấy. Bạn có thể nhìn sâu hơn vào một người trong đêm.\n\n' +
+    '🎯 Mỗi đêm: Chọn 1 người còn sống để điều tra.\n' +
+    '🔮 Kết quả: Nhận thông tin theo đúng kết quả mà ván quy định.\n' +
+    '🏆 Mục tiêu: Dùng thông tin ấy để giúp phe Dân tìm ra Sói.',
 
   [RoleId.BODYGUARD]:
-    'Bạn là người đứng giữa Sói và con mồi.\n\n' +
-    '🎯 Mỗi đêm: Chọn 1 người để bảo vệ khỏi Sói.\n' +
-    '⚠️ Giới hạn: Không thể bảo vệ cùng một người trong 2 đêm liên tiếp.\n' +
-    '🏆 Mục tiêu: Giữ những nhân vật quan trọng của phe Dân sống sót.',
+    'Khi cả ngôi làng ngủ, bạn vẫn còn thức.\n\n' +
+    '🎯 Mỗi đêm: Chọn 1 người còn sống để bảo vệ khỏi đòn tấn công phù hợp.\n' +
+    '⚠️ Giới hạn: Các quy tắc tự bảo vệ và bảo vệ liên tiếp được áp dụng theo trạng thái ván.\n' +
+    '🏆 Mục tiêu: Giữ những người quan trọng của phe Dân sống sót.',
 
   [RoleId.HUNTER]:
     'Bạn luôn giữ lại một viên đạn cho thời khắc cuối cùng.\n\n' +
-    '🎯 Khi bị loại: Có thể chọn 1 người khác để loại cùng.\n' +
-    '⚠️ Lựa chọn: Bạn cũng có thể không sử dụng phát bắn cuối cùng.\n' +
-    '🏆 Mục tiêu: Hạ Sói trước khi rời khỏi cuộc chơi.',
+    '🎯 Khi luật tử vong cho phép: Chọn 1 người còn sống để bắn trả.\n' +
+    '⚠️ Lựa chọn: Bạn có thể không sử dụng phát bắn cuối cùng.\n' +
+    '🏆 Mục tiêu: Góp phần đưa phe Dân đến chiến thắng.',
 
   [RoleId.WITCH]:
-    'Bạn sở hữu 2 lọ thuốc, mỗi lọ chỉ được sử dụng 1 lần trong cả ván.\n\n' +
-    '💚 Thuốc cứu: Cứu 1 người khỏi bị Sói tấn công.\n' +
-    '💀 Thuốc độc: Loại 1 người khỏi cuộc chơi.\n\n' +
-    '🌙 Mỗi đêm, bạn có thể:\n' +
-    '• Dùng thuốc cứu\n' +
-    '• Dùng thuốc độc\n' +
-    '• Dùng cả 2\n' +
-    '• Không dùng thuốc nào',
+    'Hai lọ thuốc nằm im trong bóng tối. Mỗi lọ chỉ có thể được dùng một lần trong ván.\n\n' +
+    '🧪 Thuốc cứu: Cứu mục tiêu theo luật của ván.\n' +
+    '☠️ Thuốc độc: Chọn 1 mục tiêu hợp lệ để đầu độc.\n' +
+    '🌙 Mỗi đêm: Bạn có thể dùng thuốc theo số lần và điều kiện còn lại trong trạng thái ván.',
 
   [RoleId.SILENT_MAGE]:
-    'Bạn điều khiển sự im lặng của bóng tối.\n\n' +
-    '🎯 Mỗi đêm: Chọn 1 người còn sống để câm lặng trong ngày kế tiếp.\n' +
-    '⚠️ Người đang bị câm mà vẫn nói trong giờ tranh luận sẽ bị loại.\n' +
-    '🏆 Mục tiêu: Giúp phe Dân làng bóp nghẹt lời nói dối của phe Sói.',
-}
+    'Bạn không cần nói lớn để thay đổi bầu không khí của cả ngôi làng.\n\n' +
+    '🎯 Mỗi đêm: Chọn 1 người còn sống để làm câm theo chu kỳ được cấu hình.\n' +
+    '⚠️ Hiệu ứng và xử lý khi người bị câm lên tiếng tuân theo luật của ván.\n' +
+    '🏆 Mục tiêu: Giúp phe Dân hạn chế những lời nói dối nguy hiểm.',
+};
 
 export const TeamNames: Record<Team, string> = {
   [Team.WEREWOLF]: '🐺 Phe Sói',
-  [Team.VILLAGE]: '🏘️ Phe Dân làng',
+  [Team.VILLAGE]: '🏘️ Phe Dân',
 };
 
 export const DeathCauseNames: Record<string, string> = {
-  [DeathCause.WEREWOLF_KILL]: 'bị bầy Sói xé xác trong đêm',
-  [DeathCause.VOTE_EXECUTION]: 'bị dân làng treo cổ trên quảng trường',
-  [DeathCause.WITCH_POISON]: 'trúng độc của Phù thủy và trút hơi thở cuối cùng',
-  [DeathCause.HUNTER_SHOT]: 'ngã gục dưới phát súng cuối cùng của Thợ săn',
-  [DeathCause.SPOKEN_WHILE_SILENCED]: 'bị lời nói phá vỡ lời nguyền im lặng',
+  [DeathCause.WEREWOLF_KILL]: 'không còn thức dậy sau một đêm dài',
+  [DeathCause.VOTE_EXECUTION]: 'rời khỏi cuộc chơi sau phán quyết của ngôi làng',
+  [DeathCause.WITCH_POISON]: 'gục xuống sau khi trúng độc',
+  [DeathCause.HUNTER_SHOT]: 'ngã xuống sau phát bắn cuối cùng của Thợ săn',
+  [DeathCause.SPOKEN_WHILE_SILENCED]: 'bị xử lý sau khi phá vỡ hiệu ứng im lặng',
 };
 
 export const WinnerNames: Record<string, string> = {
-  [WinnerTeam.VILLAGE]: '🏘️ phe Dân làng',
+  [WinnerTeam.VILLAGE]: '🏘️ phe Dân',
   [WinnerTeam.WEREWOLF]: '🐺 phe Sói',
-  [WinnerTeam.NONE]: 'không một ai',
+  [WinnerTeam.NONE]: 'không một phe nào',
 };
 
 export const Messages = {
-  groupOnly: (command: string) => `❌ ${command} chỉ có hiệu lực trong nhóm chat.`,
+  groupOnly: (command: string) => `❌ Chỉ dùng trong group. ${command} không có hiệu lực trong tin nhắn riêng.`,
 
-  roomClosed: () => '🛑 Phòng chơi đã khép lại. Một ván mới có thể được mở ra bất cứ lúc nào tại đây.',
+  roomClosed: () => '🛑 Cánh cửa phòng đã khép lại. Bạn có thể mở một ván mới tại đây khi sẵn sàng.',
 
   noActiveGame: () =>
-    '👀 Hiện chưa có ván chơi nào đang diễn ra tại đây.\n\nGõ /create để mở một ván mới và triệu tập dân làng.',
+    '👀 Hiện chưa có ván chơi nào.\n\nGõ /create để mở một phòng mới cho ngôi làng.',
 
   notInCurrentGame: () =>
-    '🚫 Bạn không tham gia ván chơi hiện tại nên không thể bỏ phiếu.',
+    '⚠️ Bạn chưa ở trong ván hiện tại. Vì vậy, bạn chưa thể bỏ phiếu.',
 
   roomCreated: (roomId: string) => {
     const safeRoomId = String(roomId).replace(/^-/, '');
-    return `🌕 MỘT VÁN MA SÓI MỚI VỪA MỞ RA...\n\nBóng tối đang chờ đợi những kẻ dũng cảm. Gõ /join để bước chân vào ngôi làng. Khi đã đủ người, chủ phòng gõ /startgame để màn đêm buông xuống.\n\n🎫 Mã phòng: ${safeRoomId}`;
+    return `🌑 Một ván mới sắp bắt đầu.\n\nNgôi làng đang chờ người chơi tập hợp. Gõ /join để tham gia; khi đủ người, host dùng /startgame.\n\n🎫 Mã phòng: ${safeRoomId}`;
   },
 
   needDmFirst: (botUsername: string) =>
     `${CANONICAL_MESSAGES.DM_REQUIRED.text}\n\n👉 https://t.me/${botUsername}?start=join`,
 
-  joined: (nickname: string, count: number) => `✨ ${nickname} đã bước vào ngôi làng. Hiện có ${count} người chơi đang chờ đợi số phận.`,
+  joined: (nickname: string, count: number) => `✨ ${nickname} đã vào làng. Hiện có ${count} người chơi đang chờ đêm xuống.`,
 
-  alreadyJoined: () => 'Bạn đã có một chỗ đứng trong ngôi làng này rồi.',
+  alreadyJoined: () => '🌙 Bạn đã ở trong phòng này rồi. Ngôi làng đã ghi nhận tên bạn.',
 
-  left: (nickname: string) => `🚪 ${nickname} đã rời khỏi ngôi làng, để lại một chỗ trống trong bóng tối.`,
+  left: (nickname: string) => `🚪 ${nickname} đã rời phòng. Một chỗ trống vừa xuất hiện trong màn đêm.`,
 
-  roomFull: () => '🔒 Ngôi làng đã chật kín người - không còn chỗ cho ai khác.',
+  roomFull: () => '🔒 Phòng đã đủ người. Hiện không thể nhận thêm người chơi.',
 
-  roomLocked: () => '🔒 Cánh cổng làng đã đóng lại. Ván chơi đã bắt đầu, không thể vào thêm.',
+  roomLocked: () => '🔒 Cánh cửa làng đã đóng. Ván chơi đã bắt đầu, không thể tham gia thêm.',
 
-  notEnoughPlayers: (current: number, min: number) => `⏳ Cần ít nhất ${min} linh hồn để khởi động ván chơi; hiện mới có ${current} người sẵn sàng.`,
+  notEnoughPlayers: (current: number, min: number) => `⏳ Chưa đủ người để bắt đầu. Hiện có ${current}; cần ít nhất ${min} người.`,
 
-  notHost: () => '👑 Chỉ chủ phòng mới nắm quyền định đoạt điều này.',
+  notHost: () => '⚠️ Chỉ host mới có quyền thực hiện việc này.',
 
-  gameStarting: (playerCount: number) => `🌑 BÓNG TỐI BUÔNG XUỐNG.\n\n${playerCount} người chơi đã dấn thân vào cuộc chơi sinh tử. Vai trò bí mật đã được gửi đến từng người - đêm đầu tiên bắt đầu ngay bây giờ.`,
+  gameStarting: (playerCount: number) => `🌑 Mọi người đã vào vị trí.\n\n${playerCount} người chơi chuẩn bị bước vào ván. Vai trò riêng sẽ được gửi qua DM; hãy kiểm tra tin nhắn của bạn.`,
 
   roleDistributionSummary: (playerCount: number, roleCounts: Array<{ roleId: RoleId; count: number }>) =>
-    `📜 DANH SÁCH PHÂN VAI - ${playerCount} người chơi:\n${roleCounts.map((entry) => `• ${RoleNames[entry.roleId]}: ${entry.count}`).join('\n')}`,
+    `🎭 Phân vai — ${playerCount} người chơi\n${roleCounts.map((entry) => `• ${RoleNames[entry.roleId]}: ${entry.count}`).join('\n')}`,
 
-  roleAssigned: (roleId: RoleId) => `🎭 SỐ PHẬN CỦA BẠN ĐÃ ĐƯỢC ĐỊNH ĐOẠT\n\nBạn là ${RoleNames[roleId]}.\n\n${RoleDescriptions[roleId]}`,
+  roleAssigned: (roleId: RoleId) => `🎭 Vai trò của bạn đã được xác định.\n\nBạn là ${RoleNames[roleId]}.\n\n${RoleDescriptions[roleId]}`,
 
-  nightBegins: (round: number) => `🌙 ĐÊM THỨ ${round} BUÔNG XUỐNG\n\nNhững kẻ mang sức mạnh bóng tối, hãy mở tin nhắn riêng và đưa ra lựa chọn của mình. Mỗi quyết định có thể định đoạt cả sinh mạng.`,
+  nightBegins: (round: number) => `🌙 Đêm ${round} bắt đầu.\n\nNgôi làng chìm vào im lặng. Nếu role của bạn có hành động, hãy mở tin nhắn riêng và lựa chọn.`,
 
-  actionRecorded: () => '🌒 Lựa chọn của bạn đã chìm vào bóng tối và được ghi nhận.',
+  nightActionPrompt: (round: number, roleId: RoleId, actionLabel: string) =>
+    roleId === RoleId.WEREWOLF
+      ? `🌙 Đêm ${round}. Bóng tối đang che giấu mọi thứ. Phe Sói hãy chọn một mục tiêu ${actionLabel.toLowerCase()} hợp lệ.`
+      : `🌙 Đêm ${round}. Bạn là ${RoleNames[roleId]}. Hãy chọn hành động ${actionLabel.toLowerCase()} của mình.`,
+
+  witchSavePrompt: (round: number, victimNickname: string) =>
+    `🌙 Đêm ${round}. ${victimNickname} đang gặp nguy hiểm. Bạn có muốn dùng thuốc Cứu không?`,
+
+  witchPoisonPrompt: (round: number) =>
+    `🌙 Đêm ${round}. Một lọ thuốc Độc vẫn còn đó. Bạn có muốn sử dụng nó không?`,
+
+  actionRecorded: () => '✅ Đã ghi nhận. Lựa chọn của bạn sẽ được xử lý theo luật của ván.',
 
   dayBegins: (round: number, deaths: Array<{ nickname: string }>, silencedNickname: string | null = null) => {
     const base = deaths.length === 0
-      ? `☀️ BÌNH MINH NGÀY ${round}\n\nMột đêm yên bình hiếm hoi - không ai phải trả giá bằng mạng sống.`
-      : `☀️ BÌNH MINH NGÀY ${round}\n\n💀 Người đã ra đi đêm qua: ${deaths.map((death) => death.nickname).join(', ')}`;
+      ? `☀️ Bình minh ngày ${round}.\n\nMột đêm yên bình đã trôi qua. Nhưng sự im lặng này chưa nói lên điều gì.`
+      : `☀️ Bình minh ngày ${round}.\n\n💀 ${deaths.map((death) => `${death.nickname} đã chết`).join(', ')}. Ngôi làng mất đi một người trước khi trời sáng.`;
     return silencedNickname
-      ? `${base}\n\n🗣️ ${silencedNickname} đã bị Pháp sư câm khóa lời trong ngày hôm nay. Hãy cẩn thận với mọi âm thanh!`
+      ? `${base}\n\n🤫 ${silencedNickname} đang chịu hiệu ứng im lặng trong ngày hôm nay.`
       : base;
   },
 
-  discussionStarted: (seconds: number) => `💬 GIỜ TRANH LUẬN BẮT ĐẦU\n\nCác người có ${seconds} giây để lật tẩy dối trá, bảo vệ sự thật và tìm ra kẻ đang ẩn mình giữa các người.`,
+  discussionStarted: (seconds: number) => `💬 Giờ thảo luận bắt đầu.\n\nBạn có ${seconds} giây để lắng nghe, đặt câu hỏi và lần theo những dấu vết đáng ngờ.`,
 
-  speechViolation: (nickname: string) => `🤐 ${nickname} đã phá vỡ lời nguyền im lặng và bị loại khỏi cuộc chơi.`,
+  speechViolation: (nickname: string) => `⚠️ Hiệu ứng im lặng đã bị phá vỡ. ${nickname} bị xử lý theo luật của ván.`,
 
-  votingStarted: (seconds: number) => `🗳️ GIỜ PHÁN QUYẾT ĐÃ ĐIỂM\n\nBạn có ${seconds} giây để chỉ tay vào kẻ mình nghi ngờ nhất, hoặc chọn Bỏ qua nếu chưa đủ chắc chắn. Một lá phiếu sai có thể là bản án tử cho chính phe mình.`,
+  votingStarted: (seconds: number) => `🗳️ Đã đến lúc lên tiếng.\n\nMọi ánh mắt đang hướng về nhau. Bạn có ${seconds} giây để chọn mục tiêu nghi ngờ, hoặc bỏ qua nếu luật cho phép.`,
 
-  voteRecorded: () => '🗳️ Phán quyết của bạn đã được khắc ghi.',
+  voteRecorded: () => '🗳️ Lá phiếu đã được ghi nhận. Không khí trong làng bỗng yên hơn.',
 
-  voteAlreadyCast: () => '⚠️ Các người đã đưa ra phán quyết rồi - không thể đổi ý giữa chừng.',
+  voteAlreadyCast: () => '⚠️ Lá phiếu của bạn đã được ghi nhận. Bạn không thể thay đổi lựa chọn ở trạng thái hiện tại.',
 
   targetSelected: (action: string, targetNickname: string | null) =>
     targetNickname
-      ? `✅ Quyết định ${action} đã được ghi nhận: ${targetNickname}`
-      : `✅ Bạn đã chọn án binh bất động, bỏ qua ${action} đêm nay.`,
+      ? `✅ Đã ghi nhận hành động ${action}. Mục tiêu: ${targetNickname}.`
+      : `✅ Đã ghi nhận bỏ qua. Bạn không thực hiện ${action} trong đêm nay.`,
 
-  nightActionSkipped: (action: string) => `✅ Bạn đã chọn án binh bất động, bỏ qua ${action} đêm nay.`,
+  nightActionSkipped: (action: string) => `✅ Đã ghi nhận bỏ qua. Bạn không thực hiện ${action} trong đêm nay.`,
 
   executionResult: (nickname: string | null) =>
     nickname
-      ? `⚖️ PHÁN QUYẾT CUỐI CÙNG: ${nickname} bị treo cổ giữa quảng trường, dưới ánh mắt của cả ngôi làng.`
-      : '⚖️ PHÁN QUYẾT CUỐI CÙNG: Ngôi làng chưa đủ dũng khí để định đoạt - không ai phải chết hôm nay.',
+      ? `⚖️ Phán quyết đã được đưa ra. ${nickname} đã chết và rời khỏi cuộc chơi.`
+      : '⚖️ Chưa có phán quyết cuối cùng. Không ai chết trong lượt này.',
 
-  executionRoleReveal: (nickname: string, roleId: RoleId) => `🎭 SỰ THẬT PHƠI BÀY: ${nickname} chính là ${RoleNames[roleId]}.`,
+  executionRoleReveal: (nickname: string, roleId: RoleId) => `🎭 Vai trò được hé lộ: ${nickname} là ${RoleNames[roleId]}.`,
 
-  hunterPrompt: (seconds: number) => `🏹 VIÊN ĐẠN CUỐI CÙNG\n\nBạn là Thợ săn và vừa gục ngã. Bạn còn ${seconds} giây để bóp cò lần cuối, kéo theo một kẻ khác - hoặc buông súng trong im lặng.`,
+  hunterPrompt: (seconds: number) => `🏹 Thời khắc cuối cùng của Thợ săn.\n\nBạn còn ${seconds} giây để chọn một mục tiêu hợp lệ hoặc bỏ qua theo luật của ván.`,
 
-  hunterShotResult: (hunterNickname: string, targetNickname: string) => `🏹 Trong hơi thở cuối cùng, ${hunterNickname} đã siết cò, hạ gục ${targetNickname} cùng mình.`,
+  hunterShotResult: (hunterNickname: string, targetNickname: string) => `🏹 Phát bắn cuối cùng vang lên. ${hunterNickname} đã bắn trúng ${targetNickname}.`,
 
-  seerResult: (targetNickname: string, teamName: string) =>
-    `🔮 Ánh mắt tiên tri đã xuyên thấu ${targetNickname}.\n\nPhe: ${teamName}`,
+  seerResult: (targetNickname: string, teamName: string) => `🔮 Lá màn đã hé mở.\n\n${targetNickname} thuộc ${teamName}.`,
 
-  gameOver: (winner: string) => `🏆 MÀN ĐÊM ĐÃ KẾT THÚC\n\n${WinnerNames[winner] ?? winner} đã giành chiến thắng tuyệt đối!`,
+  gameOver: (winner: string) => `🏆 Câu chuyện của ngôi làng khép lại.\n\n${WinnerNames[winner] ?? winner} đã chiến thắng.`,
 
   finalRoleSummary: (entries: Array<{ nickname: string; roleId: RoleId }>) => {
     const groupedByRole = entries.reduce<Record<RoleId, string[]>>((acc, entry) => {
@@ -170,24 +178,24 @@ export const Messages = {
       acc[entry.roleId].push(entry.nickname);
       return acc;
     }, {} as Record<RoleId, string[]>);
-    return `🎭 MÀN CHE ĐƯỢC VÉN LÊN - DANH TÍNH THẬT SỰ:\n\n${Object.entries(groupedByRole)
+    return `🎭 Những bí mật được hé lộ.\n\n${Object.entries(groupedByRole)
       .map(([roleId, nicknames]) => `• ${RoleNames[roleId as RoleId]}: ${nicknames.join(', ')}`)
       .join('\n')}`;
   },
 
   werewolfTeammates: (teammates: string[]) =>
     teammates.length > 0
-      ? `🐺 Những kẻ săn mồi cùng bầy với bạn: ${teammates.join(', ')}. Hãy phối hợp, và đừng để lộ sơ hở.`
-      : '🐺 Bạn là con Sói cô độc duy nhất trong đêm nay - mọi quyết định đều nằm trong tay bạn.',
+      ? `🐺 Bầy Sói của bạn: ${teammates.join(', ')}. Đêm nay, hãy phối hợp mà không để lộ dấu vết.`
+      : '🐺 Bạn là con Sói duy nhất trong đêm nay. Mọi lựa chọn đều nằm trong tay bạn.',
 
   werewolfNoConsensusNotice: () =>
-    `🐺 [THÔNG BÁO PHE SÓI]\nĐêm nay, phe Sói đã không đạt được sự đồng thuận về mục tiêu cắn.\n➡️ Do đó, phe Sói sẽ KHÔNG cắn ai trong đêm nay.`,
+    '🐺 Phe Sói chưa đạt đồng thuận. Đêm nay, không có mục tiêu nào được chọn theo luật của ván.',
 
-  hostKicked: (nickname: string) => `🚫 ${nickname} đã bị chủ phòng trục xuất khỏi ngôi làng.`,
+  hostKicked: (nickname: string) => `🚪 ${nickname} đã rời phòng theo quyết định của host.`,
 
   invalidTarget: () => CANONICAL_MESSAGES.INVALID_TARGET.text,
 
-  genericError: () => '⚠️ Một điều gì đó đã đi sai hướng trong bóng tối. Vui lòng thử lại.',
+  genericError: () => '⚠️ Có điều gì đó vừa đi lệch khỏi bóng tối. Vui lòng thử lại.',
 
-  actionTimeout: () => '⌛ Thời gian đã cạn. Sự im lặng của bạn được tính là một lựa chọn bỏ qua.',
+  actionTimeout: () => '⌛ Thời gian đã hết. Bot sẽ xử lý hành động theo luật của ván.',
 } as const;

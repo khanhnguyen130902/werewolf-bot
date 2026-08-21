@@ -7,7 +7,8 @@ import { RoomState } from '../engine/domain/Room';
 import { PlayerState } from '../engine/domain/Player';
 import { RoleId, Team, NightActionType, NightPhase, GameState } from '../engine/domain/enums';
 import { createPhase1RoleRegistry } from '../engine/roles/RoleRegistry';
-import { Messages, RoleNames, DeathCauseNames } from './presenters/messages';
+import { Messages, DeathCauseNames } from './presenters/messages';
+import { ACTION_DISPLAY_NAMES } from './presenters/canonicalContent';
 import { buildTargetKeyboard, buildVoteKeyboard, TargetOption } from './presenters/keyboards';
 import { TimerJobType } from '../engine/RoomTimerService';
 import { logger } from '../infrastructure/logging/logger';
@@ -385,10 +386,11 @@ export class GameFlowController {
       }
 
       try {
-        const promptText =
-          player.role === RoleId.WEREWOLF && room.players[player.telegramId]?.role === RoleId.WEREWOLF
-            ? `🌙 Đêm ${room.currentRound}: Hãy chọn mục tiêu giết. Phe Sói cần thống nhất cùng một mục tiêu.`
-            : `🌙 Đêm ${room.currentRound}: Hãy chọn hành động của bạn (${RoleNames[player.role]}):`;
+        const promptText = Messages.nightActionPrompt(
+          room.currentRound,
+          player.role,
+          ACTION_DISPLAY_NAMES[actionType] ?? 'hành động',
+        );
 
         const sentMsg = await this.bot.telegram.sendMessage(
           player.telegramId,
@@ -624,7 +626,7 @@ export class GameFlowController {
           try {
             const sentMsg = await this.bot.telegram.sendMessage(
               witch.telegramId,
-              `🌙 Đêm ${room.currentRound}: Sói đang chọn ${room.players[victimId!]?.nickname ?? victimId}. Bạn có muốn dùng thuốc Cứu không?`,
+              Messages.witchSavePrompt(room.currentRound, room.players[victimId!]?.nickname ?? victimId),
               saveKeyboard,
             );
             await this.services.redis.set(
@@ -643,7 +645,7 @@ export class GameFlowController {
           try {
             const sentMsg = await this.bot.telegram.sendMessage(
               witch.telegramId,
-              `🌙 Đêm ${room.currentRound}: Bạn có muốn dùng thuốc Độc không?`,
+              Messages.witchPoisonPrompt(room.currentRound),
               poisonKeyboard,
             );
             await this.services.redis.set(
@@ -676,7 +678,7 @@ export class GameFlowController {
     try {
       await this.bot.telegram.sendMessage(
         witch.telegramId,
-        `🌙 Đêm ${room.currentRound}: ${victim.nickname} vừa bị Sói cắn. Bạn có muốn dùng thuốc Cứu không?`,
+        Messages.witchSavePrompt(room.currentRound, victim.nickname),
         buildTargetKeyboard({
           actionType: NightActionType.WITCH_SAVE,
           targets: [{ telegramId: victimTelegramId, nickname: victim.nickname }],

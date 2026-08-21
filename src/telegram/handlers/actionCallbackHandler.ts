@@ -5,6 +5,7 @@ import { BotServices } from '../BotServices';
 import { GameFlowController } from '../GameFlowController';
 import { buildVoteKeyboard, parseActionCallbackData, TargetOption, buildTargetKeyboard } from '../presenters/keyboards';
 import { Messages } from '../presenters/messages';
+import { ACTION_DISPLAY_NAMES, CANONICAL_MESSAGES } from '../presenters/canonicalContent';
 import { NightActionType, NightPhase, RoleId } from '../../engine/domain/enums';
 import { RoomState } from '../../engine/domain/Room';
 import { translateError } from '../presenters/translateError';
@@ -26,13 +27,13 @@ const NIGHT_ACTION_TYPES: Set<string> = new Set([
 const WEREWOLF_REVOTE_DELAY_MS = 3_000;
 
 const ACTION_LABELS: Partial<Record<NightActionType, string>> = {
-  [NightActionType.WEREWOLF_VOTE_KILL]: 'mục tiêu bị cắn',
-  [NightActionType.SEER_INSPECT]: 'mục tiêu được soi',
-  [NightActionType.BODYGUARD_PROTECT]: 'người được bảo vệ',
-  [NightActionType.HUNTER_SHOOT]: 'mục tiêu bị bắn',
-  [NightActionType.WITCH_SAVE]: 'người được cứu',
-  [NightActionType.WITCH_POISON]: 'mục tiêu bị đầu độc',
-  [NightActionType.SILENT_MAGE_SILENCE]: 'người bị câm',
+  [NightActionType.WEREWOLF_VOTE_KILL]: ACTION_DISPLAY_NAMES[NightActionType.WEREWOLF_VOTE_KILL],
+  [NightActionType.SEER_INSPECT]: ACTION_DISPLAY_NAMES[NightActionType.SEER_INSPECT],
+  [NightActionType.BODYGUARD_PROTECT]: ACTION_DISPLAY_NAMES[NightActionType.BODYGUARD_PROTECT],
+  [NightActionType.HUNTER_SHOOT]: ACTION_DISPLAY_NAMES[NightActionType.HUNTER_SHOOT],
+  [NightActionType.WITCH_SAVE]: ACTION_DISPLAY_NAMES[NightActionType.WITCH_SAVE],
+  [NightActionType.WITCH_POISON]: ACTION_DISPLAY_NAMES[NightActionType.WITCH_POISON],
+  [NightActionType.SILENT_MAGE_SILENCE]: ACTION_DISPLAY_NAMES[NightActionType.SILENT_MAGE_SILENCE],
 };
 
 function targetNickname(room: RoomState, targetTelegramId: string | null): string | null {
@@ -112,10 +113,10 @@ function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
       candidate.round === room.currentRound,
     );
     if (!action) {
-      return '🐺 Hãy chọn mục tiêu cắn đêm nay.';
+      return '🐺 Đến lượt phe Sói. Hãy chọn mục tiêu tấn công đêm nay.';
     }
     return action.targetTelegramId
-      ? `🐺 Bạn đã chọn cắn ${formatWerewolfTarget(room, action.targetTelegramId)}.`
+      ? `🐺 Bạn đã chọn tấn công ${formatWerewolfTarget(room, action.targetTelegramId)}.`
       : '🐺 Bạn đã chọn bỏ qua đêm nay.';
   }
 
@@ -142,13 +143,13 @@ function buildWerewolfVoteStatusMessage(room: RoomState): string | null {
     .map((choice) => choice.target as string);
 
   if (!choices.some((choice) => choice.submitted)) {
-    return '🐺 Phe Sói chưa chọn mục tiêu. Hãy thống nhất một người để cắn.';
+    return '🐺 Phe Sói chưa chọn mục tiêu. Hãy thống nhất một người để tấn công.';
   }
   if (hasConsensus && chosenTargets.length === 0) {
-    return '🐺 Tất cả Sói đã chọn bỏ qua. Đêm nay sẽ không có ai bị cắn.';
+    return '🐺 Tất cả Sói đã chọn bỏ qua. Đêm nay không có mục tiêu tấn công.';
   }
   if (hasConsensus) {
-    return `🐺 Phe Sói đã thống nhất đêm nay cắn ${formatWerewolfTarget(room, chosenTargets[0])}.`;
+    return `🐺 Phe Sói đã thống nhất mục tiêu: ${formatWerewolfTarget(room, chosenTargets[0])}.`;
   }
   if (!allChosen) {
     return `🐺 Lựa chọn hiện tại của phe Sói:\n${statusLines.join('\n')}\n\nHãy chờ các Sói còn lại chọn mục tiêu.`;
@@ -214,7 +215,7 @@ async function notifyWerewolfVoteStatus(
             if (isWerewolfBot(werewolf.telegramId)) return;
             await bot.telegram.sendMessage(
               werewolf.telegramId,
-              '🐺 Hãy chọn lại mục tiêu để thống nhất.',
+              '🐺 Hãy chọn lại mục tiêu. Phe Sói cần thống nhất một lựa chọn.',
               revoteKeyboard,
             );
           } catch {
@@ -250,7 +251,7 @@ export function registerActionCallbackHandler(
     try {
       const roomId = await services.storage.getPlayerSession(telegramId);
       if (!roomId) {
-        await ctx.answerCbQuery('Không tìm thấy phòng chơi của bạn.').catch(() => undefined);
+        await ctx.answerCbQuery(CANONICAL_MESSAGES.ROOM_NOT_FOUND.text).catch(() => undefined);
         return;
       }
 
@@ -282,7 +283,7 @@ export function registerActionCallbackHandler(
             return;
           }
           if (err instanceof DomainError && err.code === 'STALE_BALLOT') {
-            await ctx.answerCbQuery('Phiếu bầu này đã hết hiệu lực. Hãy dùng nút trong ballot mới nhất.', { show_alert: true }).catch(() => undefined);
+            await ctx.answerCbQuery('⚠️ Phiếu bầu đã hết hiệu lực. Hãy dùng các nút trong ballot mới nhất.', { show_alert: true }).catch(() => undefined);
             return;
           }
           throw err;
@@ -304,7 +305,7 @@ export function registerActionCallbackHandler(
           const message = translateError(err);
           const isInvalidTarget = err instanceof Error && err.message.includes('consecutively');
           const userMessage = isInvalidTarget
-            ? 'Mục tiêu không hợp lệ: bạn không thể chọn cùng một người trong hai đêm liên tiếp.'
+            ? '⚠️ Mục tiêu chưa hợp lệ. Bạn không thể chọn cùng một người trong hai đêm liên tiếp.'
             : message;
           await ctx.answerCbQuery(userMessage, { show_alert: true }).catch(() => undefined);
           return;
