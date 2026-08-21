@@ -1,6 +1,0 @@
-◇ injected env (5) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
-{
-  "roomId": "-1004377456417",
-  "timerDeadline": null,
-  "bullQueues": []
-}
