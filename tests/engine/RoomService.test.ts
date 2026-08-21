@@ -109,10 +109,12 @@ describe('RoomService', () => {
       hostTelegramId: 'host1',
       hostNickname: 'Host',
       chatId: 'chat1',
-      settingsOverride: { maxPlayers: 1 },
+      settingsOverride: { maxPlayers: 3 },
     });
+    await service.joinRoom({ roomId: 'room1', telegramId: 'p2', nickname: 'P2' });
+    await service.joinRoom({ roomId: 'room1', telegramId: 'p3', nickname: 'P3' });
     await expect(
-      service.joinRoom({ roomId: 'room1', telegramId: 'p2', nickname: 'P2' }),
+      service.joinRoom({ roomId: 'room1', telegramId: 'p4', nickname: 'P4' }),
     ).rejects.toBeInstanceOf(RoomFullError);
   });
 
@@ -255,7 +257,8 @@ describe('RoomService', () => {
     await service.joinRoom({ roomId: 'room1', telegramId: 'p2', nickname: 'P2' });
     expect(await storage.getPlayerSession('p2')).toBe('room1');
 
-    // 3. p2 joins room2
+    // 3. p2 leaves room1 before joining room2
+    await service.leaveRoom({ roomId: 'room1', telegramId: 'p2' });
     await service.createRoom({
       roomId: 'room2',
       hostTelegramId: 'host2',
@@ -381,5 +384,25 @@ describe('RoomService DM-reachability gating (confirmed UX rule)', () => {
       nickname: 'P2',
     });
     expect(Object.keys(room.players).sort()).toEqual(['host1', 'p2']);
+  });
+});
+
+
+describe('RoomService cross-game session invariant', () => {
+  it('rejects joining a second active room while retaining the original membership', async () => {
+    const { service, storage } = setup();
+    await service.createRoom({ roomId: 'room-a', hostTelegramId: 'host-a', hostNickname: 'Host A', chatId: 'chat-a' });
+    await service.createRoom({ roomId: 'room-b', hostTelegramId: 'host-b', hostNickname: 'Host B', chatId: 'chat-b' });
+    await service.joinRoom({ roomId: 'room-a', telegramId: 'player-1', nickname: 'Player 1' });
+
+    await expect(
+      service.joinRoom({ roomId: 'room-b', telegramId: 'player-1', nickname: 'Player 1' }),
+    ).rejects.toBeInstanceOf(PlayerAlreadyInRoomError);
+
+    const roomA = await storage.getRoom('room-a');
+    const roomB = await storage.getRoom('room-b');
+    expect(roomA?.players['player-1']).toBeDefined();
+    expect(roomB?.players['player-1']).toBeUndefined();
+    expect(await storage.getPlayerSession('player-1')).toBe('room-a');
   });
 });

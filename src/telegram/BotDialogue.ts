@@ -66,15 +66,15 @@ const CLAIM_REACTIONS = [
 ] as const;
 
 const WOLF_CLAIM_LINES = [
-  'Tôi là Tiên Tri! Đêm qua tôi soi **{target}** và phát hiện đây là Sói. Lần này trực giác có hóa đơn đầy đủ.',
-  'Xin phép claim Tiên Tri: **{target}** có gì đó rất… không thuộc về phe Dân. Mùi này không phải mùi bánh mì.',
-  'Tôi đã soi **{target}**. Kết quả khiến tôi muốn kiểm tra lại máy soi, nhưng Sói vẫn là Sói.',
+  'Tôi là Tiên Tri! Đêm qua tôi soi [{target}] và phát hiện đây là Sói. Lần này trực giác có hóa đơn đầy đủ.',
+  'Xin phép claim Tiên Tri: [{target}] có gì đó rất… không thuộc về phe Dân. Mùi này không phải mùi bánh mì.',
+  'Tôi đã soi [{target}]. Kết quả khiến tôi muốn kiểm tra lại máy soi, nhưng Sói vẫn là Sói.',
 ] as const;
 
 const VILLAGE_CLAIM_LINES = [
-  'Tôi là Tiên Tri! **{target}** thuộc phe Dân. Ít nhất người này hôm nay được miễn một gói nghi ngờ.',
-  'Đêm qua tôi soi **{target}**, kết quả là người tốt. Xin đừng vote họ chỉ vì họ dùng quá nhiều dấu chấm than.',
-  '**{target}** đã được kiểm tra và tạm thời sạch. Tạm thời thôi, Ma Sói không có bảo hành trọn đời.',
+  'Tôi là Tiên Tri! [{target}] thuộc phe Dân. Ít nhất người này hôm nay được miễn một gói nghi ngờ.',
+  'Đêm qua tôi soi [{target}], kết quả là người tốt. Xin đừng vote họ chỉ vì họ dùng quá nhiều dấu chấm than.',
+  '[{target}] đã được kiểm tra và tạm thời sạch. Tạm thời thôi, Ma Sói không có bảo hành trọn đời.',
 ] as const;
 
 const EXECUTION_LINES = [

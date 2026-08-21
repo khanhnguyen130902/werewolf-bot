@@ -8,6 +8,7 @@ export const RoleNames: Record<RoleId, string> = {
   [RoleId.BODYGUARD]: '🛡️ Bảo vệ',
   [RoleId.HUNTER]: '🏹 Thợ săn',
   [RoleId.WITCH]: '🧙‍♂️ Phù thủy',
+  [RoleId.SILENT_MAGE]: '🧞 Pháp sư câm',
 };
 
 export const RoleDescriptions: Record<RoleId, string> = {
@@ -49,6 +50,12 @@ export const RoleDescriptions: Record<RoleId, string> = {
     '• Dùng thuốc độc\n' +
     '• Dùng cả 2\n' +
     '• Không dùng thuốc nào',
+
+  [RoleId.SILENT_MAGE]:
+    'Bạn điều khiển sự im lặng của bóng tối.\n\n' +
+    '🎯 Mỗi đêm: Chọn 1 người còn sống để câm lặng trong ngày kế tiếp.\n' +
+    '⚠️ Người đang bị câm mà vẫn nói trong giờ tranh luận sẽ bị loại.\n' +
+    '🏆 Mục tiêu: Giúp phe Dân làng bóp nghẹt lời nói dối của phe Sói.',
 }
 
 export const TeamNames: Record<Team, string> = {
@@ -61,6 +68,7 @@ export const DeathCauseNames: Record<string, string> = {
   [DeathCause.VOTE_EXECUTION]: 'bị dân làng treo cổ trên quảng trường',
   [DeathCause.WITCH_POISON]: 'trúng độc của Phù thủy và trút hơi thở cuối cùng',
   [DeathCause.HUNTER_SHOT]: 'ngã gục dưới phát súng cuối cùng của Thợ săn',
+  [DeathCause.SPOKEN_WHILE_SILENCED]: 'bị lời nói phá vỡ lời nguyền im lặng',
 };
 
 export const WinnerNames: Record<string, string> = {
@@ -76,6 +84,9 @@ export const Messages = {
 
   noActiveGame: () =>
     '👀 Hiện chưa có ván chơi nào đang diễn ra tại đây.\n\nGõ /create để mở một ván mới và triệu tập dân làng.',
+
+  notInCurrentGame: () =>
+    '🚫 Bạn không tham gia ván chơi hiện tại nên không thể bỏ phiếu.',
 
   roomCreated: (roomId: string) => {
     const safeRoomId = String(roomId).replace(/^-/, '');
@@ -110,12 +121,18 @@ export const Messages = {
 
   actionRecorded: () => '🌒 Lựa chọn của bạn đã chìm vào bóng tối và được ghi nhận.',
 
-  dayBegins: (round: number, deaths: Array<{ nickname: string }>) =>
-    deaths.length === 0
+  dayBegins: (round: number, deaths: Array<{ nickname: string }>, silencedNickname: string | null = null) => {
+    const base = deaths.length === 0
       ? `☀️ BÌNH MINH NGÀY ${round}\n\nMột đêm yên bình hiếm hoi - không ai phải trả giá bằng mạng sống.`
-      : `☀️ BÌNH MINH NGÀY ${round}\n\n💀 Người đã ra đi đêm qua: ${deaths.map((death) => death.nickname).join(', ')}`,
+      : `☀️ BÌNH MINH NGÀY ${round}\n\n💀 Người đã ra đi đêm qua: ${deaths.map((death) => death.nickname).join(', ')}`;
+    return silencedNickname
+      ? `${base}\n\n🗣️ ${silencedNickname} đã bị Pháp sư câm khóa lời trong ngày hôm nay. Hãy cẩn thận với mọi âm thanh!`
+      : base;
+  },
 
   discussionStarted: (seconds: number) => `💬 GIỜ TRANH LUẬN BẮT ĐẦU\n\nCác người có ${seconds} giây để lật tẩy dối trá, bảo vệ sự thật và tìm ra kẻ đang ẩn mình giữa các người.`,
+
+  speechViolation: (nickname: string) => `🤐 ${nickname} đã phá vỡ lời nguyền im lặng và bị loại khỏi cuộc chơi.`,
 
   votingStarted: (seconds: number) => `🗳️ GIỜ PHÁN QUYẾT ĐÃ ĐIỂM\n\nBạn có ${seconds} giây để chỉ tay vào kẻ mình nghi ngờ nhất, hoặc chọn Bỏ qua nếu chưa đủ chắc chắn. Một lá phiếu sai có thể là bản án tử cho chính phe mình.`,
 

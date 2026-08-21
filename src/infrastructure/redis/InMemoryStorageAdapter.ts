@@ -68,6 +68,12 @@ export class InMemoryStorageAdapter implements StoragePort {
     this.sessions.set(telegramId, roomId);
   }
 
+  async setPlayerSessionIfAbsent(telegramId: string, roomId: string): Promise<boolean> {
+    if (this.sessions.has(telegramId)) return false;
+    this.sessions.set(telegramId, roomId);
+    return true;
+  }
+
   async clearPlayerSession(telegramId: string, roomId?: string): Promise<void> {
     if (roomId) {
       const currentRoomId = this.sessions.get(telegramId);

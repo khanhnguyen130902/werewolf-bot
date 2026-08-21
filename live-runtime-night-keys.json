@@ -1,0 +1,35 @@
+◇ injected env (5) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+{
+  "now": 1787292500909,
+  "result": [
+    {
+      "key": "bull:night-action-timeout:events",
+      "type": "stream",
+      "ttl": -1,
+      "value": {
+        "length": 6
+      }
+    },
+    {
+      "key": "bull:night-action-timeout:id",
+      "type": "string",
+      "ttl": -1,
+      "value": "2"
+    },
+    {
+      "key": "bull:night-action-timeout:meta",
+      "type": "hash",
+      "ttl": -1,
+      "value": {
+        "opts.maxLenEvents": "1000",
+        "version": "bullmq:5.79.3"
+      }
+    },
+    {
+      "key": "bull:night-action-timeout:stalled-check",
+      "type": "string",
+      "ttl": 12,
+      "value": "1787292482521"
+    }
+  ]
+}

@@ -27,6 +27,8 @@ export interface StoragePort {
   /** Maps a Telegram user id to the room they are currently in (session lookup). */
   getPlayerSession(telegramId: string): Promise<string | null>;
   setPlayerSession(telegramId: string, roomId: string): Promise<void>;
+  /** Atomically claims a user session only when the user has no current room. */
+  setPlayerSessionIfAbsent(telegramId: string, roomId: string): Promise<boolean>;
   clearPlayerSession(telegramId: string, roomId?: string): Promise<void>;
 
   /** Append-only event log per match (SRS section 12, Suggestion #11). */

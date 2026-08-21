@@ -43,7 +43,7 @@ export class GameOrchestrator {
    * shape as NightActionService.resolveNight for the caller's convenience.
    */
   async resolveNight(params: { roomId: string; promptHunter: HunterPromptFn }) {
-    const { stepOneResult } = await this.nightActionService.prepareNightResolution(
+    const { roomVersion, stepOneResult } = await this.nightActionService.prepareNightResolution(
       params.roomId,
     );
 
@@ -54,6 +54,7 @@ export class GameOrchestrator {
 
     return this.nightActionService.finalizeNightResolution({
       roomId: params.roomId,
+      roomVersion,
       stepOneResult,
       hunterDecisions,
     });
@@ -74,6 +75,7 @@ export class GameOrchestrator {
 
     return this.dayService.finalizeExecutionResolution({
       roomId: params.roomId,
+      roomVersion: prepared.roomVersion,
       executedTelegramId: prepared.executedTelegramId,
       voteCounts: prepared.voteCounts,
       depth0Deaths: prepared.depth0Deaths,
@@ -98,18 +100,21 @@ export class GameOrchestrator {
               ? TimerJobType.WITCH_ACTION_TIMEOUT
               : TimerJobType.NIGHT_ACTION_TIMEOUT,
           roomId: room.id,
+          payload: { round: room.currentRound, nightPhase: room.nightPhase ?? NightPhase.ACTIONS },
           delayMs: timers.nightActionSeconds * 1000,
         });
       case GameState.DISCUSSION:
         return this.timerService.scheduleTimeout({
           jobType: TimerJobType.DISCUSSION_TIMEOUT,
           roomId: room.id,
+          payload: { discussionCycleId: room.discussionCycleId ?? null, gameState: room.gameState },
           delayMs: timers.discussionSeconds * 1000,
         });
       case GameState.VOTING:
         return this.timerService.scheduleTimeout({
           jobType: TimerJobType.VOTING_TIMEOUT,
           roomId: room.id,
+          payload: { ballotId: room.ballotId ?? null, round: room.currentRound, gameState: room.gameState },
           delayMs: timers.votingSeconds * 1000,
         });
       default:
@@ -211,7 +216,12 @@ export class GameOrchestrator {
     // Villager and Hunter (whose only action is the death-triggered revenge
     // shot, not a regular per-night prompt) have no regular night action.
     return (
-      roleId === 'WEREWOLF' || roleId === 'SEER' || roleId === 'BODYGUARD' || roleId === 'HUNTER' || roleId === 'WITCH'
+      roleId === 'WEREWOLF'
+      || roleId === 'SEER'
+      || roleId === 'BODYGUARD'
+      || roleId === 'HUNTER'
+      || roleId === 'WITCH'
+      || roleId === 'SILENT_MAGE'
     );
   }
 }

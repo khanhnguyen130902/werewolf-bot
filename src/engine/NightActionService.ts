@@ -20,6 +20,7 @@ import {
   ConcurrentModificationError,
   PlayerNotInRoomError,
   InvalidTargetError,
+  StaleResolutionError,
 } from './errors/DomainError';
 
 const MAX_OPTIMISTIC_RETRY = 10;
@@ -38,6 +39,7 @@ const ACTION_TYPE_TO_ROLE: Partial<Record<NightActionType, RoleId>> = {
   [NightActionType.SEER_INSPECT]: RoleId.SEER,
   [NightActionType.WITCH_SAVE]: RoleId.WITCH,
   [NightActionType.WITCH_POISON]: RoleId.WITCH,
+  [NightActionType.SILENT_MAGE_SILENCE]: RoleId.SILENT_MAGE,
   [NightActionType.HUNTER_SHOOT]: RoleId.HUNTER,
 };
 
@@ -312,11 +314,15 @@ export class NightActionService {
 
   async prepareNightResolution(roomId: string): Promise<{
     room: RoomState;
+    roomVersion: number;
     stepOneResult: ReturnType<NightResolver['resolveWithoutHunterRevenge']>;
   }> {
     const room = await this.storage.getRoom(roomId);
     if (!room) {
       throw new RoomNotFoundError(roomId);
+    }
+    if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) {
+      throw new InvalidPhaseActionError('NIGHT_RESOLUTION', room.gameState);
     }
     const resolver = new NightResolver(this.random);
     const submissions = room.pendingNightActions.map((a) => ({
@@ -327,7 +333,7 @@ export class NightActionService {
       round: a.round,
     }));
     const stepOneResult = resolver.resolveWithoutHunterRevenge({ room, submissions });
-    return { room, stepOneResult };
+    return { room, roomVersion: room.version, stepOneResult };
   }
 
   /**
@@ -340,6 +346,7 @@ export class NightActionService {
    */
   async finalizeNightResolution(params: {
     roomId: string;
+    roomVersion: number;
     stepOneResult: ReturnType<NightResolver['resolveWithoutHunterRevenge']>;
     hunterDecisions: Record<string, { targetTelegramId: string | null } | null>;
   }): Promise<{
@@ -360,6 +367,9 @@ export class NightActionService {
     let capturedSeerResults: NightActionContext[] = [];
 
     const { room, events } = await this.withRetry(params.roomId, (room) => {
+      if (room.version !== params.roomVersion) {
+        throw new StaleResolutionError(params.roomId, params.roomVersion, room.version);
+      }
       let updatedPlayers = { ...room.players };
       // Hunter's Phase-1 selection is persisted before resolving deaths, so
       // DeathQueue can use it immediately if the Hunter dies tonight.
@@ -564,13 +574,14 @@ export class NightActionService {
       revealedRole: string | null;
     }>;
   }> {
-    const { stepOneResult } = await this.prepareNightResolution(params.roomId);
+    const { roomVersion: preparedRoomVersion, stepOneResult } = await this.prepareNightResolution(params.roomId);
     const hunterDecisions: Record<string, { targetTelegramId: string | null } | null> = {};
     for (const hunterId of stepOneResult.pendingHunterTelegramIds) {
       hunterDecisions[hunterId] = params.getHunterDecision(hunterId);
     }
     return this.finalizeNightResolution({
       roomId: params.roomId,
+      roomVersion: preparedRoomVersion,
       stepOneResult,
       hunterDecisions,
     });

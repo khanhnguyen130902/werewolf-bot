@@ -82,9 +82,12 @@ export class RoomTimerService {
    * timer-related wiring for the engine lives in one place rather than
    * spreading SchedulerPort usage across the Telegram bootstrap code.
    */
-  onTimeout(jobType: TimerJobType, handler: (roomId: string) => Promise<void>): void {
-    this.scheduler.onJobDue(jobType, async ({ roomId }) => {
-      await handler(roomId);
+  onTimeout(
+    jobType: TimerJobType,
+    handler: (roomId: string, payload: Record<string, unknown>) => Promise<void>,
+  ): void {
+    this.scheduler.onJobDue(jobType, async ({ roomId, payload }) => {
+      await handler(roomId, payload);
     });
   }
 

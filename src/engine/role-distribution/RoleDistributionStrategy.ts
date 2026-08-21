@@ -1,4 +1,5 @@
 import { RoleId } from '../domain/enums';
+import { MAX_SUPPORTED_PLAYERS, MIN_SUPPORTED_PLAYERS } from '../domain/Room';
 import { TooManyPlayersForRolesError, NotEnoughPlayersError } from '../errors/DomainError';
 
 /**
@@ -24,11 +25,20 @@ export interface RoleDistributionStrategy {
   ): RoleDistributionPlan;
 }
 
-const SPECIAL_ROLES: RoleId[] = [
+// Default special roles are auto-enabled for 6+ players.
+// The 8-player preset additionally includes Silent Mage, replacing one Villager.
+// Other player counts retain the existing distribution unless Silent Mage is explicit.
+const DEFAULT_SPECIAL_ROLES: RoleId[] = [
   RoleId.SEER,
   RoleId.BODYGUARD,
   RoleId.HUNTER,
   RoleId.WITCH,
+];
+
+// All roles that may be explicitly enabled through room.settings.enabledRoles.
+const SUPPORTED_SPECIAL_ROLES: RoleId[] = [
+  ...DEFAULT_SPECIAL_ROLES,
+  RoleId.SILENT_MAGE,
 ];
 
 /**
@@ -49,17 +59,19 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
     playerCount: number,
     enabledSpecialRoles: RoleId[],
   ): RoleDistributionPlan {
-    if (playerCount < 1) {
-      throw new NotEnoughPlayersError(playerCount, 1);
+    if (playerCount < MIN_SUPPORTED_PLAYERS || !Number.isInteger(playerCount)) {
+      throw new NotEnoughPlayersError(playerCount, MIN_SUPPORTED_PLAYERS);
+    }
+    if (playerCount > MAX_SUPPORTED_PLAYERS) {
+      throw new TooManyPlayersForRolesError(playerCount, MAX_SUPPORTED_PLAYERS);
     }
 
-    if (playerCount === 1) {
-      return {
-        [RoleId.WEREWOLF]: 1,
-      };
-    }
 
-    if (playerCount === 6) {
+    const explicitSpecials = enabledSpecialRoles.filter((r) =>
+      SUPPORTED_SPECIAL_ROLES.includes(r),
+    );
+
+    if (playerCount === 6 && explicitSpecials.length === 0) {
       return {
         [RoleId.WEREWOLF]: 2,
         [RoleId.SEER]: 1,
@@ -68,10 +80,6 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
         [RoleId.VILLAGER]: 1,
       };
     }
-
-    const explicitSpecials = enabledSpecialRoles.filter((r) =>
-      SPECIAL_ROLES.includes(r),
-    );
     const uniqueSpecials = [...new Set(explicitSpecials)];
 
     const selectedSpecialRoles = this.getSelectedSpecialRoles(playerCount, uniqueSpecials);
@@ -118,15 +126,24 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
     return playerCount >= 5 ? Math.max(2, Math.floor(playerCount / 4)) : 1;
   }
 
-  private getSelectedSpecialRoles(playerCount: number, explicitSpecials: RoleId[]): RoleId[] {
+  private getSelectedSpecialRoles(
+    playerCount: number,
+    explicitSpecials: RoleId[],
+  ): RoleId[] {
+    // At 8+ players, explicit Silent Mage activates the expected production
+    // preset: all default special roles plus Silent Mage and one Villager.
+    if (playerCount >= 8 && explicitSpecials.includes(RoleId.SILENT_MAGE)) {
+      return [...DEFAULT_SPECIAL_ROLES, RoleId.SILENT_MAGE];
+    }
+    if (playerCount === 8 && explicitSpecials.length === 0) {
+      return [...DEFAULT_SPECIAL_ROLES, RoleId.SILENT_MAGE];
+    }
     if (explicitSpecials.length > 0) {
       return explicitSpecials;
     }
-
     if (playerCount >= 6) {
-      return [...SPECIAL_ROLES];
+      return [...DEFAULT_SPECIAL_ROLES];
     }
-
     return [];
   }
 }

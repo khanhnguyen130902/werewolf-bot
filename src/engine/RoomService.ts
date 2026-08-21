@@ -3,7 +3,7 @@ import { ClockPort } from './ports/ClockPort';
 import { EventBus } from './events/EventBus';
 import { DomainEventType } from './domain/enums';
 import { createEvent, DomainEvent } from './events/DomainEvent';
-import { RoomFactory, GameSettings, RoomState } from './domain/Room';
+import { MAX_SUPPORTED_PLAYERS, RoomFactory, GameSettings, RoomState } from './domain/Room';
 import { PlayerFactory } from './domain/Player';
 import { GameState, RoomStatus } from './domain/enums';
 import {
@@ -41,6 +41,15 @@ export class RoomService {
     private readonly clock: ClockPort,
     private readonly eventBus: EventBus,
   ) {}
+
+  async findActiveRoomByChatId(chatId: string): Promise<RoomState | null> {
+    const roomIds = await this.storage.listActiveRoomIds();
+    for (const roomId of roomIds) {
+      const room = await this.storage.getRoom(roomId);
+      if (room && room.chatId === chatId && room.status !== RoomStatus.CLOSED) return room;
+    }
+    return null;
+  }
 
   private async withRetry(
     roomId: string,
@@ -113,7 +122,20 @@ export class RoomService {
     });
 
     const saved = await this.storage.saveRoom(room, -1);
-    await this.storage.setPlayerSession(params.hostTelegramId, params.roomId);
+    const hostClaimed = await this.storage.setPlayerSessionIfAbsent(
+      params.hostTelegramId,
+      params.roomId,
+    );
+    if (!hostClaimed) {
+      const currentSession = await this.storage.getPlayerSession(params.hostTelegramId);
+      if (currentSession === params.roomId) {
+        // A stale session pointing at the room being recreated is safe to reuse.
+        await this.storage.setPlayerSession(params.hostTelegramId, params.roomId);
+      } else {
+        await this.storage.deleteRoom(params.roomId);
+        throw new PlayerAlreadyInRoomError(params.hostTelegramId);
+      }
+    }
 
     const events: DomainEvent[] = [
       createEvent(
@@ -151,10 +173,17 @@ export class RoomService {
   }): Promise<RoomState> {
     const now = this.clock.now();
 
-    // Confirmed UX rule: check DM-reachability BEFORE the optimistic-retry
-    // mutate closure, since it's a simple precondition read (not part of
-    // the room's own concurrency-sensitive state) and failing fast here
-    // avoids wasted retry attempts for a request that can never succeed.
+    // Resolve room existence before user-level preconditions so a /join
+    // request in a group with no game always gets the correct room message.
+    // Otherwise users who have not opened a DM with the bot receive
+    // DmNotReachableError first, making the result appear intermittent.
+    const existingRoom = await this.storage.getRoom(params.roomId);
+    if (!existingRoom) {
+      throw new RoomNotFoundError(params.roomId);
+    }
+
+    // DM reachability is checked before the optimistic-retry mutation because
+    // it is a request precondition, not part of room-state concurrency.
     const dmReachable = await this.storage.isDmReachable(params.telegramId);
     if (!dmReachable) {
       throw new DmNotReachableError(params.telegramId);
@@ -167,8 +196,9 @@ export class RoomService {
       if (room.players[params.telegramId]) {
         throw new PlayerAlreadyInRoomError(params.telegramId);
       }
-      if (Object.keys(room.players).length >= room.settings.maxPlayers) {
-        throw new RoomFullError(room.id, room.settings.maxPlayers);
+      const maxPlayers = Math.min(MAX_SUPPORTED_PLAYERS, room.settings.maxPlayers);
+      if (Object.keys(room.players).length >= maxPlayers) {
+        throw new RoomFullError(room.id, maxPlayers);
       }
       const newPlayer = PlayerFactory.create({
         telegramId: params.telegramId,
@@ -195,7 +225,26 @@ export class RoomService {
       return { room: updated, events };
     });
 
-    await this.storage.setPlayerSession(params.telegramId, params.roomId);
+    const claimed = await this.storage.setPlayerSessionIfAbsent(
+      params.telegramId,
+      params.roomId,
+    );
+    if (!claimed) {
+      // The room write succeeded, but the user was concurrently claimed by
+      // another room. Roll back only this membership before surfacing the
+      // conflict, otherwise the room would retain a player whose session points
+      // elsewhere.
+      await this.withRetry(params.roomId, (latest) => {
+        if (!latest.players[params.telegramId]) return { room: latest, events: [] };
+        const players = { ...latest.players };
+        delete players[params.telegramId];
+        return {
+          room: { ...latest, players, updatedAt: now },
+          events: [],
+        };
+      });
+      throw new PlayerAlreadyInRoomError(params.telegramId);
+    }
     await this.eventBus.publishAll(events);
     return room;
   }

@@ -16,6 +16,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   WRONG_ROLE_FOR_ACTION: 'Vai trò của bạn không thể thực hiện hành động này.',
   NO_POTION_LEFT: 'Bạn đã dùng bình thuốc này rồi.',
   CONCURRENT_MODIFICATION: 'Phòng vừa có thay đổi. Vui lòng thử lại.',
+  STALE_RESOLUTION: 'Kết quả xử lý này đã cũ vì ván chơi vừa thay đổi. Vui lòng thử lại.',
   DUPLICATE_ACTION: 'Lựa chọn này đã được ghi nhận trước đó.',
   INVALID_STATE_TRANSITION: 'Không thể thực hiện thao tác này vào lúc này.',
   DM_NOT_REACHABLE: 'Hãy nhắn /start cho bot trong tin nhắn riêng trước khi tham gia phòng.',

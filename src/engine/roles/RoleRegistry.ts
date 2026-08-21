@@ -6,6 +6,7 @@ import { SeerRole } from './SeerRole';
 import { BodyguardRole } from './BodyguardRole';
 import { HunterRole } from './HunterRole';
 import { WitchRole } from './WitchRole';
+import { SilentMageRole } from './SilentMageRole';
 
 /**
  * Central registry mapping RoleId -> IRole implementation instance.
@@ -57,5 +58,6 @@ export function createPhase1RoleRegistry(): RoleRegistry {
   registry.register(new BodyguardRole());
   registry.register(new HunterRole());
   registry.register(new WitchRole());
+  registry.register(new SilentMageRole());
   return registry;
 }

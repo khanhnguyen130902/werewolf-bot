@@ -33,6 +33,10 @@ function parseRoleAlias(token: string): RoleId | null {
     case 'thosan':
     case 'hunter':
       return RoleId.HUNTER;
+    case 'phapsucam':
+    case 'silentmage':
+    case 'silentwizard':
+      return RoleId.SILENT_MAGE;
     case 'danlang':
     case 'villager':
       return RoleId.VILLAGER;

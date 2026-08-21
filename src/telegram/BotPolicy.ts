@@ -4,7 +4,16 @@ import { PlayerState } from '../engine/domain/Player';
 import { TargetOption } from './presenters/keyboards';
 
 export type BotPersonality = 'cautious' | 'aggressive' | 'deceptive' | 'quiet';
-export type BotObservationType = 'DISCUSSION' | 'ACCUSATION' | 'DEFENSE' | 'VOTE';
+export type BotObservationType =
+  | 'DISCUSSION'
+  | 'ACCUSATION'
+  | 'DEFENSE'
+  | 'VOTE'
+  | 'SPEECH_ATTEMPT'
+  | 'SPEECH_BLOCKED'
+  | 'SPEECH_REJECTED';
+
+export type BotSpeechDecision = 'ALLOW' | 'DENY' | 'UNKNOWN';
 
 export interface BotInspectionResult {
   seerTelegramId: string;
@@ -20,6 +29,9 @@ export interface BotObservation {
   actorTelegramId: string;
   targetTelegramId?: string | null;
   text?: string;
+  attemptId?: string;
+  discussionCycleId?: string | null;
+  outcome?: string;
 }
 
 export interface BotTelemetrySnapshot {
@@ -85,6 +97,35 @@ export class BotPolicy {
     this.completedTelemetryByRoom.set(roomId, this.getTelemetry(roomId));
     this.beliefsByRoom.delete(roomId);
     this.observationsByRoom.delete(roomId);
+  }
+
+  canSpeak(room: RoomState, player: PlayerState): BotSpeechDecision {
+    if (!player.alive) return 'DENY';
+    if (room.gameState !== 'DISCUSSION' || room.discussionLifecycle !== 'ACTIVE' || room.discussionEnforcementReady !== true) {
+      return 'DENY';
+    }
+    const isSilenced = room.silencedPlayerId === player.telegramId
+      && room.silencedUntilRound === room.currentRound
+      && room.silencedDiscussionCycleId === room.discussionCycleId;
+    return isSilenced ? 'DENY' : 'ALLOW';
+  }
+
+  recordSpeechAttempt(roomId: string, params: {
+    attemptId: string;
+    actorTelegramId: string;
+    round: number;
+    discussionCycleId?: string | null;
+    allowed: boolean;
+    outcome: string;
+  }): void {
+    this.recordObservation(roomId, {
+      type: params.allowed ? 'SPEECH_ATTEMPT' : 'SPEECH_BLOCKED',
+      round: params.round,
+      actorTelegramId: params.actorTelegramId,
+      attemptId: params.attemptId,
+      discussionCycleId: params.discussionCycleId,
+      outcome: params.outcome,
+    });
   }
 
   getPersonality(botTelegramId: string): BotPersonality {

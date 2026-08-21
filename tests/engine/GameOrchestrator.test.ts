@@ -354,6 +354,36 @@ describe('GameOrchestrator.allNightActionsSubmitted', () => {
 
     expect(await deps.orchestrator.allNightActionsSubmitted('room1')).toBe(true);
   });
+  it('waits for Silent Mage silence action before declaring night actions complete', async () => {
+    const deps = setup();
+    const started = await createAndStartGame(deps);
+    const mage = Object.values(started.players).find((p) => p.role === RoleId.VILLAGER)!;
+    mage.role = RoleId.SILENT_MAGE;
+    const room = await deps.storage.getRoom('room1');
+    await deps.storage.saveRoom({ ...room!, players: { ...room!.players, [mage.telegramId]: mage } }, room!.version);
+    const target = Object.values(started.players).find((p) => p.telegramId !== mage.telegramId)!;
+    const regularActors = Object.values(started.players).filter((p) =>
+      p.telegramId !== mage.telegramId && ['WEREWOLF', 'SEER', 'BODYGUARD'].includes(p.role ?? ''),
+    );
+    for (const [idx, actor] of regularActors.entries()) {
+      const actionType = actor.role === RoleId.WEREWOLF
+        ? NightActionType.WEREWOLF_VOTE_KILL
+        : actor.role === RoleId.SEER
+          ? NightActionType.SEER_INSPECT
+          : NightActionType.BODYGUARD_PROTECT;
+      await deps.nightActionService.submitNightAction({
+        roomId: 'room1', actionId: `silent-mage-regular-${idx}`, actorTelegramId: actor.telegramId,
+        actionType, targetTelegramId: actionType === NightActionType.WEREWOLF_VOTE_KILL ? target.telegramId : null,
+      });
+    }
+    expect(await deps.orchestrator.allNightActionsSubmitted('room1')).toBe(false);
+    await deps.nightActionService.submitNightAction({
+      roomId: 'room1', actionId: 'silent-mage-action', actorTelegramId: mage.telegramId,
+      actionType: NightActionType.SILENT_MAGE_SILENCE, targetTelegramId: target.telegramId,
+    });
+    expect(await deps.orchestrator.allNightActionsSubmitted('room1')).toBe(true);
+  });
+
   it('waits for separate save and poison decisions before resolving the Witch phase early', async () => {
     const deps = setup();
     await createAndStartGame(deps);

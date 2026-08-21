@@ -29,6 +29,10 @@ export interface PlayerState {
   diedOnRound: number | null;
   /** A previously selected revenge target for the Hunter role, reused later if needed. */
   hunterRevengeTarget: string | null;
+  /** Active silence expiry round, null when this player is not silenced. */
+  silencedUntilRound?: number | null;
+  /** Discussion cycle in which silence is active. */
+  silencedDiscussionCycleId?: string | null;
 }
 
 /**
@@ -61,6 +65,8 @@ export class PlayerFactory {
       deathCause: null,
       diedOnRound: null,
       hunterRevengeTarget: null,
+      silencedUntilRound: null,
+      silencedDiscussionCycleId: null,
     };
   }
 }

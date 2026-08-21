@@ -113,6 +113,19 @@ describe('DayService phase transitions', () => {
     expect(afterVoting.gameState).toBe(GameState.VOTING);
   });
 
+  it('allows DAY -> VOTING early skip and creates a fresh ballot', async () => {
+    const { roomService, gameService, nightActionService, dayService, storage } = setup();
+    await createStartAndAdvanceToDay(roomService, gameService, nightActionService);
+
+    const afterVoting = await dayService.startVoting('room1');
+    expect(afterVoting.gameState).toBe(GameState.VOTING);
+    expect(afterVoting.ballotId).toMatch(/^b-[0-9a-f]{16}-r1-v\d+$/);
+    expect(Buffer.byteLength(`action:VOTE:${afterVoting.ballotId}:123456789012`, 'utf8')).toBeLessThanOrEqual(64);
+    expect(afterVoting.discussionLifecycle).toBe('CLOSED');
+    expect(afterVoting.discussionEnforcementReady).toBe(false);
+    expect((await storage.getRoom('room1'))?.gameState).toBe(GameState.VOTING);
+  });
+
   it('rejects starting discussion when not in DAY', async () => {
     const { roomService, gameService, nightActionService, dayService } = setup();
     await createStartAndAdvanceToDay(roomService, gameService, nightActionService);
@@ -559,6 +572,7 @@ describe('DayService split API (prepareExecutionResolution / finalizeExecutionRe
 
     const { room: finalRoom, deaths } = await deps.dayService.finalizeExecutionResolution({
       roomId: 'room1',
+      roomVersion: prepared.roomVersion,
       executedTelegramId: prepared.executedTelegramId,
       voteCounts: prepared.voteCounts,
       depth0Deaths: prepared.depth0Deaths,
@@ -601,6 +615,7 @@ describe('DayService split API (prepareExecutionResolution / finalizeExecutionRe
 
     const { deaths } = await deps.dayService.finalizeExecutionResolution({
       roomId: 'room1',
+      roomVersion: prepared.roomVersion,
       executedTelegramId: prepared.executedTelegramId,
       voteCounts: prepared.voteCounts,
       depth0Deaths: prepared.depth0Deaths,
@@ -608,5 +623,61 @@ describe('DayService split API (prepareExecutionResolution / finalizeExecutionRe
     });
 
     expect(deaths).toEqual([{ telegramId: target.telegramId, cause: 'VOTE_EXECUTION' }]);
+  });
+});
+
+
+describe('resolution replay safety', () => {
+  it('rejects a second night resolution after the first one committed', async () => {
+    const deps = setup();
+    await deps.roomService.createRoom({
+      roomId: 'room1',
+      hostTelegramId: 'p0',
+      hostNickname: 'Host',
+      chatId: 'chat1',
+      settingsOverride: { minPlayers: 6, maxPlayers: 20 },
+    });
+    for (let index = 1; index < 7; index += 1) {
+      await deps.roomService.joinRoom({ roomId: 'room1', telegramId: `p${index}`, nickname: `P${index}` });
+    }
+    await deps.gameService.startGame({ roomId: 'room1', requestedByTelegramId: 'p0' });
+    const first = await deps.nightActionService.resolveNight({ roomId: 'room1', getHunterDecision: () => null });
+    const committed = await deps.storage.getRoom('room1');
+
+    await expect(
+      deps.nightActionService.resolveNight({ roomId: 'room1', getHunterDecision: () => null }),
+    ).rejects.toBeInstanceOf(InvalidPhaseActionError);
+    expect((await deps.storage.getRoom('room1'))).toEqual(committed);
+    expect(first.room.gameState).toBe(GameState.DAY);
+  });
+
+  it('rejects a second execution resolution after the first one committed', async () => {
+    const deps = setup();
+    const room = await createStartAndAdvanceToDay(
+      deps.roomService,
+      deps.gameService,
+      deps.nightActionService,
+    );
+    const target = Object.values(room.players).find((player) => player.role === RoleId.VILLAGER)!;
+    await deps.dayService.startDiscussion('room1');
+    await deps.dayService.startVoting('room1');
+    for (const [index, voter] of Object.values(room.players)
+      .filter((player) => player.telegramId !== target.telegramId)
+      .slice(0, 3)
+      .entries()) {
+      await deps.dayService.submitVote({
+        roomId: 'room1',
+        actionId: `replay-${index}`,
+        voterTelegramId: voter.telegramId,
+        targetTelegramId: target.telegramId,
+      });
+    }
+
+    await deps.dayService.resolveExecution({ roomId: 'room1', getHunterDecision: () => null });
+    const committed = await deps.storage.getRoom('room1');
+    await expect(
+      deps.dayService.resolveExecution({ roomId: 'room1', getHunterDecision: () => null }),
+    ).rejects.toBeInstanceOf(InvalidPhaseActionError);
+    expect(await deps.storage.getRoom('room1')).toEqual(committed);
   });
 });

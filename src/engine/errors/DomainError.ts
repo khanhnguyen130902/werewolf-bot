@@ -124,6 +124,24 @@ export class DuplicateActionError extends DomainError {
   }
 }
 
+export class StaleResolutionError extends DomainError {
+  constructor(roomId: string, expectedVersion: number, currentVersion: number) {
+    super(
+      'STALE_RESOLUTION',
+      `Resolution for room ${roomId} was prepared at version ${expectedVersion}, current version is ${currentVersion}`,
+    );
+  }
+}
+
+export class StaleBallotError extends DomainError {
+  constructor(expectedBallotId: string | null, receivedBallotId: string | null) {
+    super(
+      'STALE_BALLOT',
+      `Vote callback belongs to ballot ${receivedBallotId ?? 'legacy'}, current ballot is ${expectedBallotId ?? 'none'}`,
+    );
+  }
+}
+
 export class InvalidStateTransitionError extends DomainError {
   constructor(from: string, to: string) {
     super('INVALID_STATE_TRANSITION', `Cannot transition from ${from} to ${to}`);
