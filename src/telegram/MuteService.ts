@@ -142,6 +142,14 @@ export class MuteService {
 
       const completedIds: string[] = [];
       const unmutePromises = mutedIds.map(async (telegramId) => {
+        // Synthetic bottest players do not exist in Telegram. They are never
+        // restricted by mutePlayer, but an old/stale Redis marker must still
+        // be removable without calling getChatMember for an invalid ID.
+        if (isTestBot(telegramId)) {
+          completedIds.push(telegramId);
+          return;
+        }
+
         const userId = Number(telegramId);
         if (isNaN(userId)) {
           logger.warn(`Invalid muted ID in Redis for chat ${chatId}: "${telegramId}"`);
@@ -196,6 +204,67 @@ export class MuteService {
       }
     } catch (err: unknown) {
       logger.error(`Error in unmuteAllPlayers for chat ${chatId}: ${errorMessage(err)}`, { err });
+    }
+  }
+
+  /**
+   * Unmutes only the supplied players and removes successful IDs from the
+   * Redis fallback set. This is intentionally narrower than
+   * unmuteAllPlayers: when a night ends, living players may speak again while
+   * players who died earlier must remain blocked.
+   */
+  async unmutePlayers(chatId: string | number, telegramIds: string[]): Promise<void> {
+    const uniqueIds = [...new Set(telegramIds)];
+    if (uniqueIds.length === 0) return;
+
+    const key = this.getMutedPlayersKey(chatId);
+    const completedIds: string[] = [];
+
+    await Promise.all(uniqueIds.map(async (telegramId) => {
+      // Synthetic bottest players have no Telegram membership and must never
+      // reach getChatMember/restrictChatMember.
+      if (isTestBot(telegramId)) return;
+
+      const userId = Number(telegramId);
+      if (isNaN(userId)) {
+        logger.warn(`Invalid player ID while unmuting in chat ${chatId}: "${telegramId}"`);
+        completedIds.push(telegramId);
+        return;
+      }
+
+      try {
+        const targetMember = await this.bot.telegram.getChatMember(chatId, userId);
+        const isCreatorOrAdmin = targetMember.status === 'creator' || targetMember.status === 'administrator';
+
+        if (!isCreatorOrAdmin) {
+          await this.bot.telegram.restrictChatMember(chatId, userId, {
+            permissions: {
+              can_send_messages: true,
+              can_send_audios: true,
+              can_send_documents: true,
+              can_send_photos: true,
+              can_send_videos: true,
+              can_send_video_notes: true,
+              can_send_voice_notes: true,
+              can_send_polls: true,
+              can_send_other_messages: true,
+              can_add_web_page_previews: true,
+            },
+          });
+        }
+
+        completedIds.push(telegramId);
+        logger.info(`Successfully unmuted player ${telegramId} in chat ${chatId}`);
+      } catch (err: unknown) {
+        logger.error(
+          `Failed to unmute player ${telegramId} in chat ${chatId}: ${errorMessage(err)}`,
+          { err },
+        );
+      }
+    }));
+
+    if (completedIds.length > 0) {
+      await this.redis.srem(key, ...completedIds);
     }
   }
 

@@ -43,6 +43,7 @@ describe('GameFlowController', () => {
     } as any;
     const bot = { on: jest.fn(), telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) } } as any;
     const controller = new GameFlowController(services, bot);
+    const mutePlayers = jest.spyOn(controller.muteService, 'mutePlayers').mockResolvedValue(undefined);
     const room = {
       id: 'room1',
       chatId: 'chat1',
@@ -64,6 +65,7 @@ describe('GameFlowController', () => {
       actionType: NightActionType.BODYGUARD_PROTECT,
       targetTelegramId: null,
     }));
+    expect(mutePlayers).toHaveBeenCalledWith('chat1', ['9999999001']);
   });
 
   it('ignores a stale night-action timeout from an earlier round', async () => {
@@ -287,6 +289,40 @@ describe('GameFlowController Telegram failure isolation', () => {
     );
 
     expect(startNightPrompts).toHaveBeenCalled();
+  });
+
+  it('mutes every player killed by a discussion speech violation before presenting voting', async () => {
+    const bot = {
+      on: jest.fn(),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+    const controller = new GameFlowController({ storage: {}, redis: {} } as any, bot);
+    const mutePlayers = jest.spyOn(controller.muteService, 'mutePlayers').mockResolvedValue(undefined);
+    const presentVoting = jest.fn().mockResolvedValue(undefined);
+    (controller as any).presentVoting = presentVoting;
+
+    await controller.onDiscussionDeathResolved(
+      {
+        id: 'room1',
+        chatId: 'chat1',
+        currentRound: 1,
+        gameState: GameState.VOTING,
+        players: {
+          silencedPlayer: { telegramId: 'silencedPlayer', nickname: 'Silent One', alive: false },
+          hunter: { telegramId: 'hunter', nickname: 'Hunter', alive: false },
+        },
+      } as any,
+      [
+        { telegramId: 'silencedPlayer', cause: 'SPOKEN_WHILE_SILENCED' },
+        { telegramId: 'hunter', cause: 'HUNTER_SHOT' },
+      ],
+    );
+
+    expect(mutePlayers).toHaveBeenCalledWith('chat1', ['silencedPlayer', 'hunter']);
+    expect(presentVoting).toHaveBeenCalled();
+    expect(mutePlayers.mock.invocationCallOrder[0]).toBeLessThan(
+      (presentVoting.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER),
+    );
   });
 });
 

@@ -28,7 +28,7 @@ export function registerStartCommand(services: BotServices, bot: Telegraf<BotCon
       );
     } else {
       await ctx.reply(
-        '👋 Xin chào! Để có thể tham gia chơi, vui lòng nhắn /start cho bot ở tin nhắn riêng trước:\n' +
+        '👋 Xin chào! Để có thể tham gia chơi, vui lòng nhắn start cho bot ở tin nhắn riêng trước:\n' +
           `👉 https://t.me/${ctx.botInfo?.username}?start=hello`,
       );
     }

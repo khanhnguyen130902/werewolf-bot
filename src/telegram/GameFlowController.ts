@@ -318,6 +318,14 @@ export class GameFlowController {
   /** Sends each role's night-action prompt (inline keyboard) via DM, and
    * schedules the night's timeout. */
   private async startNightPrompts(room: RoomState): Promise<void> {
+    // Lock the group before announcing the night. Night actions use private
+    // callback queries, so this does not prevent players from submitting their
+    // role actions while it blocks group chat messages.
+    await this.muteService.mutePlayers(
+      room.chatId,
+      Object.values(room.players).map((player) => player.telegramId),
+    );
+
     await this.safeSendMessage(
       room.chatId,
       Messages.nightBegins(room.currentRound),
@@ -753,6 +761,18 @@ export class GameFlowController {
       await this.muteService.mutePlayers(room.chatId, deaths.map((d) => d.telegramId));
     }
 
+    // Night-wide mute ends for living players when the day begins. Dead
+    // players are intentionally excluded so the existing dead-player mute
+    // contract remains in force until game over or /end.
+    if (room.gameState !== GameState.GAME_OVER) {
+      await this.muteService.unmutePlayers(
+        room.chatId,
+        Object.values(room.players)
+          .filter((player) => player.alive)
+          .map((player) => player.telegramId),
+      );
+    }
+
     for (const res of seerResults) {
       if (!isTestBot(res.seerTelegramId)) continue;
       const targetPlayer = room.players[res.targetTelegramId];
@@ -962,6 +982,16 @@ export class GameFlowController {
       GameState.VOTING,
     ].includes(room.gameState)) return false;
 
+    // A process restart may occur after the engine entered NIGHT but before
+    // Telegram restrictions were applied. Reapply the group mute during the
+    // same recovery pass that restores the phase timer.
+    if (room.gameState === GameState.FIRST_NIGHT || room.gameState === GameState.NIGHT) {
+      await this.muteService.mutePlayers(
+        room.chatId,
+        Object.values(room.players).map((player) => player.telegramId),
+      );
+    }
+
     const remainingMs = await this.services.timerService.getRemainingMs(roomId);
     if (remainingMs !== null) return false;
 
@@ -994,10 +1024,26 @@ export class GameFlowController {
     deaths: Array<{ telegramId: string; cause: string }>,
   ): Promise<void> {
     await this.cancelTimerIfAny(room.id);
+
+    // Discussion violations are resolved by the engine, but the Telegram
+    // moderation path is separate. Persist every resulting death in the mute
+    // set before presenting the next phase, otherwise a human who died for
+    // speaking while silenced can continue sending messages after the flow
+    // advances to voting. MuteService also attempts Telegram restrictions and
+    // falls back to middleware deletion when the API cannot restrict them.
+    if (deaths.length > 0) {
+      await this.muteService.mutePlayers(room.chatId, deaths.map((death) => death.telegramId));
+    }
+
     const firstDeath = deaths[0];
     if (firstDeath) {
       const nickname = room.players[firstDeath.telegramId]?.nickname ?? firstDeath.telegramId;
-      await this.bot.telegram.sendMessage(room.chatId, Messages.speechViolation(nickname));
+      await this.safeSendMessage(
+        room.chatId,
+        Messages.speechViolation(nickname),
+        undefined,
+        'speech-violation',
+      );
     }
     if (room.gameState === GameState.GAME_OVER) {
       await this.announceGameOver(room);
