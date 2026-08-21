@@ -221,6 +221,17 @@ describe('RedisStorageAdapter (integration)', () => {
     expect(await adapter.getPlayerSession('user1')).toBeNull();
   });
 
+  it('setPlayerSessionIfAbsent atomically preserves the first room claim', async () => {
+    if (!redisAvailable) return;
+    const adapter = new RedisStorageAdapter(redis);
+    const results = await Promise.all([
+      adapter.setPlayerSessionIfAbsent('user-race', 'room-a'),
+      adapter.setPlayerSessionIfAbsent('user-race', 'room-b'),
+    ]);
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(['room-a', 'room-b']).toContain(await adapter.getPlayerSession('user-race'));
+  });
+
   it('appendEvents and getEvents round-trip a match event log in order', async () => {
     if (!redisAvailable) return;
     const adapter = new RedisStorageAdapter(redis);

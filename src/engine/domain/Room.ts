@@ -1,6 +1,14 @@
 import { GameState, NightPhase, RoomStatus, TimeoutBehavior, RoleId } from './enums';
 import { PlayerState } from './Player';
 
+export const MIN_SUPPORTED_PLAYERS = 3;
+export const MAX_SUPPORTED_PLAYERS = 15;
+
+function clampPlayerCount(value: number, fallback: number): number {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(MIN_SUPPORTED_PLAYERS, Math.min(MAX_SUPPORTED_PLAYERS, Math.floor(value)));
+}
+
 /**
  * Game rule configuration for a Room. All values are configurable per SRS
  * section 6/7/11 requirements ("Có cấu hình...", "Có khả năng thay đổi thứ tự
@@ -56,20 +64,21 @@ export interface GameSettings {
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
   minPlayers: 3,
-  maxPlayers: 20,
+  maxPlayers: MAX_SUPPORTED_PLAYERS,
   roleDistributionStrategy: 'default-phase1',
   enabledRoles: [],
   seerRevealsExactRole: false,
   bodyguardAllowConsecutiveProtect: true,
   bodyguardAllowSelfProtect: true,
   witchAllowDualPotion: true,
-  hunterTriggerCauses: ['WEREWOLF_KILL', 'VOTE_EXECUTION', 'WITCH_POISON'],
+  hunterTriggerCauses: ['WEREWOLF_KILL', 'VOTE_EXECUTION', 'WITCH_POISON', 'SPOKEN_WHILE_SILENCED'],
   nightActionOrder: [
     'WEREWOLF_VOTE_KILL',
     'BODYGUARD_PROTECT',
     'SEER_INSPECT',
     'WITCH_SAVE',
     'WITCH_POISON',
+    'SILENT_MAGE_SILENCE',
   ],
   defaultTimeoutBehavior: TimeoutBehavior.SKIP,
   timers: {
@@ -138,6 +147,20 @@ export interface RoomState {
   nightPhase?: NightPhase;
   /** Optional override requested by /bottest to force a specific role assignment. */
   requestedRoleOverride?: RoleId | null;
+  /** Current discussion opening/active lifecycle. Missing on legacy rooms means OPENING. */
+  discussionLifecycle?: 'OPENING' | 'ACTIVE' | 'CLOSED';
+  /** Current voting ballot identity; callbacks from older ballots are stale. */
+  ballotId?: string | null;
+  /** Persisted identity for the current discussion cycle. */
+  discussionCycleId?: string | null;
+  /** Speech enforcement is enabled only after the public announcement succeeds. */
+  discussionEnforcementReady?: boolean;
+  /** Silence target for the current round/cycle, if any. */
+  silencedPlayerId?: string | null;
+  silencedUntilRound?: number | null;
+  silencedDiscussionCycleId?: string | null;
+  discussionAnnouncementSentAt?: number | null;
+  discussionDeadlineAt?: number | null;
 }
 
 export class RoomFactory {
@@ -154,7 +177,15 @@ export class RoomFactory {
       status: RoomStatus.OPEN,
       gameState: GameState.WAITING,
       players: {},
-      settings: { ...DEFAULT_GAME_SETTINGS, ...params.settingsOverride },
+      settings: (() => {
+        const merged = { ...DEFAULT_GAME_SETTINGS, ...params.settingsOverride };
+        const minPlayers = clampPlayerCount(merged.minPlayers, MIN_SUPPORTED_PLAYERS);
+        const maxPlayers = Math.max(
+          minPlayers,
+          clampPlayerCount(merged.maxPlayers, MAX_SUPPORTED_PLAYERS),
+        );
+        return { ...merged, minPlayers, maxPlayers };
+      })(),
       currentRound: 0,
       version: 0,
       createdAt: params.now,
@@ -167,6 +198,15 @@ export class RoomFactory {
       lastTargetedByHunter: {},
       pendingNightActions: [],
       nightPhase: NightPhase.ACTIONS,
+      discussionLifecycle: 'CLOSED',
+      ballotId: null,
+      discussionCycleId: null,
+      discussionEnforcementReady: false,
+      silencedPlayerId: null,
+      silencedUntilRound: null,
+      silencedDiscussionCycleId: null,
+      discussionAnnouncementSentAt: null,
+      discussionDeadlineAt: null,
     };
   }
 }

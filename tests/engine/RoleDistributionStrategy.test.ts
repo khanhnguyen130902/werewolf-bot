@@ -25,7 +25,7 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(strategy.computeDistribution(8, [])[RoleId.WEREWOLF]).toBe(2); // floor(8/4)=2
     expect(strategy.computeDistribution(11, [])[RoleId.WEREWOLF]).toBe(2); // floor(11/4)=2
     expect(strategy.computeDistribution(12, [])[RoleId.WEREWOLF]).toBe(3); // floor(12/4)=3
-    expect(strategy.computeDistribution(20, [])[RoleId.WEREWOLF]).toBe(5); // floor(20/4)=5
+    expect(strategy.computeDistribution(15, [])[RoleId.WEREWOLF]).toBe(3); // floor(15/4)=3
   });
 
   it('uses at least 2 werewolves when the room has 5 or more players', () => {
@@ -110,7 +110,7 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(plan[RoleId.SEER]).toBe(1);
   });
 
-  it('throws NotEnoughPlayersError for zero or negative player count', () => {
+  it('rejects NotEnoughPlayersError for below-minimum player count', () => {
     expect(() => strategy.computeDistribution(0, [])).toThrow(NotEnoughPlayersError);
   });
 

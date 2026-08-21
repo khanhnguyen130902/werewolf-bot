@@ -41,6 +41,13 @@ function pickRandomTarget(targets: TargetOption[]): TargetOption | null {
   return targets[Math.floor(Math.random() * targets.length)];
 }
 
+function serializeError(err: unknown): { name: string; message: string; stack?: string } | { value: string } {
+  if (err instanceof Error) {
+    return { name: err.name, message: err.message, stack: err.stack };
+  }
+  return { value: String(err) };
+}
+
 /** Maps a role that has a regular per-night prompt to its NightActionType.
  * Hunter's normal-night action records a preselected revenge target. */
 const ROLE_NIGHT_ACTION: Partial<Record<RoleId, NightActionType>> = {
@@ -48,6 +55,7 @@ const ROLE_NIGHT_ACTION: Partial<Record<RoleId, NightActionType>> = {
   [RoleId.SEER]: NightActionType.SEER_INSPECT,
   [RoleId.BODYGUARD]: NightActionType.BODYGUARD_PROTECT,
   [RoleId.HUNTER]: NightActionType.HUNTER_SHOOT,
+  [RoleId.SILENT_MAGE]: NightActionType.SILENT_MAGE_SILENCE,
 };
 
 /** In-memory tracking of the currently-scheduled timer jobId per room, so it
@@ -74,6 +82,7 @@ const pendingHunterPrompts = new Map<string, PendingHunterPrompt>();
 export class GameFlowController {
   public readonly botPolicy: BotPolicy;
   public readonly muteService: MuteService;
+  private readonly presentedBallotIds = new Set<string>();
 
   constructor(
     private readonly services: BotServices,
@@ -86,6 +95,26 @@ export class GameFlowController {
 
   async unmuteAllPlayers(chatId: string | number): Promise<void> {
     await this.muteService.unmuteAllPlayers(chatId);
+  }
+
+  /** Telegram delivery is a presentation side effect. A transient API failure
+   * must be logged and isolated so an already-committed engine transition can
+   * still schedule the next phase or reach GAME_OVER. */
+  private async safeSendMessage(
+    chatId: string | number,
+    text: string,
+    extra?: unknown,
+    operation = 'sendMessage',
+  ): Promise<void> {
+    try {
+      await this.bot.telegram.sendMessage(chatId, text, extra as any);
+    } catch (err) {
+      logger.error('Telegram delivery failed; continuing game flow', {
+        operation,
+        chatId: String(chatId),
+        error: serializeError(err),
+      });
+    }
   }
 
   /** Records a bot's action, falling back to an explicit Skip if its chosen
@@ -114,11 +143,6 @@ export class GameFlowController {
         logger.debug('Bot night action was already submitted; ignoring duplicate', { roomId: params.room.id, actorTelegramId: params.player.telegramId, actionType: params.actionType });
         return;
       }
-      if (params.targetTelegramId === null) {
-        logger.error('Bot failed to submit an explicit night skip', { roomId: params.room.id, actorTelegramId: params.player.telegramId, actionType: params.actionType, err });
-        return;
-      }
-
       if (params.targetTelegramId === null) {
         logger.error('Bot failed to submit an explicit night skip', {
           roomId: params.room.id,
@@ -239,12 +263,12 @@ export class GameFlowController {
           `${roleMessage}${teammateMessage}`,
           { parse_mode: 'Markdown' },
         );
-      } catch {
-        // Player may have blocked the bot or an unexpected DM failure
-        // occurred after the join-time DM-reachability check passed; do not
-        // let one failed DM abort the entire game-start flow for everyone
-        // else. The group announcement above already told everyone the
-        // game has started.
+      } catch (err) {
+        logger.error('Failed to deliver role DM; continuing game start', {
+          roomId: room.id,
+          playerTelegramId: player.telegramId,
+          err,
+        });
       }
     });
 
@@ -274,10 +298,18 @@ export class GameFlowController {
 
     await Promise.all(
       aliveWerewolves.map(async (werewolf) => {
+        // Synthetic bottest players do not have real Telegram private chats;
+        // they are simulated in-process and must not produce expected
+        // `chat not found` API errors during a no-consensus notification.
+        if (isTestBot(werewolf.telegramId)) return;
         try {
           await this.bot.telegram.sendMessage(werewolf.telegramId, Messages.werewolfNoConsensusNotice(), { parse_mode: 'Markdown' });
-        } catch {
-          // Best-effort notification; ignore DM failures.
+        } catch (err) {
+          logger.error('Failed to deliver werewolf no-consensus DM', {
+            roomId: room.id,
+            playerTelegramId: werewolf.telegramId,
+            err,
+          });
         }
       }),
     );
@@ -286,7 +318,12 @@ export class GameFlowController {
   /** Sends each role's night-action prompt (inline keyboard) via DM, and
    * schedules the night's timeout. */
   private async startNightPrompts(room: RoomState): Promise<void> {
-    await this.bot.telegram.sendMessage(room.chatId, Messages.nightBegins(room.currentRound));
+    await this.safeSendMessage(
+      room.chatId,
+      Messages.nightBegins(room.currentRound),
+      undefined,
+      'night-begins',
+    );
 
     // Arm the deadline before any DM is sent. A player can tap a button as
     // soon as Telegram receives it; scheduling first prevents that callback
@@ -355,8 +392,13 @@ export class GameFlowController {
           'EX',
           86400 // 1 day
         );
-      } catch {
-        // See onGameStarted's catch above for rationale.
+      } catch (err) {
+        logger.error('Failed to deliver night-action prompt; continuing prompt fan-out', {
+          roomId: room.id,
+          playerTelegramId: player.telegramId,
+          actionType,
+          err,
+        });
       }
     });
 
@@ -630,8 +672,13 @@ export class GameFlowController {
           targets: [{ telegramId: victimTelegramId, nickname: victim.nickname }],
         }),
       );
-    } catch {
-      // See onGameStarted's catch above for rationale.
+    } catch (err) {
+      logger.error('Failed to deliver Witch save prompt', {
+        roomId,
+        witchTelegramId: witch.telegramId,
+        victimTelegramId,
+        err,
+      });
     }
   }
 
@@ -722,9 +769,12 @@ export class GameFlowController {
     const deathsWithNicknames = deaths.map((d) => ({
       nickname: room.players[d.telegramId]?.nickname ?? d.telegramId,
     }));
-    await this.bot.telegram.sendMessage(
+    const silencedPlayer = room.silencedPlayerId ? room.players[room.silencedPlayerId] : undefined;
+    await this.safeSendMessage(
       room.chatId,
-      Messages.dayBegins(room.currentRound, deathsWithNicknames),
+      Messages.dayBegins(room.currentRound, deathsWithNicknames, silencedPlayer?.alive ? silencedPlayer.nickname : null),
+      undefined,
+      'day-begins',
     );
 
     // Seer results are delivered immediately when the inspection is submitted;
@@ -739,12 +789,31 @@ export class GameFlowController {
   }
 
   async startDiscussion(roomId: string): Promise<void> {
-    const room = await this.services.dayService.startDiscussion(roomId);
-    const seconds = room.settings.timers.discussionSeconds;
-    await this.bot.telegram.sendMessage(room.chatId, Messages.discussionStarted(seconds));
+    const openingRoom = await this.services.dayService.startDiscussion(roomId);
+    await this.activateDiscussionOpening(openingRoom);
+  }
 
-    // Simulate bot chat
-    this.scheduleBotDiscussion(roomId);
+  async resumeDiscussionOpening(roomId: string): Promise<void> {
+    const room = await this.services.roomService.getRoom(roomId);
+    if (!room || room.gameState !== GameState.DISCUSSION) return;
+    if (room.discussionLifecycle === 'ACTIVE' && room.discussionEnforcementReady === true) return;
+    await this.activateDiscussionOpening(room);
+  }
+
+  private async activateDiscussionOpening(openingRoom: RoomState): Promise<void> {
+    const seconds = openingRoom.settings.timers.discussionSeconds;
+    await this.safeSendMessage(
+      openingRoom.chatId,
+      Messages.discussionStarted(seconds),
+      undefined,
+      'discussion-started',
+    );
+    const cycleId = openingRoom.discussionCycleId;
+    if (!cycleId) return;
+    const room = await this.services.dayService.activateDiscussion(openingRoom.id, cycleId);
+
+    // Simulate bot chat only after the persisted enforcement gate is ACTIVE.
+    this.scheduleBotDiscussion(room.id);
 
     const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
     if (jobId) activeTimerJobIds.set(room.id, jobId);
@@ -753,7 +822,7 @@ export class GameFlowController {
   private scheduleBotDiscussion(roomId: string): void {
     setTimeout(async () => {
       const room = await this.services.roomService.getRoom(roomId);
-      if (!room || room.gameState !== GameState.DISCUSSION) return;
+      if (!room || room.gameState !== GameState.DISCUSSION || room.discussionLifecycle !== 'ACTIVE' || room.discussionEnforcementReady !== true) return;
 
       const inspection = this.botPolicy.consumeLastInspection(roomId);
       if (!inspection) {
@@ -762,7 +831,7 @@ export class GameFlowController {
       }
 
       const seerPlayer = room.players[inspection.seerTelegramId];
-      if (!seerPlayer || !seerPlayer.alive) return;
+      if (!seerPlayer || !seerPlayer.alive || this.botPolicy.canSpeak(room, seerPlayer) !== 'ALLOW') return;
 
       const shouldClaim = this.botPolicy.shouldClaimInspection(
         inspection.seerTelegramId,
@@ -789,9 +858,16 @@ export class GameFlowController {
 
       setTimeout(async () => {
         const nextRoom = await this.services.roomService.getRoom(roomId);
-        if (!nextRoom || nextRoom.gameState !== GameState.DISCUSSION) return;
+        if (!nextRoom
+          || nextRoom.gameState !== GameState.DISCUSSION
+          || nextRoom.discussionLifecycle !== 'ACTIVE'
+          || nextRoom.discussionEnforcementReady !== true
+          || nextRoom.discussionCycleId !== room.discussionCycleId) return;
         const aliveBots = Object.values(nextRoom.players).filter(
-          (player) => player.alive && isTestBot(player.telegramId) && player.telegramId !== inspection.seerTelegramId,
+          (player) => player.alive
+            && isTestBot(player.telegramId)
+            && player.telegramId !== inspection.seerTelegramId
+            && this.botPolicy.canSpeak(nextRoom, player) === 'ALLOW',
         );
         if (aliveBots.length === 0) return;
         const randomBot = aliveBots[Math.floor(Math.random() * aliveBots.length)];
@@ -814,13 +890,15 @@ export class GameFlowController {
           targetTelegramId: inspection.targetTelegramId,
           text: agrees ? 'supports-claim' : 'challenges-claim',
         });
-        await this.bot.telegram.sendMessage(nextRoom.chatId, text);
+        await this.safeSendMessage(nextRoom.chatId, text, undefined, 'discussion-bot-reaction');
       }, 2000);
     }, 3000);
   }
 
   private async simulateRandomBotChat(room: RoomState): Promise<void> {
-    const aliveBots = Object.values(room.players).filter((p) => p.alive && isTestBot(p.telegramId));
+    const aliveBots = Object.values(room.players).filter(
+      (p) => p.alive && isTestBot(p.telegramId) && this.botPolicy.canSpeak(room, p) === 'ALLOW',
+    );
     if (aliveBots.length === 0) return;
     const randomBot = aliveBots[Math.floor(Math.random() * aliveBots.length)];
 
@@ -834,59 +912,152 @@ export class GameFlowController {
         actorTelegramId: randomBot.telegramId,
         text,
       });
-      await this.bot.telegram.sendMessage(room.chatId, text);
+      await this.safeSendMessage(room.chatId, text, undefined, 'discussion-bot-chat');
     }
   }
 
-  async startVoting(roomId: string): Promise<void> {
-    await this.cancelTimerIfAny(roomId);
-    const room = await this.services.dayService.startVoting(roomId);
-    const seconds = room.settings.timers.votingSeconds;
+  /** Re-presents the current voting ballot when a user sends /vote after the
+   * phase has already been opened. This is a user-facing recovery path for a
+   * lost Telegram message; it does not mutate the ballot or create a second
+   * timer. */
+  async remindVoting(roomId: string): Promise<boolean> {
+    const room = await this.services.roomService.getRoom(roomId);
+    if (!room || room.gameState !== GameState.VOTING) return false;
 
     const aliveTargets: TargetOption[] = Object.values(room.players)
       .filter((p) => p.alive)
       .map((p) => ({ telegramId: p.telegramId, nickname: p.nickname }));
-
-    await this.bot.telegram.sendMessage(
-      room.chatId,
-      Messages.votingStarted(seconds),
-      buildVoteKeyboard({ targets: aliveTargets, voteCounts: {}, skipCount: 0 }),
-    );
-
-    // Fix #2: Schedule the voting timer BEFORE bots vote so the timer uses
-    // the correct room snapshot (immediately after startVoting transitions
-    // to VOTING state). Scheduling it after bot votes would use a stale room
-    // object that doesn't reflect the bots' hasVotedThisRound flags.
-    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
-    if (jobId) activeTimerJobIds.set(room.id, jobId);
-
+    const voteCounts: Record<string, number> = {};
+    let skipCount = 0;
     for (const player of Object.values(room.players)) {
-      if (!player.alive || !isTestBot(player.telegramId)) continue;
-
-      await waitForBotTurn();
-      const targetOption = this.botPolicy.chooseVoteTarget(room, player, aliveTargets, roomId);
-      const targetTelegramId = targetOption?.telegramId ?? null;
-      this.botPolicy.recordObservation(roomId, {
-        type: 'VOTE',
-        round: room.currentRound,
-        actorTelegramId: player.telegramId,
-        targetTelegramId,
-      });
-
-      try {
-        await this.services.dayService.submitVote({
-          roomId: room.id,
-          actionId: `bot-vote-${player.telegramId}-${room.currentRound}-${targetTelegramId ?? 'SKIP'}`,
-          voterTelegramId: player.telegramId,
-          targetTelegramId,
-        });
-      } catch {
-        // Ignore duplicate or invalid bot votes; the phase timeout will handle
-        // any genuinely missing vote according to the configured policy.
-      }
+      if (!player.hasVotedThisRound) continue;
+      if (player.voteTarget === null) skipCount += 1;
+      else if (player.voteTarget) voteCounts[player.voteTarget] = (voteCounts[player.voteTarget] ?? 0) + 1;
     }
 
-    await this.resolveExecutionIfAllVoted(room.id);
+    await this.safeSendMessage(
+      room.chatId,
+      Messages.votingStarted(room.settings.timers.votingSeconds),
+      buildVoteKeyboard({ targets: aliveTargets, voteCounts, skipCount, ballotId: room.ballotId }),
+      'voting-reminder',
+    );
+    logger.info('Re-presented active voting ballot after /vote', {
+      roomId,
+      ballotId: room.ballotId,
+      currentRound: room.currentRound,
+    });
+    return true;
+  }
+
+  /** Re-arms a missing timer for an active timed phase after restart or a
+   * previously interrupted transition. This is intentionally a no-op when a
+   * deadline already exists, so normal restart recovery does not duplicate
+   * timers. */
+  async ensurePhaseTimer(roomId: string): Promise<boolean> {
+    const room = await this.services.roomService.getRoom(roomId);
+    if (!room || ![
+      GameState.FIRST_NIGHT,
+      GameState.NIGHT,
+      GameState.DISCUSSION,
+      GameState.VOTING,
+    ].includes(room.gameState)) return false;
+
+    const remainingMs = await this.services.timerService.getRemainingMs(roomId);
+    if (remainingMs !== null) return false;
+
+    const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
+    if (!jobId) return false;
+    activeTimerJobIds.set(room.id, jobId);
+    logger.warn('Re-armed missing phase timer during runtime recovery', {
+      roomId,
+      gameState: room.gameState,
+      nightPhase: room.nightPhase,
+      currentRound: room.currentRound,
+      jobId,
+    });
+    return true;
+  }
+
+  async startVoting(roomId: string): Promise<void> {
+    // Validate and commit the phase transition first. If /vote is issued in
+    // FIRST_NIGHT/NIGHT or another invalid phase, DayService must reject
+    // without cancelling the timer that is responsible for advancing that
+    // phase. Cancelling before this call caused an invalid /vote to remove the
+    // active night timeout and left the room stuck indefinitely.
+    const room = await this.services.dayService.startVoting(roomId);
+    await this.cancelTimerIfAny(roomId);
+    await this.presentVoting(room);
+  }
+
+  async onDiscussionDeathResolved(
+    room: RoomState,
+    deaths: Array<{ telegramId: string; cause: string }>,
+  ): Promise<void> {
+    await this.cancelTimerIfAny(room.id);
+    const firstDeath = deaths[0];
+    if (firstDeath) {
+      const nickname = room.players[firstDeath.telegramId]?.nickname ?? firstDeath.telegramId;
+      await this.bot.telegram.sendMessage(room.chatId, Messages.speechViolation(nickname));
+    }
+    if (room.gameState === GameState.GAME_OVER) {
+      await this.announceGameOver(room);
+      return;
+    }
+    await this.presentVoting(room);
+  }
+
+  private async presentVoting(room: RoomState): Promise<void> {
+    const ballotKey = `${room.id}:${room.ballotId ?? `legacy-round-${room.currentRound}`}`;
+    if (this.presentedBallotIds.has(ballotKey)) {
+      logger.debug('Skipping duplicate voting presentation', { roomId: room.id, ballotId: room.ballotId });
+      return;
+    }
+    this.presentedBallotIds.add(ballotKey);
+
+    try {
+      const seconds = room.settings.timers.votingSeconds;
+      const aliveTargets: TargetOption[] = Object.values(room.players)
+        .filter((p) => p.alive)
+        .map((p) => ({ telegramId: p.telegramId, nickname: p.nickname }));
+
+      await this.safeSendMessage(
+        room.chatId,
+        Messages.votingStarted(seconds),
+        buildVoteKeyboard({ targets: aliveTargets, voteCounts: {}, skipCount: 0, ballotId: room.ballotId }),
+        'voting-started',
+      );
+
+      const jobId = await this.services.orchestrator.scheduleCurrentPhaseTimer(room);
+      if (jobId) activeTimerJobIds.set(room.id, jobId);
+
+      for (const player of Object.values(room.players)) {
+        if (!player.alive || !isTestBot(player.telegramId)) continue;
+        await waitForBotTurn();
+        const targetOption = this.botPolicy.chooseVoteTarget(room, player, aliveTargets, room.id);
+        const targetTelegramId = targetOption?.telegramId ?? null;
+        this.botPolicy.recordObservation(room.id, {
+          type: 'VOTE',
+          round: room.currentRound,
+          actorTelegramId: player.telegramId,
+          targetTelegramId,
+        });
+        try {
+          await this.services.dayService.submitVote({
+            roomId: room.id,
+            actionId: `bot-vote-${player.telegramId}-${room.currentRound}-${targetTelegramId ?? 'SKIP'}`,
+            voterTelegramId: player.telegramId,
+            targetTelegramId,
+            ballotId: room.ballotId,
+          });
+        } catch {
+          // Timer resolves any missing bot vote.
+        }
+      }
+      await this.resolveExecutionIfAllVoted(room.id);
+    } catch (err) {
+      this.presentedBallotIds.delete(ballotKey);
+      throw err;
+    }
   }
 
   private async resolveExecutionIfAllVoted(roomId: string): Promise<void> {
@@ -931,15 +1102,17 @@ export class GameFlowController {
     const executedNickname = executedTelegramId
       ? (room.players[executedTelegramId]?.nickname ?? executedTelegramId)
       : null;
-    await this.bot.telegram.sendMessage(room.chatId, Messages.executionResult(executedNickname));
-    await this.bot.telegram.sendMessage(room.chatId, BotDialogue.execution());
+    await this.safeSendMessage(room.chatId, Messages.executionResult(executedNickname), undefined, 'execution-result');
+    await this.safeSendMessage(room.chatId, BotDialogue.execution(), undefined, 'execution-dialogue');
 
     if (executedTelegramId) {
       const executedPlayer = room.players[executedTelegramId];
       if (executedPlayer?.role) {
-        await this.bot.telegram.sendMessage(
+        await this.safeSendMessage(
           room.chatId,
           Messages.executionRoleReveal(executedNickname ?? executedTelegramId, executedPlayer.role),
+          undefined,
+          'execution-role-reveal',
         );
       }
     }
@@ -947,9 +1120,11 @@ export class GameFlowController {
     const extraDeaths = deaths.filter((d) => d.telegramId !== executedTelegramId);
     for (const death of extraDeaths) {
       const nickname = room.players[death.telegramId]?.nickname ?? death.telegramId;
-      await this.bot.telegram.sendMessage(
+      await this.safeSendMessage(
         room.chatId,
         `💀 ${nickname} đã ${DeathCauseNames[death.cause] ?? death.cause}.`,
+        undefined,
+        'execution-extra-death',
       );
     }
 
@@ -966,7 +1141,7 @@ export class GameFlowController {
       (p) => p.alive && p.role === RoleId.WEREWOLF,
     ).length;
     const winner = aliveWerewolves === 0 ? 'VILLAGE' : 'WEREWOLF';
-    await this.bot.telegram.sendMessage(room.chatId, Messages.gameOver(winner));
+    await this.safeSendMessage(room.chatId, Messages.gameOver(winner), undefined, 'game-over');
 
     const finalRoles = Object.values(room.players)
       .sort((a, b) => a.joinedAt - b.joinedAt)
@@ -974,7 +1149,7 @@ export class GameFlowController {
         nickname: player.nickname,
         roleId: player.role ?? RoleId.VILLAGER,
       }));
-    await this.bot.telegram.sendMessage(room.chatId, Messages.finalRoleSummary(finalRoles));
+    await this.safeSendMessage(room.chatId, Messages.finalRoleSummary(finalRoles), undefined, 'final-role-summary');
 
     // Unmute all players in the room
     await this.muteService.unmuteAllPlayers(room.chatId);
@@ -1140,10 +1315,25 @@ export class GameFlowController {
    * acting, since a timer could theoretically fire after the phase already
    * advanced via early resolution (all players acted before the deadline). */
   registerTimeoutHandlers(): void {
-    this.services.timerService.onTimeout(TimerJobType.NIGHT_ACTION_TIMEOUT, async (roomId) => {
+    this.services.timerService.onTimeout(TimerJobType.NIGHT_ACTION_TIMEOUT, async (roomId, payload) => {
       const room = await this.services.roomService.getRoom(roomId);
+      const expectedRound = typeof payload.round === 'number' ? payload.round : null;
+      const expectedNightPhase = typeof payload.nightPhase === 'string' ? payload.nightPhase : null;
       if (!room) return;
       if (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT) return;
+      if (
+        expectedRound !== room.currentRound
+        || expectedNightPhase !== (room.nightPhase ?? NightPhase.ACTIONS)
+      ) {
+        logger.debug('Ignoring stale night timeout', {
+          roomId,
+          expectedRound,
+          currentRound: room.currentRound,
+          expectedNightPhase,
+          currentNightPhase: room.nightPhase ?? NightPhase.ACTIONS,
+        });
+        return;
+      }
 
       if (room.nightPhase !== NightPhase.WITCH) {
         // Cleanup timed-out keyboards and notify players for non-Witch, non-Werewolf roles.
@@ -1161,9 +1351,22 @@ export class GameFlowController {
       await this.resolveNight(roomId);
     });
 
-    this.services.timerService.onTimeout(TimerJobType.WITCH_ACTION_TIMEOUT, async (roomId) => {
+    this.services.timerService.onTimeout(TimerJobType.WITCH_ACTION_TIMEOUT, async (roomId, payload) => {
       const room = await this.services.roomService.getRoom(roomId);
-      if (!room || room.nightPhase !== NightPhase.WITCH) return;
+      const expectedRound = typeof payload.round === 'number' ? payload.round : null;
+      if (
+        !room
+        || (room.gameState !== GameState.NIGHT && room.gameState !== GameState.FIRST_NIGHT)
+        || room.nightPhase !== NightPhase.WITCH
+      ) return;
+      if (expectedRound !== room.currentRound) {
+        logger.debug('Ignoring stale witch timeout', {
+          roomId,
+          expectedRound,
+          currentRound: room.currentRound,
+        });
+        return;
+      }
 
       // Witch timed out during Witch phase
       await this.cleanupTimedOutWitch(room);
@@ -1171,16 +1374,31 @@ export class GameFlowController {
       await this.resolveNight(roomId);
     });
 
-    this.services.timerService.onTimeout(TimerJobType.DISCUSSION_TIMEOUT, async (roomId) => {
+    this.services.timerService.onTimeout(TimerJobType.DISCUSSION_TIMEOUT, async (roomId, payload) => {
       const room = await this.services.roomService.getRoom(roomId);
+      const expectedCycleId = typeof payload.discussionCycleId === 'string' ? payload.discussionCycleId : null;
       if (!room || room.gameState !== GameState.DISCUSSION) return;
-      await this.startVoting(roomId);
+      if (room.discussionLifecycle !== 'ACTIVE' || room.discussionEnforcementReady !== true) return;
+      if (expectedCycleId !== room.discussionCycleId) {
+        logger.debug('Ignoring stale discussion timeout', { roomId, expectedCycleId, currentCycleId: room.discussionCycleId });
+        return;
+      }
+      try {
+        await this.startVoting(roomId);
+      } catch (err) {
+        logger.debug('Discussion timeout lost a phase race; treating as stale', { roomId, err });
+      }
     });
 
-    this.services.timerService.onTimeout(TimerJobType.VOTING_TIMEOUT, async (roomId) => {
+    this.services.timerService.onTimeout(TimerJobType.VOTING_TIMEOUT, async (roomId, payload) => {
       const room = await this.services.roomService.getRoom(roomId);
+      const expectedBallotId = typeof payload.ballotId === 'string' ? payload.ballotId : null;
+      const expectedRound = typeof payload.round === 'number' ? payload.round : null;
       if (!room || room.gameState !== GameState.VOTING) return;
-
+      if (expectedBallotId !== room.ballotId || expectedRound !== room.currentRound) {
+        logger.debug('Ignoring stale voting timeout', { roomId, expectedBallotId, currentBallotId: room.ballotId, expectedRound, currentRound: room.currentRound });
+        return;
+      }
       await this.resolveExecution(roomId);
     });
   }

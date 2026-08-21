@@ -6,7 +6,10 @@ import { InvalidStateTransitionError } from '../errors/DomainError';
  *
  *   WAITING -> STARTING -> FIRST_NIGHT -> NIGHT -> DAY -> DISCUSSION
  *   -> VOTING -> EXECUTION -> CHECK_WIN -> NIGHT ... -> GAME_OVER
+ *   DAY -> VOTING is an explicit daytime early-skip path when a user invokes
+ *   /vote before the discussion opening is active.
  *
+ * DAY -> VOTING is an additional, deliberate user-requested early-skip edge;
  * DAY -> CHECK_WIN is an additional, deliberate early-exit edge: if the
  * night's deaths already decide the match (e.g. werewolves reach parity),
  * there is no point running DISCUSSION/VOTING/EXECUTION on a foregone
@@ -31,11 +34,11 @@ const TRANSITIONS: Record<GameState, GameState[]> = {
   [GameState.STARTING]: [GameState.FIRST_NIGHT, GameState.WAITING], // WAITING = abort/reset path
   [GameState.FIRST_NIGHT]: [GameState.DAY],
   [GameState.NIGHT]: [GameState.DAY],
-  [GameState.DAY]: [GameState.DISCUSSION, GameState.CHECK_WIN], // CHECK_WIN = early exit, see above
-  [GameState.DISCUSSION]: [GameState.VOTING],
+  [GameState.DAY]: [GameState.DISCUSSION, GameState.VOTING, GameState.CHECK_WIN], // VOTING = user-requested early skip; CHECK_WIN = early exit, see above
+  [GameState.DISCUSSION]: [GameState.VOTING, GameState.CHECK_WIN],
   [GameState.VOTING]: [GameState.EXECUTION],
   [GameState.EXECUTION]: [GameState.CHECK_WIN],
-  [GameState.CHECK_WIN]: [GameState.NIGHT, GameState.GAME_OVER],
+  [GameState.CHECK_WIN]: [GameState.NIGHT, GameState.VOTING, GameState.GAME_OVER],
   [GameState.GAME_OVER]: [], // terminal state
 };
 

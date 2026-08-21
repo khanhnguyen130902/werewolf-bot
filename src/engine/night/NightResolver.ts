@@ -79,6 +79,7 @@ export class NightResolver {
     witchPotions: RoomState['witchPotions'];
     lastProtectedByBodyguard: RoomState['lastProtectedByBodyguard'];
     lastInspectedBySeer: RoomState['lastInspectedBySeer'];
+    silentMageTargetTelegramId: string | null;
   } {
     const { room } = params;
     const settings = room.settings;
@@ -98,6 +99,7 @@ export class NightResolver {
     const protectedThisNight = new Set<string>();
     const savedThisNight = new Set<string>();
     let poisonedTargetId: string | null = null;
+    let silentMageTargetTelegramId: string | null = null;
 
     for (const actionType of settings.nightActionOrder as NightActionType[]) {
       const actionsOfType = grouped[actionType] ?? [];
@@ -168,6 +170,13 @@ export class NightResolver {
           break;
         }
 
+        case NightActionType.SILENT_MAGE_SILENCE: {
+          for (const action of actionsOfType) {
+            if (action.targetTelegramId) silentMageTargetTelegramId = action.targetTelegramId;
+          }
+          break;
+        }
+
         default:
           break;
       }
@@ -211,6 +220,7 @@ export class NightResolver {
       witchPotions,
       lastProtectedByBodyguard,
       lastInspectedBySeer,
+      silentMageTargetTelegramId,
     };
   }
 
@@ -259,8 +269,24 @@ export class NightResolver {
     }
 
     updatedPlayers = Object.fromEntries(
-      Object.entries(updatedPlayers).map(([id, p]) => [id, resetNightFlags(p)]),
+      Object.entries(updatedPlayers).map(([id, p]) => [id, {
+        ...resetNightFlags(p),
+        silencedUntilRound: null,
+        silencedDiscussionCycleId: null,
+      }]),
     );
+
+    const target = stepOneResult.silentMageTargetTelegramId
+      ? updatedPlayers[stepOneResult.silentMageTargetTelegramId]
+      : null;
+    const silenceIsActive = Boolean(target?.alive && stepOneResult.silentMageTargetTelegramId);
+    if (silenceIsActive && target) {
+      updatedPlayers[target.telegramId] = {
+        ...target,
+        silencedUntilRound: room.currentRound,
+        silencedDiscussionCycleId: null,
+      };
+    }
 
     const updatedRoom: RoomState = {
       ...room,
@@ -268,6 +294,9 @@ export class NightResolver {
       witchPotions: stepOneResult.witchPotions,
       lastProtectedByBodyguard: stepOneResult.lastProtectedByBodyguard,
       lastInspectedBySeer: stepOneResult.lastInspectedBySeer,
+      silencedPlayerId: silenceIsActive ? stepOneResult.silentMageTargetTelegramId : null,
+      silencedUntilRound: silenceIsActive ? room.currentRound : null,
+      silencedDiscussionCycleId: null,
     };
 
     const result: NightResolutionResult = {

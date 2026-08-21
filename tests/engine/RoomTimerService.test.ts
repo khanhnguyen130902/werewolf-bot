@@ -84,6 +84,7 @@ describe('RoomTimerService', () => {
     expect(jobId).toBe('job-1');
     expect(scheduler.scheduled).toHaveLength(1);
     expect(scheduler.scheduled[0].delayMs).toBe(45000);
+    expect(scheduler.scheduled[0].payload).toEqual({});
 
     const deadline = await storage.getTimerDeadline('room1');
     expect(deadline).toBe(clock.now() + 45000);
@@ -124,15 +125,15 @@ describe('RoomTimerService', () => {
     expect(await storage.getTimerDeadline('room1')).toBeNull();
   });
 
-  it('onTimeout registers a handler that fires when the scheduler delivers the job', async () => {
+  it('onTimeout forwards generation payload to the registered handler', async () => {
     const { scheduler, service } = setup();
-    const received: string[] = [];
-    service.onTimeout(TimerJobType.NIGHT_ACTION_TIMEOUT, async (roomId) => {
-      received.push(roomId);
+    const received: Array<{ roomId: string; payload: Record<string, unknown> }> = [];
+    service.onTimeout(TimerJobType.DISCUSSION_TIMEOUT, async (roomId, payload) => {
+      received.push({ roomId, payload });
     });
 
-    await scheduler.fire(TimerJobType.NIGHT_ACTION_TIMEOUT, 'room1');
-    expect(received).toEqual(['room1']);
+    await scheduler.fire(TimerJobType.DISCUSSION_TIMEOUT, 'room1', { discussionCycleId: 'cycle-1' });
+    expect(received).toEqual([{ roomId: 'room1', payload: { discussionCycleId: 'cycle-1' } }]);
   });
 
   it('findOverdueRooms identifies rooms whose deadline has already passed', async () => {

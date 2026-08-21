@@ -140,10 +140,12 @@ export class MuteService {
 
       logger.info(`Unmuting ${mutedIds.length} players in chat ${chatId}...`);
 
+      const completedIds: string[] = [];
       const unmutePromises = mutedIds.map(async (telegramId) => {
         const userId = Number(telegramId);
         if (isNaN(userId)) {
           logger.warn(`Invalid muted ID in Redis for chat ${chatId}: "${telegramId}"`);
+          completedIds.push(telegramId);
           return;
         }
 
@@ -152,7 +154,10 @@ export class MuteService {
           const isCreatorOrAdmin = targetMember.status === 'creator' || targetMember.status === 'administrator';
 
           if (isCreatorOrAdmin) {
+            // Admins/creators were never API-restricted, so their fallback
+            // marker can be removed even though no lift call is needed.
             logger.info(`Skipping lift of API restrictions for creator/admin ${telegramId} in chat ${chatId}.`);
+            completedIds.push(telegramId);
             return;
           }
 
@@ -170,6 +175,7 @@ export class MuteService {
               can_add_web_page_previews: true,
             },
           });
+          completedIds.push(telegramId);
           logger.info(`Successfully unmuted player ${telegramId} in chat ${chatId}`);
         } catch (err: unknown) {
           logger.error(
@@ -181,8 +187,13 @@ export class MuteService {
 
       await Promise.all(unmutePromises);
 
-      // Delete the Redis set after unmuting attempt
-      await this.redis.del(key);
+      // Retain failed IDs so the middleware can continue deleting speech and a
+      // later recovery/retry can attempt the Telegram unrestriction again.
+      if (completedIds.length === mutedIds.length) {
+        await this.redis.del(key);
+      } else if (completedIds.length > 0) {
+        await this.redis.srem(key, ...completedIds);
+      }
     } catch (err: unknown) {
       logger.error(`Error in unmuteAllPlayers for chat ${chatId}: ${errorMessage(err)}`, { err });
     }

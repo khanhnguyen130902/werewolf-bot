@@ -21,6 +21,8 @@ export interface BaseDomainEvent<T extends DomainEventType, P> {
   matchId: string | null;
   round: number;
   timestamp: number;
+  /** Persisted room version that committed this event batch; useful for ordering/dedup. */
+  commitVersion?: number;
   payload: P;
 }
 
@@ -35,7 +37,11 @@ export type DomainEvent =
       DomainEventType.ROLES_ASSIGNED,
       { assignments: Array<{ telegramId: string; role: string; team: string }> }
     >
-  | BaseDomainEvent<DomainEventType.PHASE_CHANGED, { from: string; to: string }>
+  | BaseDomainEvent<DomainEventType.PHASE_CHANGED, { from: string; to: string; discussionCycleId?: string }>
+  | BaseDomainEvent<
+      DomainEventType.SPEECH_VIOLATION,
+      { speechEventId: string; speakerTelegramId: string; messageKind: string }
+    >
   | BaseDomainEvent<
       DomainEventType.NIGHT_ACTION_SUBMITTED,
       { telegramId: string; actionType: string; targetId: string | null; actionId: string }

@@ -39,15 +39,21 @@ export function buildVoteKeyboard(params: {
   targets: TargetOption[];
   voteCounts: Record<string, number>;
   skipCount: number;
+  ballotId?: string | null;
 }): Markup.Markup<InlineKeyboardMarkup> {
   const rows = params.targets.map((target) => [
     Markup.button.callback(
       `${target.nickname} (${params.voteCounts[target.telegramId] ?? 0})`,
-      `action:VOTE:${target.telegramId}`,
+      params.ballotId
+        ? `action:VOTE:${params.ballotId}:${target.telegramId}`
+        : `action:VOTE:${target.telegramId}`,
     ),
   ]);
   rows.push([
-    Markup.button.callback(`⏭ Bỏ qua (${params.skipCount})`, 'action:VOTE:SKIP'),
+    Markup.button.callback(
+      `⏭ Bỏ qua (${params.skipCount})`,
+      params.ballotId ? `action:VOTE:${params.ballotId}:SKIP` : 'action:VOTE:SKIP',
+    ),
   ]);
   return Markup.inlineKeyboard(rows);
 }
@@ -58,11 +64,21 @@ export function buildVoteKeyboard(params: {
  * callers can safely ignore callback queries from unrelated buttons/bots. */
 export function parseActionCallbackData(
   data: string,
-): { actionType: string; targetTelegramId: string | null } | null {
+): { actionType: string; ballotId: string | null; targetTelegramId: string | null } | null {
+  if (Buffer.byteLength(data, 'utf8') > 64) return null;
   const parts = data.split(':');
-  if (parts.length !== 3 || parts[0] !== 'action') {
+  if (parts.length < 3 || parts[0] !== 'action') {
     return null;
   }
-  const [, actionType, target] = parts;
-  return { actionType, targetTelegramId: target === 'SKIP' ? null : target };
+  const actionType = parts[1];
+  if (!actionType) return null;
+  if (parts.length === 3) {
+    const target = parts[2];
+    if (!target) return null;
+    return { actionType, ballotId: null, targetTelegramId: target === 'SKIP' ? null : target };
+  }
+  const target = parts[parts.length - 1];
+  const ballotId = parts.slice(2, -1).join(':');
+  if (!ballotId || !target) return null;
+  return { actionType, ballotId, targetTelegramId: target === 'SKIP' ? null : target };
 }

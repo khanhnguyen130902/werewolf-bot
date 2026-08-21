@@ -36,13 +36,23 @@ describe('GameStateMachine', () => {
     expect(sm.canTransition(GameState.CHECK_WIN, GameState.NIGHT)).toBe(true);
   });
 
+  it('allows DISCUSSION -> CHECK_WIN and CHECK_WIN -> VOTING for Silent Mage discussion death', () => {
+    expect(sm.canTransition(GameState.DISCUSSION, GameState.CHECK_WIN)).toBe(true);
+    expect(sm.canTransition(GameState.CHECK_WIN, GameState.VOTING)).toBe(true);
+  });
+
+  it('allows DAY -> VOTING as the daytime early-skip path', () => {
+    expect(sm.canTransition(GameState.DAY, GameState.VOTING)).toBe(true);
+  });
+
   it('allows DAY -> CHECK_WIN as an early exit when night deaths already decide the match', () => {
     expect(sm.canTransition(GameState.DAY, GameState.CHECK_WIN)).toBe(true);
   });
 
-  it('rejects illegal transitions (anti-cheat: cannot skip phases)', () => {
+  it('rejects illegal transitions (anti-cheat: cannot skip night or execution)', () => {
     expect(sm.canTransition(GameState.WAITING, GameState.NIGHT)).toBe(false);
-    expect(sm.canTransition(GameState.DAY, GameState.VOTING)).toBe(false);
+    expect(sm.canTransition(GameState.NIGHT, GameState.VOTING)).toBe(false);
+    expect(sm.canTransition(GameState.FIRST_NIGHT, GameState.VOTING)).toBe(false);
     expect(sm.canTransition(GameState.VOTING, GameState.DISCUSSION)).toBe(false);
   });
 

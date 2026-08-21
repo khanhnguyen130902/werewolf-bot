@@ -1,0 +1,48 @@
+◇ injected env (5) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+{
+  "now": 1787292480895,
+  "result": {
+    "night-action-timeout": {
+      "id": "2",
+      "meta": {
+        "opts.maxLenEvents": "1000",
+        "version": "bullmq:5.79.3"
+      },
+      "events": {
+        "type": "stream",
+        "length": 6
+      }
+    },
+    "witch-action-timeout": {
+      "meta": {
+        "opts.maxLenEvents": "10000"
+      }
+    },
+    "discussion-timeout": {
+      "id": "1",
+      "meta": {
+        "opts.maxLenEvents": "1000",
+        "version": "bullmq:5.79.3"
+      },
+      "events": {
+        "type": "stream",
+        "length": 3
+      }
+    },
+    "voting-timeout": {
+      "id": "1",
+      "meta": {
+        "opts.maxLenEvents": "1000",
+        "version": "bullmq:5.79.3"
+      },
+      "events": {
+        "type": "stream",
+        "length": 6
+      },
+      "completed": [
+        "1",
+        "1787291612245"
+      ]
+    }
+  }
+}

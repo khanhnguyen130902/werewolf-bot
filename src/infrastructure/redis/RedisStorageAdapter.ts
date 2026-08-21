@@ -97,6 +97,15 @@ export class RedisStorageAdapter implements StoragePort {
     await this.redis.set(RedisKeys.playerSession(telegramId), roomId);
   }
 
+  async setPlayerSessionIfAbsent(telegramId: string, roomId: string): Promise<boolean> {
+    const result = await this.redis.set(
+      RedisKeys.playerSession(telegramId),
+      roomId,
+      'NX',
+    );
+    return result === 'OK';
+  }
+
   async clearPlayerSession(telegramId: string, roomId?: string): Promise<void> {
     if (roomId) {
       const currentRoomId = await this.getPlayerSession(telegramId);

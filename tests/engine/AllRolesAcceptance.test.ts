@@ -4,6 +4,7 @@ import { SeerRole } from '../../src/engine/roles/SeerRole';
 import { BodyguardRole } from '../../src/engine/roles/BodyguardRole';
 import { HunterRole } from '../../src/engine/roles/HunterRole';
 import { WitchRole } from '../../src/engine/roles/WitchRole';
+import { SilentMageRole } from '../../src/engine/roles/SilentMageRole';
 import { NightActionContext } from '../../src/engine/roles/IRole';
 import { RoleId, Team } from '../../src/engine/domain/enums';
 import { InvalidTargetError, NoPotionLeftError } from '../../src/engine/errors/DomainError';
@@ -36,6 +37,7 @@ describe('All roles acceptance matrix', () => {
       new BodyguardRole(),
       new HunterRole(),
       new WitchRole(),
+      new SilentMageRole(),
     ];
 
     expect(roles.map((role) => role.definition.id)).toEqual([
@@ -45,11 +47,14 @@ describe('All roles acceptance matrix', () => {
       RoleId.BODYGUARD,
       RoleId.HUNTER,
       RoleId.WITCH,
+      RoleId.SILENT_MAGE,
     ]);
     expect(roles.filter((role) => role.definition.team === Team.WEREWOLF)).toHaveLength(1);
-    expect(roles.filter((role) => role.definition.team === Team.VILLAGE)).toHaveLength(5);
+    expect(roles.filter((role) => role.definition.team === Team.VILLAGE)).toHaveLength(6);
     expect(new VillagerRole().definition.hasNightAction).toBe(false);
     expect(new HunterRole().definition.reactsToOwnDeath).toBe(true);
+    expect(new SilentMageRole().definition.hasNightAction).toBe(true);
+    expect(new SilentMageRole().definition.reactsToOwnDeath).toBe(false);
   });
 
   describe('Werewolf', () => {
@@ -106,6 +111,16 @@ describe('All roles acceptance matrix', () => {
     it('rejects self and dead targets', () => {
       expect(() => role.validateNightAction(context({ targetTelegramId: 'actor' }))).toThrow(InvalidTargetError);
       expect(() => role.validateNightAction(context({ alivePlayerIds: ['actor'] }))).toThrow(InvalidTargetError);
+    });
+  });
+
+  describe('Silent Mage', () => {
+    const role = new SilentMageRole();
+    it('accepts a living target and Skip while rejecting self/dead targets', () => {
+      expect(() => role.validateNightAction(context({ targetTelegramId: 'other' }))).not.toThrow();
+      expect(() => role.validateNightAction(context({ targetTelegramId: null }))).not.toThrow();
+      expect(() => role.validateNightAction(context({ targetTelegramId: 'actor' }))).toThrow(InvalidTargetError);
+      expect(() => role.validateNightAction(context({ alivePlayerIds: ['actor', 'third'] }))).toThrow(InvalidTargetError);
     });
   });
 

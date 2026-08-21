@@ -20,6 +20,7 @@ const NIGHT_ACTION_TYPES: Set<string> = new Set([
   NightActionType.HUNTER_SHOOT,
   NightActionType.WITCH_SAVE,
   NightActionType.WITCH_POISON,
+  NightActionType.SILENT_MAGE_SILENCE,
 ]);
 
 const WEREWOLF_REVOTE_DELAY_MS = 3_000;
@@ -31,6 +32,7 @@ const ACTION_LABELS: Partial<Record<NightActionType, string>> = {
   [NightActionType.HUNTER_SHOOT]: 'mục tiêu bị bắn',
   [NightActionType.WITCH_SAVE]: 'người được cứu',
   [NightActionType.WITCH_POISON]: 'mục tiêu bị đầu độc',
+  [NightActionType.SILENT_MAGE_SILENCE]: 'người bị câm',
 };
 
 function targetNickname(room: RoomState, targetTelegramId: string | null): string | null {
@@ -53,7 +55,7 @@ function buildCurrentVoteKeyboard(room: RoomState) {
     }
   }
 
-  return buildVoteKeyboard({ targets, voteCounts, skipCount });
+  return buildVoteKeyboard({ targets, voteCounts, skipCount, ballotId: room.ballotId });
 }
 
 /**
@@ -259,6 +261,7 @@ export function registerActionCallbackHandler(
             actionId: randomUUID(),
             voterTelegramId: telegramId,
             targetTelegramId: parsed.targetTelegramId,
+            ballotId: parsed.ballotId,
           });
           await ctx.answerCbQuery(Messages.voteRecorded()).catch(() => undefined);
           await ctx.editMessageReplyMarkup(buildCurrentVoteKeyboard(updatedRoom).reply_markup).catch(() => undefined);
@@ -276,6 +279,10 @@ export function registerActionCallbackHandler(
         } catch (err) {
           if (err instanceof DomainError && err.code === 'DUPLICATE_ACTION') {
             await ctx.answerCbQuery(Messages.voteAlreadyCast(), { show_alert: true }).catch(() => undefined);
+            return;
+          }
+          if (err instanceof DomainError && err.code === 'STALE_BALLOT') {
+            await ctx.answerCbQuery('Phiếu bầu này đã hết hiệu lực. Hãy dùng nút trong ballot mới nhất.', { show_alert: true }).catch(() => undefined);
             return;
           }
           throw err;

@@ -4,7 +4,7 @@ import { RandomPort } from './ports/RandomPort';
 import { EventBus } from './events/EventBus';
 import { createEvent, DomainEvent } from './events/DomainEvent';
 import { DomainEventType, GameState, NightPhase, RoomStatus, RoleId } from './domain/enums';
-import { RoomState } from './domain/Room';
+import { MAX_SUPPORTED_PLAYERS, RoomState } from './domain/Room';
 import { RoleRegistry } from './roles/RoleRegistry';
 import { RoleDistributionStrategyRegistry } from './role-distribution/RoleDistributionStrategyRegistry';
 import { RoleAssigner } from './role-distribution/RoleAssigner';
@@ -94,8 +94,8 @@ export class GameService {
         ? Math.max(1, room.settings.minPlayers)
         : 3;
       const maxPlayers = Number.isFinite(room.settings?.maxPlayers)
-        ? Math.max(minPlayers, room.settings.maxPlayers)
-        : 20;
+        ? Math.min(MAX_SUPPORTED_PLAYERS, Math.max(minPlayers, room.settings.maxPlayers))
+        : MAX_SUPPORTED_PLAYERS;
 
       if (playerIds.length < minPlayers) {
         throw new NotEnoughPlayersError(playerIds.length, minPlayers);
@@ -217,6 +217,15 @@ export class GameService {
         lastTargetedByHunter: {},
         pendingNightActions: [],
         nightPhase: NightPhase.ACTIONS,
+        ballotId: null,
+        discussionLifecycle: 'CLOSED',
+        discussionCycleId: null,
+        discussionEnforcementReady: false,
+        discussionAnnouncementSentAt: null,
+        discussionDeadlineAt: null,
+        silencedPlayerId: null,
+        silencedUntilRound: null,
+        silencedDiscussionCycleId: null,
         updatedAt: now,
       };
 

@@ -1,6 +1,7 @@
 import { GameService } from '../../src/engine/GameService';
 import { RoomService } from '../../src/engine/RoomService';
 import { NightActionService } from '../../src/engine/NightActionService';
+import { DayService } from '../../src/engine/DayService';
 import { InMemoryStorageAdapter } from '../../src/infrastructure/redis/InMemoryStorageAdapter';
 import { EventBus } from '../../src/engine/events/EventBus';
 import { ClockPort } from '../../src/engine/ports/ClockPort';
@@ -15,6 +16,7 @@ import {
   WrongRoleForActionError,
   DuplicateActionError,
   InvalidTargetError,
+  StaleResolutionError,
 } from '../../src/engine/errors/DomainError';
 
 class FakeClock implements ClockPort {
@@ -67,7 +69,8 @@ function setup() {
     roleRegistry,
     stateMachine,
   );
-  return { storage, clock, roomService, gameService, nightActionService, eventBus };
+  const dayService = new DayService(storage, clock, eventBus, stateMachine);
+  return { storage, clock, roomService, gameService, nightActionService, dayService, eventBus };
 }
 
 /**
@@ -561,7 +564,7 @@ describe('NightActionService split API (prepareNightResolution / finalizeNightRe
       actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: hunter.telegramId,
     });
 
-    const { stepOneResult } = await nightActionService.prepareNightResolution('room1');
+    const { roomVersion, stepOneResult } = await nightActionService.prepareNightResolution('room1');
 
     // Simulate a REAL async await for the Hunter's Telegram response.
     const hunterDecisions: Record<string, { targetTelegramId: string | null } | null> = {};
@@ -574,6 +577,7 @@ describe('NightActionService split API (prepareNightResolution / finalizeNightRe
 
     const { room: finalRoom, deaths } = await nightActionService.finalizeNightResolution({
       roomId: 'room1',
+      roomVersion,
       stepOneResult,
       hunterDecisions,
     });
@@ -609,16 +613,58 @@ describe('NightActionService split API (prepareNightResolution / finalizeNightRe
       actionType: NightActionType.WEREWOLF_VOTE_KILL, targetTelegramId: villager.telegramId,
     });
 
-    const { stepOneResult } = await nightActionService.prepareNightResolution('room1');
+    const { roomVersion, stepOneResult } = await nightActionService.prepareNightResolution('room1');
     expect(stepOneResult.pendingHunterTelegramIds).toEqual([]);
 
     const { room: finalRoom, deaths } = await nightActionService.finalizeNightResolution({
       roomId: 'room1',
+      roomVersion,
       stepOneResult,
       hunterDecisions: {},
     });
 
     expect(deaths).toEqual([{ telegramId: villager.telegramId, cause: 'WEREWOLF_KILL' }]);
     expect(finalRoom.gameState).toBe(GameState.DAY);
+  });
+});
+
+describe('split resolution freshness guards', () => {
+  it('rejects a night finalize built from an older room version', async () => {
+    const deps = setup();
+    await createAndStartGame(deps.roomService, deps.gameService);
+    const prepared = await deps.nightActionService.prepareNightResolution('room1');
+    const current = await deps.storage.getRoom('room1');
+    await deps.storage.saveRoom({ ...current!, updatedAt: 2000 }, current!.version);
+
+    await expect(deps.nightActionService.finalizeNightResolution({
+      roomId: 'room1',
+      roomVersion: prepared.roomVersion,
+      stepOneResult: prepared.stepOneResult,
+      hunterDecisions: {},
+    })).rejects.toBeInstanceOf(StaleResolutionError);
+
+    expect((await deps.storage.getRoom('room1'))!.gameState).toBe(GameState.FIRST_NIGHT);
+  });
+
+  it('rejects an execution finalize built from an older room version', async () => {
+    const deps = setup();
+    await createAndStartGame(deps.roomService, deps.gameService);
+    await deps.nightActionService.resolveNight({ roomId: 'room1', getHunterDecision: () => null });
+    await deps.dayService.startDiscussion('room1');
+    await deps.dayService.startVoting('room1');
+    const prepared = await deps.dayService.prepareExecutionResolution('room1');
+    const current = await deps.storage.getRoom('room1');
+    await deps.storage.saveRoom({ ...current!, updatedAt: 2000 }, current!.version);
+
+    await expect(deps.dayService.finalizeExecutionResolution({
+      roomId: 'room1',
+      roomVersion: prepared.roomVersion,
+      executedTelegramId: prepared.executedTelegramId,
+      voteCounts: prepared.voteCounts,
+      depth0Deaths: prepared.depth0Deaths,
+      hunterDecisions: {},
+    })).rejects.toBeInstanceOf(StaleResolutionError);
+
+    expect((await deps.storage.getRoom('room1'))!.gameState).toBe(GameState.VOTING);
   });
 });

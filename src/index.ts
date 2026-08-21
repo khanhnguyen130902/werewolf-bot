@@ -73,6 +73,55 @@ async function main(): Promise<void> {
           }
           return; // Stop propagation
         }
+
+        const message = ctx.message;
+        const isCommand = 'text' in message && message.text.startsWith('/');
+        const messageKind = 'text' in message
+          ? 'TEXT'
+          : 'voice' in message
+            ? 'VOICE'
+            : 'sticker' in message
+              ? 'STICKER'
+              : 'animation' in message
+                ? 'GIF'
+                : null;
+
+        if (!isCommand && messageKind) {
+          try {
+            const activeRoom = await services.roomService.findActiveRoomByChatId(String(chatId));
+            if (
+              activeRoom
+              && activeRoom.gameState === GameState.DISCUSSION
+              && activeRoom.discussionLifecycle === 'ACTIVE'
+              && activeRoom.discussionEnforcementReady === true
+            ) {
+              const result = await services.dayService.resolveDiscussionSpeechViolation({
+                roomId: activeRoom.id,
+                speechEventId: `speech-${ctx.update.update_id}`,
+                speakerTelegramId: userId,
+                chatId: String(chatId),
+                messageKind,
+                hunterPrompt: (hunterId) => flowController.promptHunterAndAwait(activeRoom.id, hunterId),
+              });
+              if (result.accepted) {
+                try {
+                  await ctx.deleteMessage();
+                } catch (err) {
+                  logger.warn(`Failed to delete speech-violation message from ${userId} in chat ${chatId}`, { err });
+                }
+                await flowController.onDiscussionDeathResolved(result.room, result.deaths);
+                return;
+              }
+            }
+          } catch (err) {
+            logger.error('Silence Gate processing failed; continuing update', {
+              chatId,
+              userId,
+              updateId: ctx.update.update_id,
+              err,
+            });
+          }
+        }
       }
     }
     return next();
@@ -107,6 +156,13 @@ async function main(): Promise<void> {
   // waiting on Worker polling to catch up. ---
   try {
     const activeRoomIds = await services.storage.listActiveRoomIds();
+    // Recover a timer that may have been cleared by an invalid command or
+    // lost during a process restart before the transition committed. The
+    // controller no-ops when a valid deadline already exists, so this cannot
+    // create duplicate timers during normal startup.
+    for (const roomId of activeRoomIds) {
+      await flowController.ensurePhaseTimer(roomId);
+    }
     const overdueRoomIds = await services.timerService.findOverdueRooms(activeRoomIds);
     for (const roomId of overdueRoomIds) {
       const room = await services.roomService.getRoom(roomId);
@@ -120,7 +176,11 @@ async function main(): Promise<void> {
           await flowController.resolveNight(roomId);
         }
       } else if (room.gameState === GameState.DISCUSSION) {
-        await flowController.startVoting(roomId);
+        if (room.discussionLifecycle === 'ACTIVE' && room.discussionEnforcementReady === true) {
+          await flowController.startVoting(roomId);
+        } else {
+          await flowController.resumeDiscussionOpening(roomId);
+        }
       } else if (room.gameState === GameState.VOTING) {
         await flowController.resolveExecution(roomId);
       }
