@@ -36,7 +36,7 @@ describe('SilentMageRole', () => {
     expect(() => role.validateNightAction({ ...base, targetTelegramId: 'dead' })).toThrow(InvalidTargetError);
   });
 
-  it('allows repeating the same target on consecutive rounds', () => {
+  it('accepts a valid target; the service enforces consecutive-night restrictions', () => {
     expect(() => role.validateNightAction({ ...base, round: 3 })).not.toThrow();
   });
 });

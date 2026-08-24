@@ -129,6 +129,8 @@ export interface RoomState {
   lastInspectedBySeer: Record<string, string | null>;
   /** Tracks each Hunter's previous-night preselected revenge target. */
   lastTargetedByHunter: Record<string, string | null>;
+  /** Tracks each Silent Mage's previous-night silence target. Optional for legacy persisted rooms. */
+  lastSilencedBySilentMage?: Record<string, string | null>;
   /**
    * Night actions submitted so far for the CURRENT night, awaiting
    * resolution at end of night. Persisted on RoomState (not just in-memory)
@@ -196,6 +198,7 @@ export class RoomFactory {
       lastProtectedByBodyguard: {},
       lastInspectedBySeer: {},
       lastTargetedByHunter: {},
+      lastSilencedBySilentMage: {},
       pendingNightActions: [],
       nightPhase: NightPhase.ACTIONS,
       discussionLifecycle: 'CLOSED',

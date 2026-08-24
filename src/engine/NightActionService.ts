@@ -197,6 +197,7 @@ export class NightActionService {
           [NightActionType.BODYGUARD_PROTECT]: room.lastProtectedByBodyguard[params.actorTelegramId],
           [NightActionType.SEER_INSPECT]: room.lastInspectedBySeer?.[params.actorTelegramId],
           [NightActionType.HUNTER_SHOOT]: room.lastTargetedByHunter?.[params.actorTelegramId],
+          [NightActionType.SILENT_MAGE_SILENCE]: room.lastSilencedBySilentMage?.[params.actorTelegramId],
         };
         const previousTarget = previousTargetByActionType[params.actionType];
         if (previousTarget !== undefined && previousTarget === params.targetTelegramId) {
@@ -204,6 +205,7 @@ export class NightActionService {
             [NightActionType.BODYGUARD_PROTECT]: 'Bodyguard cannot protect the same target consecutively',
             [NightActionType.SEER_INSPECT]: 'Seer cannot inspect the same target consecutively',
             [NightActionType.HUNTER_SHOOT]: 'Hunter cannot select the same target consecutively',
+            [NightActionType.SILENT_MAGE_SILENCE]: 'Silent Mage cannot silence the same target consecutively',
           };
           throw new InvalidTargetError(actionNameByType[params.actionType] ?? 'Cannot select the same target consecutively');
         }
@@ -395,9 +397,13 @@ export class NightActionService {
       }
 
       const lastTargetedByHunter = { ...(room.lastTargetedByHunter ?? {}) };
+      const lastSilencedBySilentMage = { ...(room.lastSilencedBySilentMage ?? {}) };
       for (const action of room.pendingNightActions) {
         if (action.actionType === NightActionType.HUNTER_SHOOT && action.round === room.currentRound) {
           lastTargetedByHunter[action.actorTelegramId] = action.targetTelegramId;
+        }
+        if (action.actionType === NightActionType.SILENT_MAGE_SILENCE && action.round === room.currentRound) {
+          lastSilencedBySilentMage[action.actorTelegramId] = action.targetTelegramId;
         }
       }
 
@@ -405,6 +411,7 @@ export class NightActionService {
         ...room,
         players: updatedPlayers,
         lastTargetedByHunter,
+        lastSilencedBySilentMage,
       };
 
       const { room: afterNight, result } = resolver.applyHunterRevengeAndFinalize({

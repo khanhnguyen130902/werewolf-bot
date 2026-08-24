@@ -32,7 +32,7 @@ Clarity, rule accuracy, and actionability take precedence over atmosphere. Publi
 | `ACTION.REQUESTED.MUTE` | Silent Mage prompt | Pháp sư câm | Ask for silence target | Gameplay | Silence as a controlled effect; no invented consequence | None | `🤫 Làm câm` | Role private |
 | `ACTION.COMPLETED` | Accepted action | Acting player | Confirm action recorded | Gameplay | Short confirmation; no hidden-result leak | None | None | Player private |
 | `ACTION.INVALID_PHASE` | Action outside phase | Requesting player | Explain why action is unavailable | Pure system | “Chưa đến lúc” + next-step clarity | None | None | Player private |
-| `ACTION.INVALID_TARGET` | Target rejected | Requesting player | Explain invalid target and recovery | Pure system | Choose a living valid target; no role leak | None | Target keyboard | Player private |
+| `ACTION.INVALID_TARGET` | Target rejected | Requesting player | Explain invalid target and recovery | Pure system | Choose a living valid target; if the same target was selected on the previous night, choose another target; no role leak | None | Target keyboard | Player private |
 | `ACTION.ALREADY_DONE` | Duplicate/closed action | Requesting player | Explain action already recorded | Pure system | Confirmation rather than blame | None | None | Player private |
 | `ACTION.TIMEOUT` | Timer expires | Affected player/group | Explain timeout and configured fallback | Pure system | Bot applies the rules; do not promise a specific fallback unless confirmed | None | None | Appropriate audience |
 | `PHASE.DAY.STARTED` | Morning transition | Group participants | Report safe public night result | Narrative | Dawn and investigation mood; death semantics stay exact | Two equivalent dawn variants | None | Public |

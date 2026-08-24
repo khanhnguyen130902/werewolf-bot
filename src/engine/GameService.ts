@@ -215,6 +215,7 @@ export class GameService {
         lastProtectedByBodyguard: {},
         lastInspectedBySeer: {},
         lastTargetedByHunter: {},
+        lastSilencedBySilentMage: {},
         pendingNightActions: [],
         nightPhase: NightPhase.ACTIONS,
         ballotId: null,

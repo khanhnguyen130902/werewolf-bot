@@ -42,7 +42,9 @@ The default role plan is player-count dependent. Silent Mage is not auto-selecte
 
 ## 5. Night
 
-At night, living players with a night capability receive private prompts. The current action vocabulary includes wolf attack, Bodyguard protection, Seer investigation, Witch save, Witch poison, Silent Mage silence, Hunter revenge on a permitted death trigger, and Skip where the action contract permits it. Target validity, actor eligibility, current phase, duplicate action, potion inventory, consecutive protection, and dead-player status are enforced by services/resolvers.
+At night, living players with a night capability receive private prompts. The current action vocabulary includes wolf attack, Bodyguard protection, Seer investigation, Witch save, Witch poison, Silent Mage silence, Hunter revenge on a permitted death trigger, and Skip where the action contract permits it. Target validity, actor eligibility, current phase, duplicate action, potion inventory, consecutive-target restrictions, and dead-player status are enforced by services/resolvers.
+
+The Silent Mage may not silence the same player on two consecutive nights. The previous silence target is persisted per match and checked when the next Silent Mage action is submitted. A different living target or Skip remains subject to the existing phase, role, and target rules.
 
 Night actions are collected and resolved through the orchestration/timer/scheduler path. On timeout, the configured fallback is applied. The exact fallback must be read from the current timeout policy rather than promised in generic content.
 
@@ -79,4 +81,5 @@ A hidden role must not leak through public content. A player cannot act while de
 | `RULE-003` | CONFIRMED | Silent Mage is explicit at 8+ for the expected preset. | Keep `SilentMageDistribution.test.ts` as guard. |
 | `RULE-004` | IMPLEMENTATION BUG fixed | `/join` could report DM error before missing-room error. | Room existence now has precedence; regression tests cover it. |
 | `RULE-005` | AMBIGUOUS | Exact public role reveal at game end. | Decide before finalizing end-game copy. |
-| `RULE-006` | AMBIGUOUS | Exact tie/no-majority player-facing rule. | Confirm from resolver/tests before documenting as final. |
+| `RULE-006` | CONFIRMED | Silent Mage cannot silence the same player on two consecutive nights; previous target is persisted per match. | Enforced in `NightActionService`; covered by regression tests. |
+| `RULE-007` | AMBIGUOUS | Exact tie/no-majority player-facing rule. | Confirm from resolver/tests before documenting as final. |

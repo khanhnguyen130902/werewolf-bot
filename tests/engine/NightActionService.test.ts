@@ -85,13 +85,14 @@ function setup() {
 async function createAndStartGame(
   roomService: RoomService,
   gameService: GameService,
+  settingsOverride: Record<string, unknown> = {},
 ) {
   await roomService.createRoom({
     roomId: 'room1',
     hostTelegramId: 'p0',
     hostNickname: 'Host',
     chatId: 'chat1',
-    settingsOverride: { minPlayers: 6, maxPlayers: 20 },
+    settingsOverride: { minPlayers: 6, maxPlayers: 20, ...settingsOverride },
   });
   for (let i = 1; i < 7; i++) {
     await roomService.joinRoom({ roomId: 'room1', telegramId: `p${i}`, nickname: `P${i}` });
@@ -364,6 +365,53 @@ describe('NightActionService.submitNightAction', () => {
         actionId: 'seer-repeat',
         actorTelegramId: seer.telegramId,
         actionType: NightActionType.SEER_INSPECT,
+        targetTelegramId: target.telegramId,
+      }),
+    ).rejects.toBeInstanceOf(InvalidTargetError);
+  });
+
+  it('persists the Silent Mage target after night resolution', async () => {
+    const { roomService, gameService, nightActionService } = setup();
+    const room = await createAndStartGame(roomService, gameService, {
+      enabledRoles: [RoleId.SILENT_MAGE],
+    });
+    const silentMage = findByRole(room, RoleId.SILENT_MAGE);
+    const target = Object.values(room.players).find((p) => p.telegramId !== silentMage.telegramId)!;
+
+    await nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'silent-mage-first-night',
+      actorTelegramId: silentMage.telegramId,
+      actionType: NightActionType.SILENT_MAGE_SILENCE,
+      targetTelegramId: target.telegramId,
+    });
+    const { room: resolvedRoom } = await nightActionService.resolveNight({
+      roomId: 'room1',
+      getHunterDecision: () => null,
+    });
+
+    expect(resolvedRoom.lastSilencedBySilentMage?.[silentMage.telegramId]).toBe(target.telegramId);
+  });
+
+  it('rejects a Silent Mage silencing the same target on consecutive nights', async () => {
+    const { roomService, gameService, nightActionService, storage } = setup();
+    const room = await createAndStartGame(roomService, gameService, {
+      enabledRoles: [RoleId.SILENT_MAGE],
+    });
+    const silentMage = findByRole(room, RoleId.SILENT_MAGE);
+    const target = Object.values(room.players).find((p) => p.telegramId !== silentMage.telegramId)!;
+
+    const current = await storage.getRoom('room1');
+    current!.currentRound = 2;
+    current!.lastSilencedBySilentMage = { [silentMage.telegramId]: target.telegramId };
+    await storage.saveRoom(current!, current!.version);
+
+    await expect(
+      nightActionService.submitNightAction({
+        roomId: 'room1',
+        actionId: 'silent-mage-repeat',
+        actorTelegramId: silentMage.telegramId,
+        actionType: NightActionType.SILENT_MAGE_SILENCE,
         targetTelegramId: target.telegramId,
       }),
     ).rejects.toBeInstanceOf(InvalidTargetError);

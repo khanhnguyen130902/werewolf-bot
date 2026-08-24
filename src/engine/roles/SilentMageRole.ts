@@ -4,7 +4,7 @@ import { InvalidTargetError } from '../errors/DomainError';
 
 /**
  * Silent Mage: selects one living player to silence for the next discussion
- * cycle. Re-targeting on consecutive nights is explicitly allowed.
+ * cycle. The application service prevents selecting the same target on consecutive nights.
  */
 export class SilentMageRole implements IRole {
   readonly definition = {
