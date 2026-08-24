@@ -17,6 +17,7 @@ import { registerbottestCommand } from './telegram/commands/bottest';
 import { registerHelpCommand } from './telegram/commands/help';
 import { registerActionCallbackHandler } from './telegram/handlers/actionCallbackHandler';
 import { GameState, NightPhase } from './engine/domain/enums';
+import { shouldEnforceMutedMessageDeletion } from './telegram/muteGate';
 
 const RETRYABLE_STARTUP_CODES = new Set([
   'ETIMEDOUT',
@@ -106,12 +107,32 @@ async function main(): Promise<void> {
           });
         }
         if (isMuted) {
+          let activeRoom = null;
           try {
-            await ctx.deleteMessage();
+            activeRoom = await services.roomService.findActiveRoomByChatId(String(chatId));
           } catch (err) {
-            logger.warn(`Failed to delete message from muted user ${userId} in chat ${chatId}`, { err });
+            logger.error('Mute middleware active-room check failed; preserving update', {
+              chatId,
+              userId,
+              err,
+            });
           }
-          return; // Stop propagation
+
+          if (shouldEnforceMutedMessageDeletion(activeRoom)) {
+            try {
+              await ctx.deleteMessage();
+            } catch (err) {
+              logger.warn(`Failed to delete message from muted user ${userId} in chat ${chatId}`, { err });
+            }
+            return; // Stop propagation
+          }
+
+          logger.info('Skipping stale mute deletion after game ended or room closed', {
+            chatId,
+            userId,
+            hasActiveRoom: activeRoom !== null,
+            gameState: activeRoom?.gameState ?? null,
+          });
         }
 
         const message = ctx.message;
