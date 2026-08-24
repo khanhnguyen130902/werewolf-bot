@@ -18,6 +18,46 @@ import { registerHelpCommand } from './telegram/commands/help';
 import { registerActionCallbackHandler } from './telegram/handlers/actionCallbackHandler';
 import { GameState, NightPhase } from './engine/domain/enums';
 
+const RETRYABLE_STARTUP_CODES = new Set([
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'ECONNREFUSED',
+  'EAI_AGAIN',
+  'ENETUNREACH',
+]);
+
+function errorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== 'object') return undefined;
+  const value = (err as { code?: unknown }).code;
+  return typeof value === 'string' ? value : undefined;
+}
+
+function startupRetryDelayMs(attempt: number): number {
+  return Math.min(30_000, 1_000 * (2 ** Math.min(attempt - 1, 4)));
+}
+
+async function launchWithTransientRetry(bot: Telegraf<BotContext>): Promise<void> {
+  let attempt = 0;
+  while (true) {
+    try {
+      await bot.launch();
+      logger.info('Bot is up and running.');
+      return;
+    } catch (err) {
+      const code = errorCode(err);
+      if (!code || !RETRYABLE_STARTUP_CODES.has(code)) throw err;
+      attempt += 1;
+      const delayMs = startupRetryDelayMs(attempt);
+      logger.warn('Telegram startup request failed transiently; retrying', {
+        attempt,
+        code,
+        retryInMs: delayMs,
+      });
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
 async function main(): Promise<void> {
   logger.info('Starting Werewolf Telegram Bot...');
 
@@ -161,6 +201,16 @@ async function main(): Promise<void> {
     // controller no-ops when a valid deadline already exists, so this cannot
     // create duplicate timers during normal startup.
     for (const roomId of activeRoomIds) {
+      const activeRoom = await services.roomService.getRoom(roomId);
+      // DAY is an intermediate hand-off state. It normally exists only while
+      // onNightResolved is announcing the day and opening discussion. If the
+      // process restarts in that window, there is no DAY timer to re-arm, so
+      // recover the transition explicitly instead of leaving the room stuck.
+      if (activeRoom?.gameState === GameState.DAY) {
+        logger.warn(`Recovering transient DAY room ${roomId} into DISCUSSION`);
+        await flowController.startDiscussion(roomId);
+        continue;
+      }
       await flowController.ensurePhaseTimer(roomId);
     }
     const overdueRoomIds = await services.timerService.findOverdueRooms(activeRoomIds);
@@ -183,6 +233,10 @@ async function main(): Promise<void> {
         }
       } else if (room.gameState === GameState.VOTING) {
         await flowController.resolveExecution(roomId);
+      } else if (room.gameState === GameState.DAY) {
+        // Defensive fallback for a room that became DAY after the first
+        // recovery scan but still has an overdue persisted deadline.
+        await flowController.startDiscussion(roomId);
       }
     }
   } catch (err) {
@@ -215,8 +269,7 @@ async function main(): Promise<void> {
   process.once('SIGINT', () => void shutdown('SIGINT'));
   process.once('SIGTERM', () => void shutdown('SIGTERM'));
 
-  await bot.launch();
-  logger.info('Bot is up and running.');
+  await launchWithTransientRetry(bot);
 }
 
 main().catch((err) => {
