@@ -106,8 +106,8 @@ describe('End-to-end match simulation', () => {
 
     while (!winnerFound && round <= maxRounds) {
       const currentRoom = (await gameService.getRoom('e2e-room'))!;
-      const aliveVillagers = Object.values(currentRoom.players).filter(
-        (p) => p.alive && p.role === RoleId.VILLAGER,
+      const aliveNonWolves = Object.values(currentRoom.players).filter(
+        (p) => p.alive && p.role !== RoleId.WEREWOLF,
       );
       const aliveWolves = Object.values(currentRoom.players).filter(
         (p) => p.alive && p.role === RoleId.WEREWOLF,
@@ -116,9 +116,9 @@ describe('End-to-end match simulation', () => {
         (p) => p.alive && p.role === RoleId.SEER,
       );
 
-      if (aliveVillagers.length === 0) break;
+      if (aliveNonWolves.length === 0) break;
 
-      const victim = aliveVillagers[0];
+      const victim = aliveNonWolves[0];
 
       for (const [idx, wolf] of aliveWolves.entries()) {
         await nightActionService.submitNightAction({
@@ -131,7 +131,9 @@ describe('End-to-end match simulation', () => {
       }
 
       if (aliveSeer) {
-        const target = aliveVillagers.find((v) => v.telegramId !== lastInspectedId);
+        const target = aliveNonWolves.find(
+          (v) => v.telegramId !== lastInspectedId && v.telegramId !== aliveSeer.telegramId,
+        );
         if (target) {
           lastInspectedId = target.telegramId;
           await nightActionService.submitNightAction({
@@ -163,7 +165,7 @@ describe('End-to-end match simulation', () => {
       const afterNightRoom = (await gameService.getRoom('e2e-room'))!;
       const aliveNow = Object.values(afterNightRoom.players).filter((p) => p.alive);
       const executionTarget = aliveNow.find(
-        (p) => p.role === RoleId.VILLAGER && p.telegramId !== victim.telegramId,
+        (p) => p.role !== RoleId.WEREWOLF && p.telegramId !== victim.telegramId,
       );
 
       if (!executionTarget) {

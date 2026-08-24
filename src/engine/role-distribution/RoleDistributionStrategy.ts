@@ -26,8 +26,8 @@ export interface RoleDistributionStrategy {
 }
 
 // Default special roles are auto-enabled for 6+ players.
-// The 8-player preset additionally includes Silent Mage, replacing one Villager.
-// Other player counts retain the existing distribution unless Silent Mage is explicit.
+// Games with 8+ players automatically include Silent Mage alongside the default special roles.
+// Games below 8 players retain the existing distribution unless Silent Mage is explicit.
 const DEFAULT_SPECIAL_ROLES: RoleId[] = [
   RoleId.SEER,
   RoleId.BODYGUARD,
@@ -130,12 +130,10 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
     playerCount: number,
     explicitSpecials: RoleId[],
   ): RoleId[] {
-    // At 8+ players, explicit Silent Mage activates the expected production
-    // preset: all default special roles plus Silent Mage and one Villager.
-    if (playerCount >= 8 && explicitSpecials.includes(RoleId.SILENT_MAGE)) {
-      return [...DEFAULT_SPECIAL_ROLES, RoleId.SILENT_MAGE];
-    }
-    if (playerCount === 8 && explicitSpecials.length === 0) {
+    // Every 8+ player game automatically includes the expected production
+    // preset: all default special roles plus Silent Mage. This takes priority
+    // over the room's explicit list so the role is always present at this size.
+    if (playerCount >= 8) {
       return [...DEFAULT_SPECIAL_ROLES, RoleId.SILENT_MAGE];
     }
     if (explicitSpecials.length > 0) {

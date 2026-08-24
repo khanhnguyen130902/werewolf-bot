@@ -23,7 +23,7 @@ The repository is a TypeScript Telegram bot with the following layers:
 
 ## Seven-role scope
 
-The implemented role IDs are `VILLAGER`, `WEREWOLF`, `HUNTER`, `SEER`, `BODYGUARD`, `WITCH`, and `SILENT_MAGE`. Silent Mage is registered and has a dedicated role/action path. Default distribution does not auto-enable it; explicit configuration at eight or more players activates the expected full preset.
+The implemented role IDs are `VILLAGER`, `WEREWOLF`, `HUNTER`, `SEER`, `BODYGUARD`, `WITCH`, and `SILENT_MAGE`. Silent Mage is registered and has a dedicated role/action path. The default distribution automatically includes it in every game from eight through fifteen players.
 
 ## Canonical mapping chain
 
@@ -51,7 +51,7 @@ Content/security/regression/E2E tests
 | `F-002` | IMPLEMENTATION BUG | High, fixed | `/join` could check DM reachability before checking room existence. | Room-not-found takes precedence; tests cover 100 repeated handler calls and service precedence. |
 | `F-003` | CONTENT BUG | Medium, fixed | `/help` was a flat/encoded list and omitted a production information hierarchy. | Replaced with mobile-first Vietnamese onboarding and command categories. |
 | `F-004` | CONTENT/SECURITY RISK | High | Role/private content is spread across presenters/controllers and must be audited against BotPolicy. | Use audience metadata and content regression tests; do not expose hidden role/action results. |
-| `F-005` | RULE/CONTENT | Medium | Silent Mage had a role implementation but was absent from default auto-special list. | Keep opt-in; explicit Silent Mage at 8+ uses 2W + Seer + Bodyguard + Hunter + Witch + Silent Mage + Villager. |
+| `F-005` | RULE/CONTENT | Medium, resolved | Silent Mage was previously absent from the default auto-special list above the original 8-player-only preset. | Automatic distribution now includes Silent Mage in every 8–15 player game; below 8 players it remains non-automatic unless explicitly enabled. |
 | `F-006` | AMBIGUOUS | Medium | Exact end-game role reveal policy is not yet fully extracted into one canonical source. | Require domain decision/evidence before rewriting end-game text. |
 | `F-007` | AMBIGUOUS | Medium | Tie/no-majority behavior must be confirmed from resolver tests before documentation is final. | Keep catalog neutral; add targeted rule tests. |
 | `F-008` | CONTENT ARCHITECTURE | Medium | Message literals are centralized partly in `presenters/messages.ts` but still exist in command/controller paths. | Introduce a typed canonical content catalog incrementally, starting with stable IDs and audience metadata. |

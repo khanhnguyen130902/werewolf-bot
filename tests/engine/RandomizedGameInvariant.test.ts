@@ -85,7 +85,9 @@ async function runSeed(seed: number) {
         target.telegramId !== player.telegramId || player.role === RoleId.WEREWOLF,
       );
       const previousTarget = previousNightTargets.get(player.telegramId);
-      const cannotRepeat = player.role === RoleId.SEER || player.role === RoleId.BODYGUARD;
+      const cannotRepeat = player.role === RoleId.SEER
+        || player.role === RoleId.BODYGUARD
+        || player.role === RoleId.SILENT_MAGE;
       const alternativeTargets = cannotRepeat && previousTarget
         ? targets.filter((target) => target.telegramId !== previousTarget)
         : targets;

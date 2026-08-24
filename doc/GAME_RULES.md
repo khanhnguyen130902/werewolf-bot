@@ -28,7 +28,7 @@ DM reachability must not mask this missing-room result. DM prerequisite messagin
 
 The host starts the game using `/startgame` when the minimum player condition is met. The engine computes a role distribution plan, validates that the plan total equals the player count, shuffles players and roles independently, persists assignments, and delivers role information privately. A role is never selected for a player by deterministic position.
 
-The default role plan is player-count dependent. Silent Mage is not auto-selected when `enabledRoles` is empty. When explicitly enabled at eight or more players, the expected eight-player preset is:
+The default role plan is player-count dependent. Silent Mage is automatically included in every game with 8–15 players, regardless of whether `enabledRoles` is empty or contains another explicit role list. The expected eight-player preset is:
 
 ```text
 2 Werewolf
@@ -39,6 +39,8 @@ The default role plan is player-count dependent. Silent Mage is not auto-selecte
 1 Silent Mage
 1 Villager
 ```
+
+For 9–15 players, the same five special roles remain present; the number of Werewolves follows the existing player-count formula and remaining slots are filled by Dân làng. Role assignment remains randomized.
 
 ## 5. Night
 

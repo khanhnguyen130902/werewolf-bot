@@ -46,7 +46,7 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(sixPlan[RoleId.WITCH]).toBe(1);
     expect(sixPlan[RoleId.HUNTER]).toBeUndefined();
 
-    // 7+ players: all specials are auto-enabled when none are explicitly configured
+    // 8+ players: all five specials are auto-enabled regardless of explicit configuration
     const largePlan = strategy.computeDistribution(8, []);
     expect(largePlan[RoleId.SEER]).toBe(1);
     expect(largePlan[RoleId.BODYGUARD]).toBe(1);
@@ -54,18 +54,19 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(largePlan[RoleId.WITCH]).toBe(1);
   });
 
-  it('includes only host-enabled special roles, one slot each', () => {
+  it('includes the automatic full special-role preset at 10 players', () => {
     const plan = strategy.computeDistribution(10, [
       RoleId.SEER,
       RoleId.WITCH,
     ]);
     expect(plan[RoleId.SEER]).toBe(1);
     expect(plan[RoleId.WITCH]).toBe(1);
-    expect(plan[RoleId.BODYGUARD]).toBeUndefined();
-    expect(plan[RoleId.HUNTER]).toBeUndefined();
-    // wolves = floor(10/4) = 2; specials = 2; villagers = 10-2-2 = 6
+    expect(plan[RoleId.BODYGUARD]).toBe(1);
+    expect(plan[RoleId.HUNTER]).toBe(1);
+    expect(plan[RoleId.SILENT_MAGE]).toBe(1);
+    // wolves = floor(10/4) = 2; specials = 5; villagers = 10-2-5 = 3
     expect(plan[RoleId.WEREWOLF]).toBe(2);
-    expect(plan[RoleId.VILLAGER]).toBe(6);
+    expect(plan[RoleId.VILLAGER]).toBe(3);
   });
 
   it('supports all 4 special roles enabled at once when there is room', () => {
@@ -80,7 +81,8 @@ describe('DefaultPhase1DistributionStrategy', () => {
     expect(plan[RoleId.BODYGUARD]).toBe(1);
     expect(plan[RoleId.HUNTER]).toBe(1);
     expect(plan[RoleId.WITCH]).toBe(1);
-    expect(plan[RoleId.VILLAGER]).toBe(4); // 10-2-4=4
+    expect(plan[RoleId.SILENT_MAGE]).toBe(1);
+    expect(plan[RoleId.VILLAGER]).toBe(3); // 10-2-5=3
   });
 
   it('throws when 5-player games need 2 wolves but also have 4 specials enabled', () => {

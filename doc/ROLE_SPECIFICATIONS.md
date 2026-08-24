@@ -22,9 +22,9 @@ Every role has a stable `RoleId`, a team/faction, a role definition, and optiona
 
 After a Silent Mage silence target is resolved for a night, that target is persisted per match. On the next night, selecting the same living target is rejected. Selecting a different valid target or skipping remains subject to the existing role and phase rules. Legacy rooms without this field are treated as having no previous Silent Mage target until the first new resolution is persisted.
 
-## Silent Mage explicit distribution rule
+## Silent Mage automatic distribution rule
 
-`SILENT_MAGE` is supported by the registry and strategy but is not in the default special-role auto-selection list. When `room.settings.enabledRoles` explicitly contains `RoleId.SILENT_MAGE` and the room has at least eight players, the expected production preset is:
+`SILENT_MAGE` is automatically included by the default strategy in every game with 8–15 players. This automatic rule applies even when `room.settings.enabledRoles` is empty or contains another explicit role list. The expected eight-player preset is:
 
 ```text
 2 Werewolf
@@ -36,7 +36,7 @@ After a Silent Mage silence target is resolved for a night, that target is persi
 1 Villager
 ```
 
-When `enabledRoles` is empty, Silent Mage must not be auto-assigned. A six-player explicit Silent Mage plan is allowed only when the computed plan fits the minimum Villager constraint. Role assignment remains randomized after plan creation.
+For 9–15 players, the same five special roles remain present; the number of Werewolves follows the existing player-count formula and the remaining slots are filled by Dân làng. Below 8 players, Silent Mage is not auto-assigned; an explicit Silent Mage selection remains supported only when the computed plan fits the player-count constraints. Role assignment remains randomized after plan creation.
 
 ## Role-information policy
 
