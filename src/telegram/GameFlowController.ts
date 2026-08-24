@@ -120,6 +120,24 @@ export class GameFlowController {
     }
   }
 
+  /** Sends a private, non-sensitive death notice after the engine commits deaths.
+   * Delivery is best-effort: a DM failure must never block public announcements
+   * or the next phase transition. */
+  private async notifyDeadPlayersByDm(
+    deaths: Array<{ telegramId: string; cause: string }>,
+    operation: string,
+  ): Promise<void> {
+    const uniqueDeadPlayerIds = [...new Set(deaths.map((death) => death.telegramId))];
+    for (const telegramId of uniqueDeadPlayerIds) {
+      await this.safeSendMessage(
+        telegramId,
+        Messages.deathPrivateNotice(),
+        undefined,
+        operation,
+      );
+    }
+  }
+
   /** Records a bot's action, falling back to an explicit Skip if its chosen
    * target became invalid between prompt construction and submission. Bot
    * actions must never abort the prompt loop for the remaining roles. */
@@ -763,6 +781,7 @@ export class GameFlowController {
 
     if (deaths.length > 0) {
       await this.muteService.mutePlayers(room.chatId, deaths.map((d) => d.telegramId));
+      await this.notifyDeadPlayersByDm(deaths, 'death-dm-night');
     }
 
     // Night-wide mute ends for living players when the day begins. Dead
@@ -1037,6 +1056,7 @@ export class GameFlowController {
     // falls back to middleware deletion when the API cannot restrict them.
     if (deaths.length > 0) {
       await this.muteService.mutePlayers(room.chatId, deaths.map((death) => death.telegramId));
+      await this.notifyDeadPlayersByDm(deaths, 'death-dm-discussion');
     }
 
     const firstDeath = deaths[0];
@@ -1147,6 +1167,7 @@ export class GameFlowController {
 
     if (deaths.length > 0) {
       await this.muteService.mutePlayers(room.chatId, deaths.map((d) => d.telegramId));
+      await this.notifyDeadPlayersByDm(deaths, 'death-dm-execution');
     }
 
     const executedNickname = executedTelegramId

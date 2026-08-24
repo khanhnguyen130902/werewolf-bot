@@ -44,6 +44,7 @@ Clarity, rule accuracy, and actionability take precedence over atmosphere. Publi
 | `VOTE.INVALID` | Vote rejected | Requesting player | Explain invalid phase/target/eligibility | Pure system | Short, calm, actionable | None | Vote keyboard | Player private |
 | `VOTE.TIE` | Tie/no-majority result | Group | Explain resolver result | Pure system | Must match resolver; no invented outcome | None | None | Public |
 | `PLAYER.DIED` | Death resolved | Group + dead player | Announce death and restrictions | Climax | Atmospheric, non-graphic, exact “đã chết” semantics | Optional narrative variants with same meaning | None | Public + appropriate private |
+| `PLAYER.DEATH.DM` | Player death committed | Deceased player | Confirm privately that the player has died and list disabled actions | Pure system / Gameplay | Clear, calm, non-sensitive; never reveal role or hidden resolution details | None | None | Deceased player private |
 | `PLAYER.ROLE_REVEALED` | Reveal when rule permits | Group | Announce revealed role | Climax | Short reveal; suppress when rule does not permit | None | None | Rule-defined |
 | `GAME.WIN.VILLAGE` | Village condition | All participants | Announce village victory | Climax | Dawn and relief, concise | Optional equivalent win variant | None | Public |
 | `GAME.WIN.WOLF` | Wolf condition | All participants | Announce wolf victory | Climax | Silence and darkness, concise | Optional equivalent win variant | None | Public |

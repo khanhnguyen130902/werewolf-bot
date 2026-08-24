@@ -241,6 +241,105 @@ describe('GameFlowController', () => {
 });
 
 
+describe('GameFlowController death DM notifications', () => {
+  it('sends a private death notice after a night death while still announcing dawn publicly', async () => {
+    const bot = {
+      on: jest.fn(),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+    const controller = new GameFlowController({ storage: {}, redis: {} } as any, bot);
+    jest.spyOn(controller.muteService, 'mutePlayers').mockResolvedValue(undefined);
+    jest.spyOn(controller.muteService, 'unmutePlayers').mockResolvedValue(undefined);
+    (controller as any).startDiscussion = jest.fn().mockResolvedValue(undefined);
+
+    await controller.onNightResolved(
+      {
+        id: 'room1',
+        chatId: 'chat1',
+        currentRound: 1,
+        gameState: GameState.DAY,
+        players: {
+          dead1: { telegramId: 'dead1', nickname: 'Dead One', alive: false },
+        },
+        silencedPlayerId: null,
+      } as any,
+      [{ telegramId: 'dead1', cause: 'WEREWOLF_KILL' }],
+      [],
+    );
+
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
+      'dead1',
+      Messages.deathPrivateNotice(),
+      undefined,
+    );
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
+      'chat1',
+      expect.stringContaining('Dead One đã chết'),
+      undefined,
+    );
+  });
+
+  it('sends a private death notice after daytime execution', async () => {
+    const bot = {
+      on: jest.fn(),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+    const controller = new GameFlowController({ storage: {}, redis: {} } as any, bot);
+    jest.spyOn(controller.muteService, 'mutePlayers').mockResolvedValue(undefined);
+    (controller as any).startNightPrompts = jest.fn().mockResolvedValue(undefined);
+
+    await controller.onExecutionResolved(
+      {
+        id: 'room1',
+        chatId: 'chat1',
+        currentRound: 1,
+        gameState: GameState.NIGHT,
+        players: {
+          dead1: { telegramId: 'dead1', nickname: 'Executed One', alive: false },
+        },
+      } as any,
+      'dead1',
+      [{ telegramId: 'dead1', cause: 'VOTE_EXECUTION' }],
+    );
+
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
+      'dead1',
+      Messages.deathPrivateNotice(),
+      undefined,
+    );
+  });
+
+  it('sends a private death notice after a discussion speech violation', async () => {
+    const bot = {
+      on: jest.fn(),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+    const controller = new GameFlowController({ storage: {}, redis: {} } as any, bot);
+    jest.spyOn(controller.muteService, 'mutePlayers').mockResolvedValue(undefined);
+    (controller as any).presentVoting = jest.fn().mockResolvedValue(undefined);
+
+    await controller.onDiscussionDeathResolved(
+      {
+        id: 'room1',
+        chatId: 'chat1',
+        currentRound: 1,
+        gameState: GameState.VOTING,
+        players: {
+          dead1: { telegramId: 'dead1', nickname: 'Silenced One', alive: false },
+        },
+      } as any,
+      [{ telegramId: 'dead1', cause: 'SPOKEN_WHILE_SILENCED' }],
+    );
+
+    expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
+      'dead1',
+      Messages.deathPrivateNotice(),
+      undefined,
+    );
+  });
+});
+
+
 describe('GameFlowController Telegram failure isolation', () => {
   it('continues to discussion when the day announcement API call fails', async () => {
     const bot = {

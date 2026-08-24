@@ -162,6 +162,9 @@ export const Messages = {
 
   actionTimeout: () => '⌛ Thời gian đã hết — hệ thống sẽ tự động ghi nhận bạn bỏ qua hành động này.',
 
+  deathPrivateNotice: () =>
+    '💀 Bạn đã chết trong ván này.\n\nBạn không thể tiếp tục hành động, bỏ phiếu hoặc phát biểu trong ván.',
+
   nightActionSkipped: (action: string) =>
     `✅ Đã ghi nhận: bạn không thực hiện ${action} trong đêm nay.`,
 
@@ -263,7 +266,7 @@ export const Messages = {
         )
       : `☀️ Bình minh ngày ${round}.\n\n💀 ${deaths.map((death) => `${death.nickname} đã chết`).join(', ')}. Ngôi làng mất đi một người trước khi trời sáng.`;
     return silencedNickname
-      ? `${base}\n\n🤫 ${silencedNickname} đang chịu hiệu ứng im lặng trong ngày hôm nay.`
+      ? `${base}\n\n🗣️ ${silencedNickname} đang chịu hiệu ứng im lặng trong ngày hôm nay.`
       : base;
   },
 
