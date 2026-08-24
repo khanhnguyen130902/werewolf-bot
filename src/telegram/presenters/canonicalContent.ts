@@ -120,7 +120,15 @@ export const CANONICAL_MESSAGES = {
     audience: 'PUBLIC',
     priority: 'HIGH',
     layer: 'PURE_SYSTEM',
-    text: '⚠️ Khoan đã. Không tìm thấy phòng chơi này. Có thể phòng đã được đóng.',
+    text: '⚠️ Chưa có phòng chơi đang mở trong group này.',
+  },
+  ROOM_NOT_CREATED: {
+    id: 'ERROR.ROOM_NOT_CREATED',
+    event: 'JOIN_REQUESTED',
+    audience: 'PUBLIC',
+    priority: 'HIGH',
+    layer: 'PURE_SYSTEM',
+    text: '⚠️ Chưa có phòng chơi nào ở đây. Host hãy dùng /create để mở phòng trước.',
   },
   DM_REQUIRED: {
     id: 'ERROR.DM_REQUIRED',
@@ -129,6 +137,14 @@ export const CANONICAL_MESSAGES = {
     priority: 'HIGH',
     layer: 'PURE_SYSTEM',
     text: '⚠️ Một bước trước khi vào làng. Hãy nhắn /start cho bot trong tin nhắn riêng để nhận vai trò và thông báo.',
+  },
+  PLAYER_NOT_IN_GAME: {
+    id: 'ERROR.PLAYER_NOT_IN_GAME',
+    event: 'PLAYER_ACTION_REQUESTED',
+    audience: 'PLAYER_PRIVATE',
+    priority: 'HIGH',
+    layer: 'PURE_SYSTEM',
+    text: '⚠️ Bạn chưa tham gia ván hiện tại nên chưa thể bỏ phiếu.',
   },
   INVALID_TARGET: {
     id: 'ERROR.INVALID_TARGET',

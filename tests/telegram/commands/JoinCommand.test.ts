@@ -1,6 +1,7 @@
 import { registerJoinCommand } from '../../../src/telegram/commands/join';
-import { DmNotReachableError, RoomNotFoundError } from '../../../src/engine/errors/DomainError';
+import { DmNotReachableError, RoomLockedError, RoomNotFoundError } from '../../../src/engine/errors/DomainError';
 import { CANONICAL_MESSAGES } from '../../../src/telegram/presenters/canonicalContent';
+import { Messages } from '../../../src/telegram/presenters/messages';
 
 describe('/join command', () => {
   function setup(joinRoom: jest.Mock) {
@@ -27,7 +28,7 @@ describe('/join command', () => {
     const handler = setup(jest.fn().mockRejectedValue(new RoomNotFoundError('-100123')));
     const ctx = context();
     await handler(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(CANONICAL_MESSAGES.ROOM_NOT_FOUND.text);
+    expect(ctx.reply).toHaveBeenCalledWith(CANONICAL_MESSAGES.ROOM_NOT_CREATED.text);
   });
 
   it('does not let DM reachability mask a missing room', async () => {
@@ -38,13 +39,20 @@ describe('/join command', () => {
       await handler(ctx);
       replies.add(ctx.reply.mock.calls[0][0]);
     }
-    expect(replies).toEqual(new Set([CANONICAL_MESSAGES.ROOM_NOT_FOUND.text]));
+    expect(replies).toEqual(new Set([CANONICAL_MESSAGES.ROOM_NOT_CREATED.text]));
+  });
+
+  it('keeps the locked-room message when a room exists but the game has started', async () => {
+    const handler = setup(jest.fn().mockRejectedValue(new RoomLockedError('-100123')));
+    const ctx = context();
+    await handler(ctx);
+    expect(ctx.reply).toHaveBeenCalledWith('🔒 Cánh cửa làng đã đóng. Ván chơi đã bắt đầu nên không thể tham gia thêm.');
   });
 
   it('still returns the DM prerequisite when a room exists but the player has not opened a DM', async () => {
     const handler = setup(jest.fn().mockRejectedValue(new DmNotReachableError('42')));
     const ctx = context();
     await handler(ctx);
-    expect(ctx.reply).toHaveBeenCalledWith(`${CANONICAL_MESSAGES.DM_REQUIRED.text}\n\n👉 https://t.me/werewolf_test_bot?start=join`);
+    expect(ctx.reply).toHaveBeenCalledWith(Messages.needDmFirst('werewolf_test_bot'));
   });
 });

@@ -13,6 +13,39 @@ function createDeferred<T>() {
 }
 
 describe('registerActionCallbackHandler', () => {
+  it('returns the out-of-game message when a non-participant uses a vote callback in an existing room', async () => {
+    const services = {
+      storage: { getPlayerSession: jest.fn().mockResolvedValue(null) },
+      roomService: { getRoom: jest.fn().mockResolvedValue({ id: 'room1' }) },
+      dayService: { submitVote: jest.fn() },
+      nightActionService: { submitNightAction: jest.fn() },
+      orchestrator: { allNightActionsSubmitted: jest.fn() },
+    } as any;
+    const flowController = {} as any;
+    let capturedHandler: ((ctx: any, next: any) => Promise<void>) | undefined;
+    const bot = {
+      on: jest.fn((_event: string, handler: (ctx: any, next: any) => Promise<void>) => {
+        capturedHandler = handler;
+      }),
+      telegram: { sendMessage: jest.fn() },
+    } as any;
+    registerActionCallbackHandler(services, flowController, bot);
+
+    const answerCbQuery = jest.fn().mockResolvedValue(undefined);
+    const ctx = {
+      callbackQuery: { data: 'action:VOTE:target1' },
+      chat: { id: '-100123', type: 'supergroup' },
+      from: { id: 'outsider-1' },
+      answerCbQuery,
+    } as any;
+
+    await capturedHandler!(ctx, jest.fn());
+
+    expect(services.roomService.getRoom).toHaveBeenCalledWith('-100123');
+    expect(answerCbQuery).toHaveBeenCalledWith('⚠️ Bạn chưa tham gia ván hiện tại nên chưa thể bỏ phiếu.');
+    expect(services.dayService.submitVote).not.toHaveBeenCalled();
+  });
+
   it('confirms a vote action after the submission finishes', async () => {
     const services = {
       storage: {
@@ -77,7 +110,7 @@ describe('registerActionCallbackHandler', () => {
     await capturedHandler!(ctx, next);
 
     expect(services.dayService.submitVote).toHaveBeenCalled();
-    expect(answerCbQuery).toHaveBeenCalledWith(Messages.voteRecorded());
+    expect(answerCbQuery).toHaveBeenCalledWith(expect.stringContaining('Lá phiếu'));
     expect(ctx.editMessageReplyMarkup).toHaveBeenCalledWith(
       expect.objectContaining({
         inline_keyboard: expect.any(Array),

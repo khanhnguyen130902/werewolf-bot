@@ -251,6 +251,13 @@ export function registerActionCallbackHandler(
     try {
       const roomId = await services.storage.getPlayerSession(telegramId);
       if (!roomId) {
+        if (parsed.actionType === 'VOTE' && ctx.chat && ctx.chat.type !== 'private') {
+          const callbackRoom = await services.roomService?.getRoom(String(ctx.chat.id));
+          if (callbackRoom) {
+            await ctx.answerCbQuery(CANONICAL_MESSAGES.PLAYER_NOT_IN_GAME.text).catch(() => undefined);
+            return;
+          }
+        }
         await ctx.answerCbQuery(CANONICAL_MESSAGES.ROOM_NOT_FOUND.text).catch(() => undefined);
         return;
       }

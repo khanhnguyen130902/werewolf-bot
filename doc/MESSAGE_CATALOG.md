@@ -15,7 +15,8 @@ Clarity, rule accuracy, and actionability take precedence over atmosphere. Publi
 | Message ID | Event / trigger | Audience | Purpose | Layer | Primary content direction | Variants | Related button | Visibility |
 |---|---|---|---|---|---|---|---|---|
 | `HELP.OVERVIEW` | `/help` | Requesting user | Explain commands and first steps | Gameplay | Clear onboarding with a restrained village-at-night identity | No random variation | Command list | Public or private request context |
-| `ERROR.ROOM_NOT_FOUND` | `/join` without room | Requesting user/group | Explain that no room exists | Pure system | Direct warning with one gentle atmospheric cue | None | `/create` is the next action | Public |
+| `ERROR.ROOM_NOT_FOUND` | Room lookup cannot resolve an active room | Requesting user/group | Explain that no active room can be found | Pure system | Short message that the room is unavailable | None | `/create` is the next action | Public |
+| `ERROR.ROOM_NOT_CREATED` | `/join` before `/create` | Requesting user/group | Explain that the group has no room yet | Pure system | Tell host to use `/create`; do not imply the game is locked or already started | None | `/create` | Public |
 | `ERROR.DM_REQUIRED` | DM not reachable | Player | Explain the required `/start` setup | Pure system | Short CTA with a private-chat link | None | `/start` | Player private or public CTA |
 | `GAME.CREATED` | Room created | Group participants | Confirm the lobby is open | Narrative | A new night is approaching; explain `/join` and host next step | Two short lobby variants may be used | `/join` | Public |
 | `GAME.JOINED` | Player joins | Group participants | Confirm player and count | Gameplay | Player has entered the village; keep count explicit | Optional short wording variants | None | Public |

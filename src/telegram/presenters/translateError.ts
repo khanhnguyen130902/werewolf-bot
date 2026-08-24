@@ -3,7 +3,7 @@ import { CANONICAL_MESSAGES } from './canonicalContent';
 
 /** Converts domain errors into concise, player-friendly Vietnamese. */
 const ERROR_MESSAGES: Record<string, string> = {
-  ROOM_NOT_FOUND: CANONICAL_MESSAGES.ROOM_NOT_FOUND.text,
+  ROOM_NOT_FOUND: CANONICAL_MESSAGES.ROOM_NOT_CREATED.text,
   ROOM_FULL: '🔒 Phòng đã đủ người. Hiện không thể nhận thêm người chơi.',
   ROOM_LOCKED: '🔒 Cánh cửa làng đã đóng. Ván chơi đã bắt đầu nên không thể tham gia thêm.',
   PLAYER_ALREADY_IN_ROOM: '🌙 Bạn đã ở trong phòng này rồi.',

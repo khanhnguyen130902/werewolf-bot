@@ -1,4 +1,5 @@
 import { RoleId, Team, DeathCause, WinnerTeam } from '../../engine/domain/enums';
+import { CANONICAL_MESSAGES } from './canonicalContent';
 
 /**
  * CANONICAL VIETNAMESE CONTENT — Werewolf Telegram Bot
@@ -18,7 +19,7 @@ import { RoleId, Team, DeathCause, WinnerTeam } from '../../engine/domain/enums'
 // ---------------------------------------------------------------------------
 const ROLE_EMOJIS: Record<RoleId, string> = {
   [RoleId.WEREWOLF]: '🐺',
-  [RoleId.VILLAGER]: '🏘️',
+  [RoleId.VILLAGER]: '🧑‍🌾',
   [RoleId.SEER]: '🔮',
   [RoleId.BODYGUARD]: '🛡️',
   [RoleId.HUNTER]: '🏹',
@@ -110,7 +111,7 @@ export const RoleDescriptions: Record<RoleId, string> = {
 
 export const TeamNames: Record<Team, string> = {
   [Team.WEREWOLF]: '🐺 Phe Sói',
-  [Team.VILLAGE]: '🏘️ Phe Dân',
+  [Team.VILLAGE]: '🧑‍🌾 Phe Dân',
 };
 
 export const DeathCauseNames: Record<string, string> = {
@@ -122,7 +123,7 @@ export const DeathCauseNames: Record<string, string> = {
 };
 
 export const WinnerNames: Record<string, string> = {
-  [WinnerTeam.VILLAGE]: '🏘️ phe Dân',
+  [WinnerTeam.VILLAGE]: '🧑‍🌾 phe Dân',
   [WinnerTeam.WEREWOLF]: '🐺 phe Sói',
   [WinnerTeam.NONE]: 'không một phe nào',
 };
@@ -139,8 +140,7 @@ export const Messages = {
   noActiveGame: () =>
     '👀 Hiện chưa có ván chơi nào ở đây.\n\nGõ /create để mở một phòng mới cho ngôi làng.',
 
-  notInCurrentGame: () =>
-    '⚠️ Bạn chưa ở trong ván hiện tại, nên chưa thể bỏ phiếu hay hành động.',
+  notInCurrentGame: () => CANONICAL_MESSAGES.PLAYER_NOT_IN_GAME.text,
 
   roomFull: () => '🔒 Phòng đã đủ người. Hiện không thể nhận thêm ai nữa.',
 
