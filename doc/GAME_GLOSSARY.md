@@ -61,7 +61,7 @@
 | `KILL` | Tấn công | 🐺 Tấn công | 🐺 |
 | `PROTECT` | Bảo vệ | 🛡️ Bảo vệ | 🛡️ |
 | `INVESTIGATE` | Điều tra | 🔮 Điều tra | 🔮 |
-| `HEAL` | Cứu | 🧪 Cứu | 🧪 |
+| `HEAL` | Cứu |🧙‍♂️Cứu |🧙‍♂️|
 | `POISON` | Đầu độc | ☠️ Đầu độc | ☠️ |
 | `MUTE` | Làm câm | 🤫 Làm câm | 🤫 |
 | `VOTE` | Bỏ phiếu | 🗳️ Bỏ phiếu | 🗳️ |

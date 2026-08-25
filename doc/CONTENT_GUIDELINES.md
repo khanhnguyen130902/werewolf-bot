@@ -31,7 +31,7 @@ Action prompts should normally be one to three lines plus buttons. Errors should
 | Wolf | 🐺 |
 | Seer | 🔮 |
 | Bodyguard | 🛡️ |
-| Witch | 🧙‍♀️ / 🧪 for potion action |
+| Witch | 🧙‍♀️ /🧙‍♂️for potion action |
 | Hunter | 🏹 |
 | Silent Mage | 🤫 |
 | Death | 💀 |

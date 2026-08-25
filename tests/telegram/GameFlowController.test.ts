@@ -274,7 +274,7 @@ describe('GameFlowController death DM notifications', () => {
     );
     expect(bot.telegram.sendMessage).toHaveBeenCalledWith(
       'chat1',
-      expect.stringContaining('Dead One đã chết'),
+      Messages.dayBegins(1, [{ nickname: 'Dead One' }], null),
       undefined,
     );
   });
@@ -422,6 +422,33 @@ describe('GameFlowController Telegram failure isolation', () => {
     expect(mutePlayers.mock.invocationCallOrder[0]).toBeLessThan(
       (presentVoting.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER),
     );
+  });
+
+  it('uses terminal mute cleanup when a discussion death reaches GAME_OVER', async () => {
+    const bot = {
+      on: jest.fn(),
+      telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
+    } as any;
+    const controller = new GameFlowController({ storage: {}, redis: {} } as any, bot);
+    jest.spyOn(controller.muteService, 'mutePlayers').mockResolvedValue(undefined);
+    const unmuteAllPlayers = jest.spyOn(controller.muteService, 'unmuteAllPlayers').mockResolvedValue(undefined);
+
+    await controller.onDiscussionDeathResolved(
+      {
+        id: 'room1',
+        chatId: 'chat1',
+        currentRound: 1,
+        gameState: GameState.GAME_OVER,
+        players: {
+          dead1: { telegramId: 'dead1', nickname: 'Last Silent', alive: false },
+        },
+      } as any,
+      [{ telegramId: 'dead1', cause: 'SPOKEN_WHILE_SILENCED' }],
+    );
+
+    expect(unmuteAllPlayers).toHaveBeenCalledWith('chat1', {
+      clearFallbackOnFailure: true,
+    });
   });
 });
 

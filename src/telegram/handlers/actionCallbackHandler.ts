@@ -385,10 +385,18 @@ export function registerActionCallbackHandler(
             .sendMessage(
               telegramId,
               parsed.targetTelegramId
-                ? Messages.targetSelected(
-                    ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
-                    targetNickname(updatedRoom, parsed.targetTelegramId),
-                  )
+                ? parsed.actionType === NightActionType.SILENT_MAGE_SILENCE
+                  ? Messages.silentMageTargetSelected(targetNickname(updatedRoom, parsed.targetTelegramId) ?? parsed.targetTelegramId)
+                  : parsed.actionType === NightActionType.BODYGUARD_PROTECT
+                    ? Messages.bodyguardTargetSelected(targetNickname(updatedRoom, parsed.targetTelegramId) ?? parsed.targetTelegramId)
+                    : parsed.actionType === NightActionType.WITCH_SAVE
+                      ? Messages.witchSaveTargetSelected(targetNickname(updatedRoom, parsed.targetTelegramId) ?? parsed.targetTelegramId)
+                      : parsed.actionType === NightActionType.WITCH_POISON
+                        ? Messages.witchPoisonTargetSelected(targetNickname(updatedRoom, parsed.targetTelegramId) ?? parsed.targetTelegramId)
+                        : Messages.targetSelected(
+                      ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Bạn đã chọn mục tiêu',
+                      targetNickname(updatedRoom, parsed.targetTelegramId),
+                    )
                 : Messages.nightActionSkipped(ACTION_LABELS[parsed.actionType as NightActionType] ?? 'Hành động của bạn'),
             )
             .catch(() => undefined);

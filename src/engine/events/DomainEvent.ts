@@ -29,7 +29,7 @@ export interface BaseDomainEvent<T extends DomainEventType, P> {
 export type DomainEvent =
   | BaseDomainEvent<DomainEventType.ROOM_CREATED, { hostTelegramId: string }>
   | BaseDomainEvent<DomainEventType.ROOM_CLOSED, { reason: string }>
-  | BaseDomainEvent<DomainEventType.PLAYER_JOINED, { telegramId: string; nickname: string }>
+  | BaseDomainEvent<DomainEventType.PLAYER_JOINED, { telegramId: string; nickname: string; username?: string | null }>
   | BaseDomainEvent<DomainEventType.PLAYER_LEFT, { telegramId: string }>
   | BaseDomainEvent<DomainEventType.PLAYER_KICKED, { telegramId: string; byHost: string }>
   | BaseDomainEvent<DomainEventType.GAME_STARTED, { playerCount: number }>

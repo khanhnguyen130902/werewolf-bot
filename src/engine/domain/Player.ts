@@ -8,6 +8,8 @@ import { RoleId, Team } from './enums';
 export interface PlayerState {
   telegramId: string;
   nickname: string;
+  /** Telegram username captured at join time when the account exposes one. */
+  username?: string | null;
   role: RoleId | null;
   team: Team | null;
   alive: boolean;
@@ -47,12 +49,14 @@ export class PlayerFactory {
   static create(params: {
     telegramId: string;
     nickname: string;
+    username?: string | null;
     isHost?: boolean;
     joinedAt: number;
   }): PlayerState {
     return {
       telegramId: params.telegramId,
       nickname: params.nickname,
+      username: params.username ?? null,
       role: null,
       team: null,
       alive: true,

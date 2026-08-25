@@ -96,8 +96,11 @@ export class GameFlowController {
     this.registerHunterCallbackHandler();
   }
 
-  async unmuteAllPlayers(chatId: string | number): Promise<void> {
-    await this.muteService.unmuteAllPlayers(chatId);
+  async unmuteAllPlayers(
+    chatId: string | number,
+    options: { clearFallbackOnFailure?: boolean } = {},
+  ): Promise<void> {
+    await this.muteService.unmuteAllPlayers(chatId, options);
   }
 
   /** Telegram delivery is a presentation side effect. A transient API failure
@@ -269,19 +272,17 @@ export class GameFlowController {
       if (!player.role) return;
       if (isTestBot(player.telegramId)) return;
       try {
-        const roleMessage = Messages.roleAssigned(player.role);
-        const teammateMessage =
+        const teammateNames =
           player.role === RoleId.WEREWOLF && werewolves.length >= 2
-            ? `\n\n${Messages.werewolfTeammates(
-                werewolves
-                  .filter((teammate) => teammate.telegramId !== player.telegramId)
-                  .map((teammate) => teammate.nickname),
-              )}`
-            : '';
+            ? werewolves
+                .filter((teammate) => teammate.telegramId !== player.telegramId)
+                .map((teammate) => teammate.nickname)
+            : [];
+        const roleMessage = Messages.roleAssigned(player.role, teammateNames);
 
         await this.bot.telegram.sendMessage(
           player.telegramId,
-          `${roleMessage}${teammateMessage}`,
+          roleMessage,
           { parse_mode: 'Markdown' },
         );
       } catch (err) {
@@ -747,9 +748,13 @@ export class GameFlowController {
       rows.push([{ text: '⏭ Bỏ qua', callback_data: `hunter-shot:${hunterTelegramId}:SKIP` }]);
 
       this.bot.telegram
-        .sendMessage(hunterTelegramId, Messages.hunterPrompt(seconds), {
-          reply_markup: { inline_keyboard: rows },
-        })
+        .sendMessage(
+          hunterTelegramId,
+          Messages.hunterPrompt(room.currentRound),
+          {
+            reply_markup: { inline_keyboard: rows },
+          },
+        )
         .catch(() => {
           // Hunter can't be DMed at all -- resolve immediately as "declined"
           // rather than waiting the full timeout for a message that will
@@ -1173,20 +1178,15 @@ export class GameFlowController {
     const executedNickname = executedTelegramId
       ? (room.players[executedTelegramId]?.nickname ?? executedTelegramId)
       : null;
-    await this.safeSendMessage(room.chatId, Messages.executionResult(executedNickname), undefined, 'execution-result');
-    await this.safeSendMessage(room.chatId, BotDialogue.execution(), undefined, 'execution-dialogue');
-
-    if (executedTelegramId) {
-      const executedPlayer = room.players[executedTelegramId];
-      if (executedPlayer?.role) {
-        await this.safeSendMessage(
-          room.chatId,
-          Messages.executionRoleReveal(executedNickname ?? executedTelegramId, executedPlayer.role),
-          undefined,
-          'execution-role-reveal',
-        );
-      }
-    }
+    const executedRole = executedTelegramId
+      ? room.players[executedTelegramId]?.role ?? undefined
+      : undefined;
+    await this.safeSendMessage(
+      room.chatId,
+      Messages.executionResult(executedNickname, executedRole),
+      undefined,
+      'execution-result',
+    );
 
     const extraDeaths = deaths.filter((d) => d.telegramId !== executedTelegramId);
     for (const death of extraDeaths) {
@@ -1222,8 +1222,10 @@ export class GameFlowController {
       }));
     await this.safeSendMessage(room.chatId, Messages.finalRoleSummary(finalRoles), undefined, 'final-role-summary');
 
-    // Unmute all players in the room
-    await this.muteService.unmuteAllPlayers(room.chatId);
+    // Game-over is a terminal boundary. Do not let failed Telegram
+    // unrestriction leave a fallback marker that can affect a later session
+    // in the same group.
+    await this.muteService.unmuteAllPlayers(room.chatId, { clearFallbackOnFailure: true });
 
     // Clear per-room policy state after the match is complete.
     this.botPolicy.clearRoom(room.id);

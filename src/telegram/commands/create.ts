@@ -5,6 +5,7 @@ import { Messages } from '../presenters/messages';
 import { translateError } from '../presenters/translateError';
 import { GameFlowController } from '../GameFlowController';
 import { buildFullName } from '../utils/buildFullName';
+import { DomainError } from '../../engine/errors/DomainError';
 
 /**
  * /create handler. Confirmed UX rule: the room IS the existing group chat
@@ -27,20 +28,27 @@ export function registerCreateCommand(
     const hostTelegramId = String(ctx.from.id);
     const roomId = String(ctx.chat.id);
     const hostNickname = buildFullName(ctx.from, 'Host');
+    const hostUsername = ctx.from.username ?? null;
 
     try {
-      // Safety cleanup: unmute anyone left muted from previous sessions
-      await flowController.unmuteAllPlayers(roomId);
+      // A new room is a clean session boundary. Do not carry a stale
+      // fallback marker from a previous game into this room if Telegram
+      // unrestriction failed during the previous terminal cleanup.
+      await flowController.unmuteAllPlayers(roomId, { clearFallbackOnFailure: true });
 
       await services.roomService.createRoom({
         roomId,
         hostTelegramId,
         hostNickname,
+        hostUsername,
         chatId: roomId,
       });
       await ctx.reply(Messages.roomCreated(roomId));
     } catch (err) {
-      await ctx.reply(translateError(err));
+      const message = err instanceof DomainError && err.code === 'ROOM_LOCKED'
+        ? Messages.roomCreationLocked()
+        : translateError(err);
+      await ctx.reply(message);
     }
   });
 }

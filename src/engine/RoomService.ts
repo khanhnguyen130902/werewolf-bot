@@ -82,6 +82,7 @@ export class RoomService {
     roomId: string;
     hostTelegramId: string;
     hostNickname: string;
+    hostUsername?: string | null;
     chatId: string;
     settingsOverride?: Partial<GameSettings>;
   }): Promise<RoomState> {
@@ -117,6 +118,7 @@ export class RoomService {
     room.players[params.hostTelegramId] = PlayerFactory.create({
       telegramId: params.hostTelegramId,
       nickname: params.hostNickname,
+      username: params.hostUsername,
       isHost: true,
       joinedAt: now,
     });
@@ -154,9 +156,10 @@ export class RoomService {
           roomId: params.roomId,
           matchId: null,
           round: 0,
-          payload: {
+            payload: {
             telegramId: params.hostTelegramId,
             nickname: params.hostNickname,
+            username: params.hostUsername ?? null,
           },
         },
         now,
@@ -170,6 +173,7 @@ export class RoomService {
     roomId: string;
     telegramId: string;
     nickname: string;
+    username?: string | null;
   }): Promise<RoomState> {
     const now = this.clock.now();
 
@@ -203,6 +207,7 @@ export class RoomService {
       const newPlayer = PlayerFactory.create({
         telegramId: params.telegramId,
         nickname: params.nickname,
+        username: params.username,
         joinedAt: now,
       });
       const updated: RoomState = {

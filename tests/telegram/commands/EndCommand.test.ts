@@ -1,5 +1,6 @@
 import { registerEndCommand } from '../../../src/telegram/commands/end';
 import { BotServices } from '../../../src/telegram/BotServices';
+import { Messages } from '../../../src/telegram/presenters/messages';
 
 describe('registerEndCommand', () => {
   it('closes the current room when the host uses /end in a group', async () => {
@@ -31,7 +32,9 @@ describe('registerEndCommand', () => {
       hostTelegramId: 'host-1',
       reason: 'host-ended-room',
     });
-    expect(unmuteAllPlayers).toHaveBeenCalledWith('room-1');
-    expect(ctx.reply).toHaveBeenCalledWith(expect.stringContaining('khép lại'));
+    expect(unmuteAllPlayers).toHaveBeenCalledWith('room-1', { clearFallbackOnFailure: true });
+
+    expect(ctx.reply).toHaveBeenCalledWith(Messages.roomClosed());
+
   });
 });

@@ -23,7 +23,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   DM_NOT_REACHABLE: CANONICAL_MESSAGES.DM_REQUIRED.text,
 };
 
-const GENERIC_DOMAIN_ERROR = '⚠️ Khoan đã. Không thể thực hiện thao tác này lúc này. Vui lòng thử lại.';
+const GENERIC_DOMAIN_ERROR = '⚠️ Không thể thực hiện thao tác này lúc này. Vui lòng thử lại.';
 const GENERIC_SYSTEM_ERROR = '❌ Có lỗi vừa xảy ra. Vui lòng thử lại.';
 
 export function translateError(err: unknown): string {

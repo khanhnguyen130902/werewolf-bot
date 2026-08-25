@@ -16,9 +16,10 @@ export function registerJoinCommand(services: BotServices, bot: Telegraf<BotCont
     const telegramId = String(ctx.from.id);
     const roomId = String(ctx.chat.id);
     const nickname = buildFullName(ctx.from);
+    const username = ctx.from.username ?? null;
 
     try {
-      const room = await services.roomService.joinRoom({ roomId, telegramId, nickname });
+      const room = await services.roomService.joinRoom({ roomId, telegramId, nickname, username });
       await ctx.reply(Messages.joined(nickname, Object.keys(room.players).length));
     } catch (err) {
       if (err instanceof DmNotReachableError) {

@@ -25,7 +25,7 @@ export function registerEndCommand(
         hostTelegramId,
         reason: 'host-ended-room',
       });
-      await flowController.unmuteAllPlayers(roomId);
+      await flowController.unmuteAllPlayers(roomId, { clearFallbackOnFailure: true });
       await ctx.reply(Messages.roomClosed());
     } catch (err) {
       await ctx.reply(translateError(err));

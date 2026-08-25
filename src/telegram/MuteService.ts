@@ -128,7 +128,10 @@ export class MuteService {
    * Unmutes all players who were muted in this chat and clears the Redis set.
    * Restores all message permissions.
    */
-  async unmuteAllPlayers(chatId: string | number): Promise<void> {
+  async unmuteAllPlayers(
+    chatId: string | number,
+    options: { clearFallbackOnFailure?: boolean } = {},
+  ): Promise<void> {
     const key = this.getMutedPlayersKey(chatId);
 
     try {
@@ -197,7 +200,10 @@ export class MuteService {
 
       // Retain failed IDs so the middleware can continue deleting speech and a
       // later recovery/retry can attempt the Telegram unrestriction again.
-      if (completedIds.length === mutedIds.length) {
+      if (completedIds.length === mutedIds.length || options.clearFallbackOnFailure === true) {
+        // At a terminal boundary there is no live room left for middleware to
+        // enforce. Keeping failed IDs would make a later unrelated session
+        // inherit stale mute state for the same Telegram group.
         await this.redis.del(key);
       } else if (completedIds.length > 0) {
         await this.redis.srem(key, ...completedIds);

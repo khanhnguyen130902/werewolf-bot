@@ -118,4 +118,13 @@ describe('MuteService', () => {
     expect(bot.telegram.restrictChatMember).not.toHaveBeenCalled();
     expect(redis.del).toHaveBeenCalledWith('muted-players:chat123');
   });
+
+  it('clears fallback markers after terminal cleanup even when Telegram unmute fails', async () => {
+    redis.smembers.mockResolvedValue(['55555']);
+    bot.telegram.getChatMember.mockRejectedValue(new Error('telegram unavailable'));
+
+    await service.unmuteAllPlayers('chat123', { clearFallbackOnFailure: true });
+
+    expect(redis.del).toHaveBeenCalledWith('muted-players:chat123');
+  });
 });

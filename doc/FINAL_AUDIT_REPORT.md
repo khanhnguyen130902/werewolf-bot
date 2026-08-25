@@ -56,7 +56,7 @@ A capacity conflict remains explicit: the Master Prompt states 3–15 players, w
 | 🐺 Tấn công | `WEREWOLF_VOTE_KILL` | Sói private chat | Đêm |
 | 🛡️ Bảo vệ | `BODYGUARD_PROTECT` | Bảo vệ private chat | Đêm |
 | 🔮 Điều tra | `SEER_INSPECT` | Tiên tri private chat | Đêm |
-| 🧪 Cứu | `WITCH_SAVE` | Phù thủy private chat | Đêm |
+|🧙‍♂️Cứu | `WITCH_SAVE` | Phù thủy private chat | Đêm |
 | ☠️ Đầu độc | `WITCH_POISON` | Phù thủy private chat | Đêm |
 | 🤫 Làm câm | `SILENT_MAGE_SILENCE` | Pháp sư câm private chat | Đêm |
 | 🏹 Bắn trả | `HUNTER_SHOOT` | Thợ săn after-death private chat | Phân giải người chết |

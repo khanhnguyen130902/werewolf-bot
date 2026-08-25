@@ -13,7 +13,7 @@ function requireEnv(name: string): string {
 }
 
 function parsePort(): number {
-  const raw = process.env.PORT?.trim() ?? '3000';
+	const raw = process.env.BOT_PORT?.trim() ?? process.env.PORT?.trim() ?? '3001';
   const port = Number(raw);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT must be an integer between 1 and 65535');
