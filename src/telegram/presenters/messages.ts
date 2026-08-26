@@ -93,7 +93,7 @@ export const RoleDescriptions: Record<RoleId, string> = {
     '🔮 Có những điều người khác không thể nhìn thấy.\n\n' +
     'Còn bạn, mỗi đêm, có thể nhìn sâu hơn vào một người.\n\n' +
     '🎯 Mỗi đêm: chọn 1 người còn sống để điều tra.\n' +
-    '🔮 Kết quả: bạn chỉ biết phe của người đó (Phe Sói hoặc Phe Dân) — không biết chính xác họ là role gì.\n' +
+    '🔮 Kết quả: bạn chỉ biết phe của người đó (Phe Sói hoặc Phe Dân) không biết chính xác họ là role gì.\n' +
     '🏆 Thắng khi: tất cả Sói đã bị loại khỏi ván.',
 
   [RoleId.BODYGUARD]:
@@ -104,14 +104,14 @@ export const RoleDescriptions: Record<RoleId, string> = {
     '🏆 Thắng khi: tất cả Sói đã bị loại khỏi ván.',
 
   [RoleId.HUNTER]:
-    '🏹 Bạn luôn giữ lại một viên đạn cho thời khắc không còn đường lui.\n\n' +
-    '🎯 Khi bạn chết — vì bất kỳ nguyên nhân nào — bạn được chọn 1 người còn sống để bắn trả.\n' +
-    '⚠️ Lựa chọn: bạn có thể không sử dụng phát bắn cuối cùng.\n' +
+    '🏹 Bạn luôn giữ lại một viên đạn cho thời khắc cuối cùng.\n\n' +
+    '🎯 Khi bạn chết vì bất kỳ nguyên nhân nào bạn được chọn 1 người còn sống để bắn trả.\n' +
+    '⚠️ Bạn có thể lựa chọn không sử dụng phát bắn cuối cùng.\n' +
     '🏆 Thắng khi: tất cả Sói đã bị loại khỏi ván.',
 
   [RoleId.WITCH]:
-    'Trong bóng tối, hai lọ thuốc vẫn đang chờ được sử dụng. Mỗi lọ chỉ có một lần duy nhất — và một khi đã dùng, sẽ không thể lấy lại.\n\n' +
-    '🧪 Thuốc Cứu: cứu 1 người khỏi cái chết trong đêm — kể cả chính bạn.\n' +
+    'Trong bóng tối, hai lọ thuốc vẫn đang chờ được sử dụng. Mỗi lọ chỉ có một lần duy nhất và một khi đã dùng, sẽ không thể lấy lại.\n\n' +
+    '🧪 Thuốc Cứu: cứu 1 người khỏi cái chết trong đêm kể cả chính bạn.\n' +
     '☠️ Thuốc Độc: chọn 1 mục tiêu hợp lệ để đầu độc.\n' +
     '🌙 Bạn có thể sử dụng cả hai loại thuốc trong cùng một đêm, nếu cả hai vẫn còn.\n\n' +
     '🏆 Thắng khi: tất cả Sói đã bị loại khỏi ván.',
@@ -172,7 +172,7 @@ export const Messages = {
     '🔒 Ngôi làng đã đủ người.\n\nCánh cửa không thể đón thêm ai trong ván này.',
 
   roomLocked: () =>
-    '🔒 Cánh cửa làng đã khép lại.\n\nVán chơi đã bắt đầu — không thể có thêm người bước vào.',
+    '🔒 Cánh cửa làng đã khép lại.\n\nVán chơi đã bắt đầu không thể có thêm người bước vào.',
 
   roomCreationLocked: () =>
     '⚠️ Nhóm này đang có một ván chơi diễn ra.\n\nKhông thể tạo phòng mới cho đến khi ván hiện tại kết thúc.',
@@ -215,7 +215,7 @@ export const Messages = {
     `🔒 Vai trò của bạn cần được gửi trong tin nhắn riêng.\n\nHãy mở cuộc trò chuyện với Quản trò rồi quay lại ngôi làng.\n\n👉 https://t.me/${botUsername}?start=join`,
 
   joined: (nickname: string, count: number) =>
-    `✨ ${nickname} đã bước vào ngôi làng.\n\nHiện có ${count} người đang chờ màn đêm buông xuống.`,
+    `✨ ${nickname} đã bước vào ngôi làng.\n\n${count} người đã tập hợp.\nChỉ còn chờ màn đêm buông xuống.`,
 
   left: (nickname: string) =>
     `🚪 ${nickname} đã rời khỏi ngôi làng. Một vị trí vừa trở nên trống vắng.`,
@@ -267,11 +267,11 @@ export const Messages = {
     `☠️ Một giọt độc đã được định đoạt cho đêm nay.\n\n🎯 ${targetNickname} là người bạn chọn làm mục tiêu.`,
 
   hunterPrompt: (round: number) =>
-    `🏹 Đêm ${round}.\n\nBạn là 🏹 Thợ săn.\n\nKhi thời khắc cuối cùng đến, hãy chọn mục tiêu cho phát bắn của mình, hoặc hạ vũ khí và không bắn ai.`,
+    `🌙 Đêm ${round}.\n\nBạn là 🏹 Thợ săn.\n\nKhi thời khắc cuối cùng đến, hãy chọn mục tiêu cho phát bắn của mình, hoặc hạ vũ khí và không bắn ai.`,
 
   seerResult: (targetNickname: string, teamName: string) => {
     const displayTeamName = TeamNames[teamName as Team] ?? teamName;
-    return `🔮 Màn đêm đã hé lộ một phần sự thật. ${targetNickname} thuộc ${displayTeamName}.`;
+    return `🔮 Màn đêm đã hé lộ một phần sự thật.\n\n${targetNickname} thuộc ${displayTeamName}.\n\nNhưng trong ngôi làng này, sự thật hiếm khi chỉ có một mặt.`;
   },
 
   werewolfTeammates: (teammates: string[]) =>
@@ -288,8 +288,14 @@ export const Messages = {
     actionLabel: string,
   ) =>
     roleId === RoleId.WEREWOLF
-      ? `🐺 Đêm ${round}. Bóng tối đã che giấu mọi dấu vết.\n\nBầy Sói, hãy chọn người sẽ trở thành mục tiêu trong đêm nay.`
-      : `${ROLE_EMOJIS[roleId]} Đêm ${round}. Bạn là ${RoleNames[roleId]}. Đã đến lúc thực hiện ${actionLabel.toLowerCase()} của mình.`,
+      ? `🌙 Đêm ${round}. Bóng tối đã che giấu mọi dấu vết.\n\nBầy Sói, hãy chọn người sẽ trở thành mục tiêu trong đêm nay.`
+      : roleId === RoleId.SILENT_MAGE
+        ? `🌙 Đêm ${round}.\n\nBạn là 🤫 Pháp sư câm.\n\nTrong bóng tối, một người sẽ phải im lặng khi bình minh đến.\nHãy chọn mục tiêu của bạn.`
+        : roleId === RoleId.BODYGUARD
+          ? `🌙 Đêm ${round}.\n\nBạn là 🛡️ Bảo vệ.\n\n🛡️ Khi cả ngôi làng chìm vào giấc ngủ, bạn vẫn còn thức.\n\nĐêm nay, hãy chọn người bạn muốn bảo vệ.`
+          : roleId === RoleId.SEER
+            ? `🌙 Đêm ${round}.\n\nBạn là 🔮 Tiên tri.\n\nMàn đêm che giấu nhiều điều.\nNhưng không phải bí mật nào cũng có thể giữ kín mãi.\n\nĐêm nay, hãy chọn một người để khám phá phe của họ.`
+            : `🌙 Đêm ${round}. Bạn là ${RoleNames[roleId]}. Đã đến lúc thực hiện ${actionLabel.toLowerCase()} của mình.`,
 
   // -------------------------------------------------------------------------
   // LAYER 3 — NARRATIVE
@@ -336,9 +342,9 @@ export const Messages = {
   nightBegins: (round: number) =>
     pickVariant(
       [
-        `🌙 Đêm ${round} bắt đầu.\n\nNgôi làng chìm vào im lặng. Nếu vai trò của bạn có hành động, hãy mở tin nhắn riêng và lựa chọn.`,
+        `🌙 Đêm ${round} bắt đầu.\n\nNgôi làng chìm vào im lặng.\nNếu vai trò của bạn có hành động, hãy mở tin nhắn riêng và lựa chọn.`,
 
-        `🌙 Đêm ${round} đã buông xuống.\n\nCả ngôi làng tắt đèn. Nhưng trong bóng tối, vẫn có những người chưa ngủ. Hãy kiểm tra tin nhắn riêng nếu đến lượt bạn.`,
+        `🌙 Đêm ${round} đã buông xuống.\n\nCả ngôi làng tắt đèn.\nNhưng trong bóng tối, vẫn có những người chưa ngủ.\n\nHãy kiểm tra tin nhắn riêng nếu đến lượt bạn.`,
 
         `🌙 Đêm ${round} lại đến.\n\nNgôi làng chìm vào im lặng.\nKhông ai biết bình minh sẽ mang theo điều gì.\n\nNếu vai trò của bạn có hành động, hãy mở tin nhắn riêng.\nĐêm nay, một lựa chọn của bạn có thể thay đổi mọi thứ.`,
       ] as const,

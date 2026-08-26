@@ -25,7 +25,7 @@ describe('Messages.silentMageTargetSelected', () => {
 describe('Messages.hunterPrompt', () => {
   it('shows the night number and the Hunter instructions', () => {
     expect(Messages.hunterPrompt(1)).toBe(
-      '🏹 Đêm 1.\n\nBạn là 🏹 Thợ săn.\n\nKhi thời khắc cuối cùng đến, hãy chọn mục tiêu cho phát bắn của mình, hoặc hạ vũ khí và không bắn ai.',
+      '🌙 Đêm 1.\n\nBạn là 🏹 Thợ săn.\n\nKhi thời khắc cuối cùng đến, hãy chọn mục tiêu cho phát bắn của mình, hoặc hạ vũ khí và không bắn ai.',
     );
   });
 });
@@ -43,7 +43,7 @@ describe('Messages.bodyguardTargetSelected', () => {
 describe('Messages.seerResult', () => {
   it('shows the target and translated team on one line', () => {
     expect(Messages.seerResult('Bot1', 'VILLAGE')).toBe(
-      '🔮 Màn đêm đã hé lộ một phần sự thật. Bot1 thuộc 🧑‍🌾 Phe Dân.',
+      '🔮 Màn đêm đã hé lộ một phần sự thật.\n\nBot1 thuộc 🧑‍🌾 Phe Dân.\n\nNhưng trong ngôi làng này, sự thật hiếm khi chỉ có một mặt.',
     );
   });
 });
@@ -76,7 +76,7 @@ describe('Messages.roleAssigned for Werewolf', () => {
 describe('Messages.nightActionPrompt for Werewolf', () => {
   it('uses the requested target-selection wording', () => {
     expect(Messages.nightActionPrompt(1, 'WEREWOLF' as any, 'Tấn công')).toBe(
-      '🐺 Đêm 1. Bóng tối đã che giấu mọi dấu vết.\n\nBầy Sói, hãy chọn người sẽ trở thành mục tiêu trong đêm nay.',
+      '🌙 Đêm 1. Bóng tối đã che giấu mọi dấu vết.\n\nBầy Sói, hãy chọn người sẽ trở thành mục tiêu trong đêm nay.',
     );
   });
 });
@@ -171,6 +171,76 @@ describe('Messages.dayBegins without deaths', () => {
   it('uses the second updated dawn variant for round 5', () => {
     expect(Messages.dayBegins(5, [])).toBe(
       '☀️ Bình minh ngày 5.\n\nMột đêm dài đã khép lại. Tất cả vẫn còn ở đây.\n\nNhưng sự im lặng này có thật sự là bình yên?\nHay sự thật vẫn đang ẩn mình trong bóng tối.',
+    );
+  });
+});
+
+
+
+describe('Messages.nightBegins formatting', () => {
+  it('formats the first variant with a line break before the action guidance', () => {
+    expect(Messages.nightBegins(3)).toBe(
+      '🌙 Đêm 3 bắt đầu.\n\nNgôi làng chìm vào im lặng.\nNếu vai trò của bạn có hành động, hãy mở tin nhắn riêng và lựa chọn.',
+    );
+  });
+
+  it('formats the second variant with separated atmosphere and guidance paragraphs', () => {
+    expect(Messages.nightBegins(4)).toBe(
+      '🌙 Đêm 4 đã buông xuống.\n\nCả ngôi làng tắt đèn.\nNhưng trong bóng tối, vẫn có những người chưa ngủ.\n\nHãy kiểm tra tin nhắn riêng nếu đến lượt bạn.',
+    );
+  });
+});
+
+
+describe('Messages.nightActionPrompt for Silent Mage', () => {
+  it('uses the requested silence-targeting wording', () => {
+    expect(Messages.nightActionPrompt(1, 'SILENT_MAGE' as any, 'Làm câm')).toBe(
+      '🌙 Đêm 1.\n\nBạn là 🤫 Pháp sư câm.\n\nTrong bóng tối, một người sẽ phải im lặng khi bình minh đến.\nHãy chọn mục tiêu của bạn.',
+    );
+  });
+});
+
+
+describe('Messages.joined', () => {
+  it('uses the requested gathering wording and player count', () => {
+    expect(Messages.joined('Trung Quach', 7)).toBe(
+      '✨ Trung Quach đã bước vào ngôi làng.\n\n7 người đã tập hợp.\nChỉ còn chờ màn đêm buông xuống.',
+    );
+  });
+});
+
+
+describe('Messages.nightActionPrompt shared title', () => {
+  it('uses the moon-night title for a generic special-role prompt', () => {
+    expect(Messages.nightActionPrompt(1, 'WITCH' as any, 'Đầu độc')).toBe(
+      '🌙 Đêm 1. Bạn là 🧙‍♂️ Phù thủy. Đã đến lúc thực hiện đầu độc của mình.',
+    );
+  });
+});
+
+
+describe('Messages.roleAssigned for Hunter', () => {
+  it('uses the revised Hunter role description', () => {
+    expect(Messages.roleAssigned('HUNTER' as any)).toBe(
+      '🎭 Một vai trò đã được trao cho bạn.\n\nBạn là 🏹 Thợ săn.\n\n🏹 Bạn luôn giữ lại một viên đạn cho thời khắc cuối cùng.\n\n🎯 Khi bạn chết vì bất kỳ nguyên nhân nào bạn được chọn 1 người còn sống để bắn trả.\n⚠️ Bạn có thể lựa chọn không sử dụng phát bắn cuối cùng.\n🏆 Thắng khi: tất cả Sói đã bị loại khỏi ván.',
+    );
+  });
+});
+
+
+describe('Messages.nightActionPrompt for Bodyguard', () => {
+  it('uses the requested protection-targeting wording', () => {
+    expect(Messages.nightActionPrompt(1, 'BODYGUARD' as any, 'Bảo vệ')).toBe(
+      '🌙 Đêm 1.\n\nBạn là 🛡️ Bảo vệ.\n\n🛡️ Khi cả ngôi làng chìm vào giấc ngủ, bạn vẫn còn thức.\n\nĐêm nay, hãy chọn người bạn muốn bảo vệ.',
+    );
+  });
+});
+
+
+describe('Messages.nightActionPrompt for Seer', () => {
+  it('uses the requested investigation wording', () => {
+    expect(Messages.nightActionPrompt(1, 'SEER' as any, 'Điều tra')).toBe(
+      '🌙 Đêm 1.\n\nBạn là 🔮 Tiên tri.\n\nMàn đêm che giấu nhiều điều.\nNhưng không phải bí mật nào cũng có thể giữ kín mãi.\n\nĐêm nay, hãy chọn một người để khám phá phe của họ.',
     );
   });
 });
