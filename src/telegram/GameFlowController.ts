@@ -1208,6 +1208,11 @@ export class GameFlowController {
   }
 
   private async announceGameOver(room: RoomState): Promise<void> {
+    // Release player sessions at the terminal boundary before Telegram
+    // presentation. A delivery failure or process restart must not force users
+    // to revisit the old group and run /end before joining another match.
+    await this.services.roomService.releaseTerminalPlayerSessions(room.id);
+
     const aliveWerewolves = Object.values(room.players).filter(
       (p) => p.alive && p.role === RoleId.WEREWOLF,
     ).length;

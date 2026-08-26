@@ -243,6 +243,115 @@ describe('RoomService', () => {
     expect(Object.keys(recreated.players)).toEqual(['host1']);
   });
 
+  it('reclaims a host session from a terminal room before creating another room', async () => {
+    const { service, storage } = setup();
+
+    await service.createRoom({
+      roomId: 'roomA',
+      hostTelegramId: 'host1',
+      hostNickname: 'Host 1',
+      chatId: 'chatA',
+    });
+    const roomA = await storage.getRoom('roomA');
+    await storage.saveRoom(
+      {
+        ...roomA!,
+        gameState: GameState.GAME_OVER,
+        status: RoomStatus.LOCKED,
+      },
+      roomA!.version,
+    );
+
+    await service.createRoom({
+      roomId: 'roomB',
+      hostTelegramId: 'host1',
+      hostNickname: 'Host 1',
+      chatId: 'chatB',
+    });
+
+    expect(await storage.getPlayerSession('host1')).toBe('roomB');
+    expect((await storage.getRoom('roomB'))?.hostTelegramId).toBe('host1');
+  });
+
+  it('does not reclaim an active host session when creating another room', async () => {
+    const { service, storage } = setup();
+
+    await service.createRoom({
+      roomId: 'roomA',
+      hostTelegramId: 'host1',
+      hostNickname: 'Host 1',
+      chatId: 'chatA',
+    });
+
+    await expect(
+      service.createRoom({
+        roomId: 'roomB',
+        hostTelegramId: 'host1',
+        hostNickname: 'Host 1',
+        chatId: 'chatB',
+      }),
+    ).rejects.toBeInstanceOf(PlayerAlreadyInRoomError);
+    expect(await storage.getPlayerSession('host1')).toBe('roomA');
+    expect(await storage.getRoom('roomB')).toBeNull();
+  });
+
+  it('reclaims a player session from a terminal room before joining another room', async () => {
+    const { service, storage } = setup();
+
+    await service.createRoom({
+      roomId: 'roomA',
+      hostTelegramId: 'hostA',
+      hostNickname: 'Host A',
+      chatId: 'chatA',
+    });
+    await service.joinRoom({ roomId: 'roomA', telegramId: 'player1', nickname: 'Player 1' });
+
+    const roomA = await storage.getRoom('roomA');
+    await storage.saveRoom(
+      {
+        ...roomA!,
+        gameState: GameState.GAME_OVER,
+        status: RoomStatus.LOCKED,
+      },
+      roomA!.version,
+    );
+
+    await service.createRoom({
+      roomId: 'roomB',
+      hostTelegramId: 'hostB',
+      hostNickname: 'Host B',
+      chatId: 'chatB',
+    });
+
+    await expect(
+      service.joinRoom({ roomId: 'roomB', telegramId: 'player1', nickname: 'Player 1' }),
+    ).resolves.toBeDefined();
+    expect(await storage.getPlayerSession('player1')).toBe('roomB');
+  });
+
+  it('does not reclaim a player session from another active room', async () => {
+    const { service, storage } = setup();
+
+    await service.createRoom({
+      roomId: 'roomA',
+      hostTelegramId: 'hostA',
+      hostNickname: 'Host A',
+      chatId: 'chatA',
+    });
+    await service.joinRoom({ roomId: 'roomA', telegramId: 'player1', nickname: 'Player 1' });
+    await service.createRoom({
+      roomId: 'roomB',
+      hostTelegramId: 'hostB',
+      hostNickname: 'Host B',
+      chatId: 'chatB',
+    });
+
+    await expect(
+      service.joinRoom({ roomId: 'roomB', telegramId: 'player1', nickname: 'Player 1' }),
+    ).rejects.toBeInstanceOf(PlayerAlreadyInRoomError);
+    expect(await storage.getPlayerSession('player1')).toBe('roomA');
+  });
+
   it('does not clear player sessions of other rooms when recreating or closing a room', async () => {
     const { service, storage } = setup();
     

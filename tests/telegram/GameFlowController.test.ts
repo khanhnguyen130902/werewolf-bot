@@ -429,7 +429,12 @@ describe('GameFlowController Telegram failure isolation', () => {
       on: jest.fn(),
       telegram: { sendMessage: jest.fn().mockResolvedValue(undefined) },
     } as any;
-    const controller = new GameFlowController({ storage: {}, redis: {} } as any, bot);
+    const releaseTerminalPlayerSessions = jest.fn().mockResolvedValue(undefined);
+    const controller = new GameFlowController({
+      roomService: { releaseTerminalPlayerSessions },
+      storage: {},
+      redis: {},
+    } as any, bot);
     jest.spyOn(controller.muteService, 'mutePlayers').mockResolvedValue(undefined);
     const unmuteAllPlayers = jest.spyOn(controller.muteService, 'unmuteAllPlayers').mockResolvedValue(undefined);
 
@@ -446,6 +451,7 @@ describe('GameFlowController Telegram failure isolation', () => {
       [{ telegramId: 'dead1', cause: 'SPOKEN_WHILE_SILENCED' }],
     );
 
+    expect(releaseTerminalPlayerSessions).toHaveBeenCalledWith('room1');
     expect(unmuteAllPlayers).toHaveBeenCalledWith('chat1', {
       clearFallbackOnFailure: true,
     });

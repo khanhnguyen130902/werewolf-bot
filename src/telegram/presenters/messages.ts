@@ -215,7 +215,7 @@ export const Messages = {
     `🔒 Vai trò của bạn cần được gửi trong tin nhắn riêng.\n\nHãy mở cuộc trò chuyện với Quản trò rồi quay lại ngôi làng.\n\n👉 https://t.me/${botUsername}?start=join`,
 
   joined: (nickname: string, count: number) =>
-    `✨ ${nickname} đã bước vào ngôi làng.\n\n${count} người đã tập hợp.\nChỉ còn chờ màn đêm buông xuống.`,
+    `✨ ${nickname} đã bước vào ngôi làng.\n\n${count} người đang có mặt ở ngôi làng.`,
 
   left: (nickname: string) =>
     `🚪 ${nickname} đã rời khỏi ngôi làng. Một vị trí vừa trở nên trống vắng.`,

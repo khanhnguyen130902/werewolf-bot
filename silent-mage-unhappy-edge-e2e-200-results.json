@@ -1,0 +1,1221 @@
+{
+  "requestedRuns": 200,
+  "passedRuns": 200,
+  "scenarioCounts": {
+    "opening-not-ready": 20,
+    "stale-cycle": 20,
+    "speech-non-silenced": 20,
+    "dead-speaker": 20,
+    "duplicate-speech": 20,
+    "concurrent-speech": 20,
+    "speech-vote-race": 20,
+    "stale-ballot": 20,
+    "terminal-speech": 20,
+    "callback-after-transition": 20
+  },
+  "totalEvents": 880,
+  "averageElapsedMs": 0.6659319999999752,
+  "maxElapsedMs": 12.772300000000541,
+  "results": [
+    {
+      "scenario": "opening-not-ready",
+      "run": 1,
+      "elapsedMs": 1.4830000000001746,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 2,
+      "elapsedMs": 12.772300000000541,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 3,
+      "elapsedMs": 0.7253000000000611,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 4,
+      "elapsedMs": 0.5051000000003114,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 5,
+      "elapsedMs": 0.875,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 6,
+      "elapsedMs": 0.6757999999999811,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 7,
+      "elapsedMs": 0.5432000000000698,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 8,
+      "elapsedMs": 0.9126000000005661,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 9,
+      "elapsedMs": 0.7374999999992724,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 10,
+      "elapsedMs": 0.5120999999999185,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 11,
+      "elapsedMs": 0.3675999999995838,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 12,
+      "elapsedMs": 0.29500000000007276,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 13,
+      "elapsedMs": 0.40489999999954307,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 14,
+      "elapsedMs": 0.40200000000004366,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 15,
+      "elapsedMs": 0.5282999999999447,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 16,
+      "elapsedMs": 0.6027999999996609,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 17,
+      "elapsedMs": 0.45350000000053114,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 18,
+      "elapsedMs": 0.6221000000005006,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 19,
+      "elapsedMs": 0.6113999999997759,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 20,
+      "elapsedMs": 0.39580000000023574,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 21,
+      "elapsedMs": 0.32770000000073196,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 22,
+      "elapsedMs": 0.31890000000021246,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 23,
+      "elapsedMs": 0.360700000000179,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 24,
+      "elapsedMs": 0.35050000000046566,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 25,
+      "elapsedMs": 0.5126999999993131,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 26,
+      "elapsedMs": 0.4580999999998312,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 27,
+      "elapsedMs": 0.4135999999998603,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 28,
+      "elapsedMs": 0.6199999999998909,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 29,
+      "elapsedMs": 0.5243000000000393,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 30,
+      "elapsedMs": 0.3713000000007014,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 31,
+      "elapsedMs": 0.33140000000003056,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 32,
+      "elapsedMs": 0.30389999999988504,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 33,
+      "elapsedMs": 0.37629999999990105,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 34,
+      "elapsedMs": 0.36380000000008295,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 35,
+      "elapsedMs": 0.456199999999626,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 36,
+      "elapsedMs": 0.5189000000000306,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 37,
+      "elapsedMs": 0.4308000000000902,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 38,
+      "elapsedMs": 0.5378999999993539,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 39,
+      "elapsedMs": 0.4993000000004031,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 40,
+      "elapsedMs": 0.3643000000001848,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 41,
+      "elapsedMs": 0.3158000000003085,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 42,
+      "elapsedMs": 0.30370000000039,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 43,
+      "elapsedMs": 0.3621000000002823,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 44,
+      "elapsedMs": 0.34619999999995343,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 45,
+      "elapsedMs": 0.456199999999626,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 46,
+      "elapsedMs": 0.47769999999945867,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 47,
+      "elapsedMs": 0.451799999999821,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 48,
+      "elapsedMs": 0.5331999999998516,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 49,
+      "elapsedMs": 0.49179999999978463,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 50,
+      "elapsedMs": 0.36789999999928114,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 51,
+      "elapsedMs": 0.3243000000002212,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 52,
+      "elapsedMs": 0.2719999999999345,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 53,
+      "elapsedMs": 0.35089999999945576,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 54,
+      "elapsedMs": 0.35170000000016444,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 55,
+      "elapsedMs": 0.4900000000006912,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 56,
+      "elapsedMs": 0.44390000000021246,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 57,
+      "elapsedMs": 0.6370999999999185,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 58,
+      "elapsedMs": 0.568000000000211,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 59,
+      "elapsedMs": 0.5223999999998341,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 60,
+      "elapsedMs": 0.41080000000056316,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 61,
+      "elapsedMs": 0.31959999999980937,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 62,
+      "elapsedMs": 0.2691000000004351,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 63,
+      "elapsedMs": 0.3771000000006097,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 64,
+      "elapsedMs": 0.34389999999984866,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 65,
+      "elapsedMs": 0.5689000000002125,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 66,
+      "elapsedMs": 0.4539999999997235,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 67,
+      "elapsedMs": 0.41929999999956635,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 68,
+      "elapsedMs": 0.6211999999995896,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 69,
+      "elapsedMs": 0.5758000000005268,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 70,
+      "elapsedMs": 0.37120000000049913,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 71,
+      "elapsedMs": 0.4194999999999709,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 72,
+      "elapsedMs": 0.3006999999997788,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 73,
+      "elapsedMs": 0.34320000000025175,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 74,
+      "elapsedMs": 0.3389999999999418,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 75,
+      "elapsedMs": 0.43549999999959255,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 76,
+      "elapsedMs": 0.47549999999955617,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 77,
+      "elapsedMs": 0.48179999999956635,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 78,
+      "elapsedMs": 0.6168999999999869,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 79,
+      "elapsedMs": 0.5410999999994601,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 80,
+      "elapsedMs": 0.39570000000003347,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 81,
+      "elapsedMs": 0.32439999999951397,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 82,
+      "elapsedMs": 0.2622000000001208,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 83,
+      "elapsedMs": 0.3981000000003405,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 84,
+      "elapsedMs": 0.3499999999994543,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 85,
+      "elapsedMs": 0.5113000000001193,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 86,
+      "elapsedMs": 0.47770000000036816,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 87,
+      "elapsedMs": 0.41010000000005675,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 88,
+      "elapsedMs": 0.6331999999993059,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 89,
+      "elapsedMs": 0.5142000000005282,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 90,
+      "elapsedMs": 0.38400000000001455,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 91,
+      "elapsedMs": 0.3352999999997337,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 92,
+      "elapsedMs": 0.2985999999991691,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 93,
+      "elapsedMs": 1.3294000000005326,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 94,
+      "elapsedMs": 0.47890000000006694,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 95,
+      "elapsedMs": 0.6279999999997017,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 96,
+      "elapsedMs": 0.6558999999997468,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 97,
+      "elapsedMs": 2.313299999999799,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 98,
+      "elapsedMs": 2.0700999999999112,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 99,
+      "elapsedMs": 0.6144000000003871,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 100,
+      "elapsedMs": 1.138199999999415,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 101,
+      "elapsedMs": 0.37449999999989814,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 102,
+      "elapsedMs": 0.38919999999961874,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 103,
+      "elapsedMs": 0.4113999999999578,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 104,
+      "elapsedMs": 0.7021999999997206,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 105,
+      "elapsedMs": 1.2416999999995824,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 106,
+      "elapsedMs": 1.282799999999952,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 107,
+      "elapsedMs": 1.027499999999236,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 108,
+      "elapsedMs": 1.262499999999818,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 109,
+      "elapsedMs": 0.9558999999999287,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 110,
+      "elapsedMs": 0.6718000000000757,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 111,
+      "elapsedMs": 0.5813000000007378,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 112,
+      "elapsedMs": 0.5122000000001208,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 113,
+      "elapsedMs": 0.6211000000002969,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 114,
+      "elapsedMs": 0.6743999999998778,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 115,
+      "elapsedMs": 1.0583000000005995,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 116,
+      "elapsedMs": 0.908900000000358,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 117,
+      "elapsedMs": 0.8009999999994761,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 118,
+      "elapsedMs": 1.191200000000208,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 119,
+      "elapsedMs": 1.0016999999998006,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 120,
+      "elapsedMs": 0.6988000000001193,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 121,
+      "elapsedMs": 0.49679999999989377,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 122,
+      "elapsedMs": 0.4926999999997861,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 123,
+      "elapsedMs": 0.370600000000195,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 124,
+      "elapsedMs": 0.3704999999999927,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 125,
+      "elapsedMs": 0.5847000000003391,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 126,
+      "elapsedMs": 0.48039999999946303,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 127,
+      "elapsedMs": 0.4147000000002663,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 128,
+      "elapsedMs": 0.6351999999997133,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 129,
+      "elapsedMs": 0.7687999999998283,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 130,
+      "elapsedMs": 0.4085000000004584,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 131,
+      "elapsedMs": 0.32299999999941065,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 132,
+      "elapsedMs": 0.30379999999968277,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 133,
+      "elapsedMs": 0.43109999999978754,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 134,
+      "elapsedMs": 9.472999999999956,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 135,
+      "elapsedMs": 0.6691000000000713,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 136,
+      "elapsedMs": 0.48990000000048894,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 137,
+      "elapsedMs": 0.5750000000007276,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 138,
+      "elapsedMs": 1.3136999999996988,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 139,
+      "elapsedMs": 1.2667999999994208,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 140,
+      "elapsedMs": 0.8792999999996027,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 141,
+      "elapsedMs": 0.6765999999997803,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 142,
+      "elapsedMs": 0.8045000000001892,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 143,
+      "elapsedMs": 0.6642000000001644,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 144,
+      "elapsedMs": 0.6142999999992753,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 145,
+      "elapsedMs": 0.6555000000007567,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 146,
+      "elapsedMs": 0.5685999999996056,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 147,
+      "elapsedMs": 0.8586999999997715,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 148,
+      "elapsedMs": 1.0109000000002197,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 149,
+      "elapsedMs": 0.7082999999993262,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 150,
+      "elapsedMs": 0.4540999999999258,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 151,
+      "elapsedMs": 0.31379999999990105,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 152,
+      "elapsedMs": 0.30649999999968713,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 153,
+      "elapsedMs": 0.3338999999996304,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 154,
+      "elapsedMs": 0.3411999999998443,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 155,
+      "elapsedMs": 0.5781999999999243,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 156,
+      "elapsedMs": 0.9122000000006665,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 157,
+      "elapsedMs": 0.48260000000027503,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 158,
+      "elapsedMs": 0.7203999999992448,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 159,
+      "elapsedMs": 0.5673999999999069,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 160,
+      "elapsedMs": 0.4175999999997657,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 161,
+      "elapsedMs": 0.3087999999997919,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 162,
+      "elapsedMs": 0.34680000000025757,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 163,
+      "elapsedMs": 0.36339999999927386,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 164,
+      "elapsedMs": 0.4625999999998385,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 165,
+      "elapsedMs": 0.5753999999997177,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 166,
+      "elapsedMs": 0.5252000000000407,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 167,
+      "elapsedMs": 0.5010999999994965,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 168,
+      "elapsedMs": 0.7016999999996187,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 169,
+      "elapsedMs": 0.5424000000002707,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 170,
+      "elapsedMs": 0.40049999999973807,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 171,
+      "elapsedMs": 0.41120000000046275,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 172,
+      "elapsedMs": 0.3004000000000815,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 173,
+      "elapsedMs": 0.35530000000017026,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 174,
+      "elapsedMs": 0.3679999999994834,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 175,
+      "elapsedMs": 0.6059999999997672,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 176,
+      "elapsedMs": 0.6224000000001979,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 177,
+      "elapsedMs": 0.4511000000002241,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 178,
+      "elapsedMs": 0.6784999999999854,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 179,
+      "elapsedMs": 0.6017999999994572,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 180,
+      "elapsedMs": 0.5095000000001164,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 181,
+      "elapsedMs": 0.3710000000000946,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 182,
+      "elapsedMs": 0.3728000000000975,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 183,
+      "elapsedMs": 0.40680000000065775,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 184,
+      "elapsedMs": 0.36520000000018626,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 185,
+      "elapsedMs": 0.5140000000001237,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 186,
+      "elapsedMs": 0.48540000000048167,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 187,
+      "elapsedMs": 0.480199999999968,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 188,
+      "elapsedMs": 0.7920999999996639,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 189,
+      "elapsedMs": 0.6309000000001106,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 190,
+      "elapsedMs": 0.4501000000000204,
+      "eventCount": 6
+    },
+    {
+      "scenario": "opening-not-ready",
+      "run": 191,
+      "elapsedMs": 0.4338999999999942,
+      "eventCount": 1
+    },
+    {
+      "scenario": "stale-cycle",
+      "run": 192,
+      "elapsedMs": 0.4250000000001819,
+      "eventCount": 1
+    },
+    {
+      "scenario": "speech-non-silenced",
+      "run": 193,
+      "elapsedMs": 0.5760000000000218,
+      "eventCount": 1
+    },
+    {
+      "scenario": "dead-speaker",
+      "run": 194,
+      "elapsedMs": 0.6268000000000029,
+      "eventCount": 1
+    },
+    {
+      "scenario": "duplicate-speech",
+      "run": 195,
+      "elapsedMs": 0.6969000000008236,
+      "eventCount": 7
+    },
+    {
+      "scenario": "concurrent-speech",
+      "run": 196,
+      "elapsedMs": 0.5886000000000422,
+      "eventCount": 7
+    },
+    {
+      "scenario": "speech-vote-race",
+      "run": 197,
+      "elapsedMs": 0.5543999999999869,
+      "eventCount": 7
+    },
+    {
+      "scenario": "stale-ballot",
+      "run": 198,
+      "elapsedMs": 0.6496999999999389,
+      "eventCount": 6
+    },
+    {
+      "scenario": "terminal-speech",
+      "run": 199,
+      "elapsedMs": 0.5216000000000349,
+      "eventCount": 7
+    },
+    {
+      "scenario": "callback-after-transition",
+      "run": 200,
+      "elapsedMs": 0.3676999999997861,
+      "eventCount": 6
+    }
+  ]
+}

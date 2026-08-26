@@ -91,6 +91,11 @@ export class RoomService {
       throw new DmNotReachableError(params.hostTelegramId);
     }
 
+    // A host may create a new room after a completed match whose final
+    // presentation was interrupted. Reclaim only a terminal/missing session;
+    // an active-room session remains protected by the cross-room invariant.
+    await this.reclaimTerminalPlayerSession(params.hostTelegramId, params.roomId);
+
     const now = this.clock.now();
     const existingRoom = await this.storage.getRoom(params.roomId);
 
@@ -193,6 +198,12 @@ export class RoomService {
       throw new DmNotReachableError(params.telegramId);
     }
 
+    // A completed match may still have a player-session key when the terminal
+    // Telegram presentation was interrupted or the process restarted. Reclaim
+    // only sessions whose referenced room is terminal/missing; an active room
+    // remains protected by the cross-room session invariant.
+    await this.reclaimTerminalPlayerSession(params.telegramId, params.roomId);
+
     const { room, events } = await this.withRetry(params.roomId, (room) => {
       if (room.status !== RoomStatus.OPEN) {
         throw new RoomLockedError(room.id);
@@ -252,6 +263,42 @@ export class RoomService {
     }
     await this.eventBus.publishAll(events);
     return room;
+  }
+
+  /**
+   * Releases sessions for a terminal room. The room-state check makes this
+   * safe to call from GAME_OVER presentation code and idempotent on retries.
+   * clearPlayerSession(roomId) is guarded, so a player who already joined a
+   * different room is never cleared accidentally.
+   */
+  async releaseTerminalPlayerSessions(roomId: string): Promise<void> {
+    const room = await this.storage.getRoom(roomId);
+    if (!room || (room.gameState !== GameState.GAME_OVER && room.status !== RoomStatus.CLOSED)) {
+      return;
+    }
+
+    await Promise.all(
+      Object.keys(room.players).map((telegramId) =>
+        this.storage.clearPlayerSession(telegramId, room.id),
+      ),
+    );
+  }
+
+  private async reclaimTerminalPlayerSession(
+    telegramId: string,
+    requestedRoomId: string,
+  ): Promise<void> {
+    const currentRoomId = await this.storage.getPlayerSession(telegramId);
+    if (!currentRoomId || currentRoomId === requestedRoomId) return;
+
+    const currentRoom = await this.storage.getRoom(currentRoomId);
+    const terminalOrMissing =
+      !currentRoom
+      || currentRoom.gameState === GameState.GAME_OVER
+      || currentRoom.status === RoomStatus.CLOSED;
+    if (terminalOrMissing) {
+      await this.storage.clearPlayerSession(telegramId, currentRoomId);
+    }
   }
 
   async leaveRoom(params: { roomId: string; telegramId: string }): Promise<RoomState> {
