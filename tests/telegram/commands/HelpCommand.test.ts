@@ -32,7 +32,12 @@ describe('/help command', () => {
     registerHelpCommand({} as any, bot);
     const reply = jest.fn().mockResolvedValue(undefined);
     await handler?.({ reply });
-    expect(bot.command).toHaveBeenCalledWith('help', expect.any(Function));
+    const matcher = (bot.command as jest.Mock).mock.calls[0][0] as RegExp;
+    expect(matcher).toEqual(/^help$/i);
+    expect(matcher.test('help')).toBe(true);
+    expect(matcher.test('HELP')).toBe(true);
+    expect(matcher.test('HeLp')).toBe(true);
+    expect(matcher.test('helper')).toBe(false);
     expect(reply).toHaveBeenCalledWith(HELP_TEXT);
     expect(typeof reply.mock.calls[0][0]).toBe('string');
   });

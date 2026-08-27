@@ -133,9 +133,22 @@ export class MuteService {
     options: { clearFallbackOnFailure?: boolean } = {},
   ): Promise<void> {
     const key = this.getMutedPlayersKey(chatId);
+    const clearFallbackOnFailure = options.clearFallbackOnFailure === true;
+
+    logger.debug('Terminal/full unmute sweep started', {
+      chatId: String(chatId),
+      redisKey: key,
+      clearFallbackOnFailure,
+    });
 
     try {
       const mutedIds = await this.redis.smembers(key);
+      logger.debug('Loaded muted-player fallback markers', {
+        chatId: String(chatId),
+        redisKey: key,
+        mutedCount: mutedIds?.length ?? 0,
+        mutedIds: mutedIds ?? [],
+      });
       if (!mutedIds || mutedIds.length === 0) {
         logger.debug(`No muted players found to unmute in chat ${chatId}.`);
         return;
@@ -149,6 +162,11 @@ export class MuteService {
         // restricted by mutePlayer, but an old/stale Redis marker must still
         // be removable without calling getChatMember for an invalid ID.
         if (isTestBot(telegramId)) {
+          logger.debug('Skipping Telegram unrestrict for synthetic test bot', {
+            chatId: String(chatId),
+            telegramId,
+            reason: 'synthetic-bottest-player',
+          });
           completedIds.push(telegramId);
           return;
         }
@@ -156,22 +174,51 @@ export class MuteService {
         const userId = Number(telegramId);
         if (isNaN(userId)) {
           logger.warn(`Invalid muted ID in Redis for chat ${chatId}: "${telegramId}"`);
+          logger.debug('Marking invalid muted ID as completed for cleanup', {
+            chatId: String(chatId),
+            telegramId,
+            redisKey: key,
+          });
           completedIds.push(telegramId);
           return;
         }
 
         try {
+          logger.debug('Calling Telegram getChatMember before unrestrict', {
+            chatId: String(chatId),
+            telegramId,
+            userId,
+          });
           const targetMember = await this.bot.telegram.getChatMember(chatId, userId);
           const isCreatorOrAdmin = targetMember.status === 'creator' || targetMember.status === 'administrator';
+          logger.debug('Telegram getChatMember returned for unrestrict target', {
+            chatId: String(chatId),
+            telegramId,
+            userId,
+            status: targetMember.status,
+            isCreatorOrAdmin,
+          });
 
           if (isCreatorOrAdmin) {
             // Admins/creators were never API-restricted, so their fallback
             // marker can be removed even though no lift call is needed.
             logger.info(`Skipping lift of API restrictions for creator/admin ${telegramId} in chat ${chatId}.`);
+            logger.debug('Unrestrict API not needed for creator/admin target', {
+              chatId: String(chatId),
+              telegramId,
+              userId,
+              status: targetMember.status,
+            });
             completedIds.push(telegramId);
             return;
           }
 
+          logger.debug('Calling Telegram restrictChatMember to restore permissions', {
+            chatId: String(chatId),
+            telegramId,
+            userId,
+            restoreAllSendPermissions: true,
+          });
           await this.bot.telegram.restrictChatMember(chatId, userId, {
             permissions: {
               can_send_messages: true,
@@ -188,28 +235,79 @@ export class MuteService {
           });
           completedIds.push(telegramId);
           logger.info(`Successfully unmuted player ${telegramId} in chat ${chatId}`);
+          logger.debug('Telegram permissions restored successfully', {
+            chatId: String(chatId),
+            telegramId,
+            userId,
+          });
         } catch (err: unknown) {
           logger.error(
             `Failed to unmute player ${telegramId} in chat ${chatId}: ${errorMessage(err)}`,
             { err },
           );
+          logger.debug('Telegram unrestrict failed; marker remains failed until terminal cleanup decision', {
+            chatId: String(chatId),
+            telegramId,
+            userId,
+            errorMessage: errorMessage(err),
+            clearFallbackOnFailure,
+          });
         }
       });
 
       await Promise.all(unmutePromises);
 
+      const failedIds = mutedIds.filter((telegramId) => !completedIds.includes(telegramId));
+      logger.debug('Completed terminal/full unmute sweep', {
+        chatId: String(chatId),
+        redisKey: key,
+        requestedIds: mutedIds,
+        completedIds,
+        failedIds,
+        clearFallbackOnFailure,
+      });
+
       // Retain failed IDs so the middleware can continue deleting speech and a
       // later recovery/retry can attempt the Telegram unrestriction again.
-      if (completedIds.length === mutedIds.length || options.clearFallbackOnFailure === true) {
+      if (completedIds.length === mutedIds.length || clearFallbackOnFailure) {
         // At a terminal boundary there is no live room left for middleware to
         // enforce. Keeping failed IDs would make a later unrelated session
         // inherit stale mute state for the same Telegram group.
+        logger.debug('Deleting muted-player fallback markers after terminal/full cleanup', {
+          chatId: String(chatId),
+          redisKey: key,
+          reason: completedIds.length === mutedIds.length ? 'all-users-completed' : 'clearFallbackOnFailure',
+          completedIds,
+          failedIds,
+        });
         await this.redis.del(key);
+        logger.debug('Deleted muted-player fallback markers', {
+          chatId: String(chatId),
+          redisKey: key,
+        });
       } else if (completedIds.length > 0) {
+        logger.debug('Removing only successfully unmuted IDs from fallback markers', {
+          chatId: String(chatId),
+          redisKey: key,
+          completedIds,
+          failedIds,
+        });
         await this.redis.srem(key, ...completedIds);
+      } else {
+        logger.debug('Retaining all muted-player fallback markers because no user was unmuted', {
+          chatId: String(chatId),
+          redisKey: key,
+          failedIds,
+        });
       }
     } catch (err: unknown) {
       logger.error(`Error in unmuteAllPlayers for chat ${chatId}: ${errorMessage(err)}`, { err });
+      logger.debug('Terminal/full unmute sweep aborted before completion', {
+        chatId: String(chatId),
+        redisKey: key,
+        errorMessage: errorMessage(err),
+        clearFallbackOnFailure,
+      });
     }
   }
 

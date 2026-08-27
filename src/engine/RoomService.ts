@@ -11,6 +11,7 @@ import {
   RoomFullError,
   RoomLockedError,
   PlayerAlreadyInRoomError,
+  PlayerInActiveRoomError,
   PlayerNotInRoomError,
   NotHostError,
   ConcurrentModificationError,
@@ -298,7 +299,10 @@ export class RoomService {
       || currentRoom.status === RoomStatus.CLOSED;
     if (terminalOrMissing) {
       await this.storage.clearPlayerSession(telegramId, currentRoomId);
+      return;
     }
+
+    throw new PlayerInActiveRoomError(telegramId);
   }
 
   async leaveRoom(params: { roomId: string; telegramId: string }): Promise<RoomState> {

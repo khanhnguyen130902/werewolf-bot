@@ -19,7 +19,7 @@ export function registerCreateCommand(
   flowController: GameFlowController,
   bot: Telegraf<BotContext>,
 ): void {
-  bot.command('create', async (ctx) => {
+  bot.command(/^create$/i, async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/create'));
       return;

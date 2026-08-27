@@ -88,8 +88,7 @@ async function main(): Promise<void> {
       ctx.from
     ) {
       const text = ctx.message && 'text' in ctx.message ? ctx.message.text : '';
-      const isEndCommand =
-        text.startsWith('/end') && (text.length === 4 || text[4] === ' ' || text[4] === '@');
+      const isEndCommand = /^\/end(?:\s|@|$)/i.test(text);
 
       if (!isEndCommand) {
         const chatId = ctx.chat.id;

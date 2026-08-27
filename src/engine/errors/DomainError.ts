@@ -38,6 +38,13 @@ export class PlayerAlreadyInRoomError extends DomainError {
   }
 }
 
+/** Cross-room invariant: the player is still in another active room. */
+export class PlayerInActiveRoomError extends DomainError {
+  constructor(telegramId: string) {
+    super('PLAYER_IN_ACTIVE_ROOM', `Player ${telegramId} is still in another active room`);
+  }
+}
+
 export class PlayerNotInRoomError extends DomainError {
   constructor(telegramId: string) {
     super('PLAYER_NOT_IN_ROOM', `Player ${telegramId} is not in this room`);

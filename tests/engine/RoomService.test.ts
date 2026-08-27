@@ -6,6 +6,7 @@ import {
   RoomFullError,
   RoomNotFoundError,
   PlayerAlreadyInRoomError,
+  PlayerInActiveRoomError,
   PlayerNotInRoomError,
   NotHostError,
   RoomLockedError,
@@ -290,7 +291,7 @@ describe('RoomService', () => {
         hostNickname: 'Host 1',
         chatId: 'chatB',
       }),
-    ).rejects.toBeInstanceOf(PlayerAlreadyInRoomError);
+    ).rejects.toBeInstanceOf(PlayerInActiveRoomError);
     expect(await storage.getPlayerSession('host1')).toBe('roomA');
     expect(await storage.getRoom('roomB')).toBeNull();
   });
@@ -348,7 +349,7 @@ describe('RoomService', () => {
 
     await expect(
       service.joinRoom({ roomId: 'roomB', telegramId: 'player1', nickname: 'Player 1' }),
-    ).rejects.toBeInstanceOf(PlayerAlreadyInRoomError);
+    ).rejects.toBeInstanceOf(PlayerInActiveRoomError);
     expect(await storage.getPlayerSession('player1')).toBe('roomA');
   });
 
@@ -506,7 +507,7 @@ describe('RoomService cross-game session invariant', () => {
 
     await expect(
       service.joinRoom({ roomId: 'room-b', telegramId: 'player-1', nickname: 'Player 1' }),
-    ).rejects.toBeInstanceOf(PlayerAlreadyInRoomError);
+    ).rejects.toBeInstanceOf(PlayerInActiveRoomError);
 
     const roomA = await storage.getRoom('room-a');
     const roomB = await storage.getRoom('room-b');

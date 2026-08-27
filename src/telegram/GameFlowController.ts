@@ -1211,6 +1211,12 @@ export class GameFlowController {
     // Release player sessions at the terminal boundary before Telegram
     // presentation. A delivery failure or process restart must not force users
     // to revisit the old group and run /end before joining another match.
+    logger.info('GAME_OVER terminal cleanup started', {
+      roomId: room.id,
+      chatId: String(room.chatId),
+      gameState: room.gameState,
+      playerCount: Object.keys(room.players).length,
+    });
     await this.services.roomService.releaseTerminalPlayerSessions(room.id);
 
     const aliveWerewolves = Object.values(room.players).filter(
@@ -1231,6 +1237,12 @@ export class GameFlowController {
     // unrestriction leave a fallback marker that can affect a later session
     // in the same group.
     await this.muteService.unmuteAllPlayers(room.chatId, { clearFallbackOnFailure: true });
+    logger.info('GAME_OVER terminal chat unmute sweep finished', {
+      roomId: room.id,
+      chatId: String(room.chatId),
+      gameState: room.gameState,
+      playerCount: Object.keys(room.players).length,
+    });
 
     // Clear per-room policy state after the match is complete.
     this.botPolicy.clearRoom(room.id);

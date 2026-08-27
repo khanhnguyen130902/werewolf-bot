@@ -20,7 +20,7 @@ const STATE_LABELS: Record<string, string> = {
 };
 
 export function registerStatusCommand(services: BotServices, bot: Telegraf<BotContext>): void {
-  bot.command('status', async (ctx) => {
+  bot.command(/^status$/i, async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/status'));
       return;

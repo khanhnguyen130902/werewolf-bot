@@ -6,7 +6,7 @@ import { translateError } from '../presenters/translateError';
 import { buildFullName } from '../utils/buildFullName';
 
 export function registerLeaveCommand(services: BotServices, bot: Telegraf<BotContext>): void {
-  bot.command('leave', async (ctx) => {
+  bot.command(/^leave$/i, async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/leave'));
       return;

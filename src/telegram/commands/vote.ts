@@ -13,7 +13,7 @@ export function registerVoteCommand(
   flowController: GameFlowController,
   bot: Telegraf<BotContext>,
 ): void {
-  bot.command('vote', async (ctx) => {
+  bot.command(/^vote$/i, async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/vote'));
       return;

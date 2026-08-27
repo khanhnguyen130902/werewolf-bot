@@ -16,7 +16,7 @@ import { BotServices } from '../BotServices';
  *     by a private-chat /start, so we remind them to DM the bot directly.
  */
 export function registerStartCommand(services: BotServices, bot: Telegraf<BotContext>): void {
-  bot.start(async (ctx) => {
+  bot.command(/^start$/i, async (ctx) => {
     const telegramId = String(ctx.from?.id);
     const isPrivateChat = ctx.chat?.type === 'private';
 

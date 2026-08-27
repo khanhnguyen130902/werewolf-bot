@@ -10,7 +10,7 @@ export function registerEndCommand(
   flowController: GameFlowController,
   bot: Telegraf<BotContext>,
 ): void {
-  bot.command('end', async (ctx) => {
+  bot.command(/^end$/i, async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/end'));
       return;

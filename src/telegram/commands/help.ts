@@ -11,7 +11,7 @@ import { CANONICAL_HELP_TEXT } from '../presenters/canonicalContent';
 export const HELP_TEXT = CANONICAL_HELP_TEXT;
 
 export function registerHelpCommand(_services: BotServices, bot: Telegraf<BotContext>): void {
-  bot.command('help', async (ctx) => {
+  bot.command(/^help$/i, async (ctx) => {
     await ctx.reply(HELP_TEXT);
   });
 }

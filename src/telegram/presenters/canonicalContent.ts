@@ -138,6 +138,14 @@ export const CANONICAL_MESSAGES = {
     layer: 'PURE_SYSTEM',
     text: '⚠️ Một bước trước khi vào phòng chơi. Hãy nhắn /start cho bot trong tin nhắn riêng để nhận vai trò và thông báo.',
   },
+  PLAYER_IN_ACTIVE_ROOM: {
+    id: 'ERROR.PLAYER_IN_ACTIVE_ROOM',
+    event: 'ROOM_JOIN_OR_CREATE_REQUESTED',
+    audience: 'PUBLIC',
+    priority: 'HIGH',
+    layer: 'PURE_SYSTEM',
+    text: '🌙 Bạn vẫn đang ở trong một ván chơi đang diễn ra.\nHãy kết thúc hoặc rời ván hiện tại trước khi tham gia ván mới.',
+  },
   PLAYER_NOT_IN_GAME: {
     id: 'ERROR.PLAYER_NOT_IN_GAME',
     event: 'PLAYER_ACTION_REQUESTED',

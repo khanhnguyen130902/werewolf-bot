@@ -46,7 +46,7 @@ function parseRoleAlias(token: string): RoleId | null {
 }
 
 export function registerbottestCommand(services: BotServices, bot: Telegraf<BotContext>): void {
-  bot.command('bottest', async (ctx) => {
+  bot.command(/^bottest$/i, async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/bottest'));
       return;

@@ -10,7 +10,7 @@ export function registerStartGameCommand(
   flowController: GameFlowController,
   bot: Telegraf<BotContext>,
 ): void {
-  bot.command('startgame', async (ctx) => {
+  bot.command(/^startgame$/i, async (ctx) => {
     if (ctx.chat.type === 'private') {
       await ctx.reply(Messages.groupOnly('/startgame'));
       return;

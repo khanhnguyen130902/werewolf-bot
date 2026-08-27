@@ -7,6 +7,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   ROOM_FULL: '🔒 Ngôi làng đã đủ người. Hiện không thể nhận thêm người chơi.',
   ROOM_LOCKED: '🔒 Cánh cửa làng đã đóng. Ván chơi đã bắt đầu nên không thể tham gia thêm.',
   PLAYER_ALREADY_IN_ROOM: '🌙 Bạn đã ở trong ngôi làng này rồi.',
+  PLAYER_IN_ACTIVE_ROOM: CANONICAL_MESSAGES.PLAYER_IN_ACTIVE_ROOM.text,
   PLAYER_NOT_IN_ROOM: '⚠️ Bạn chưa tham gia ngôi làng này.',
   NOT_ENOUGH_PLAYERS: '⏳ Chưa đủ người để bắt đầu ván.',
   TOO_MANY_PLAYERS: '⚠️ Ngôi làng đã vượt quá giới hạn người chơi.',

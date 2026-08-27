@@ -1,5 +1,5 @@
 import { registerJoinCommand } from '../../../src/telegram/commands/join';
-import { DmNotReachableError, RoomLockedError, RoomNotFoundError } from '../../../src/engine/errors/DomainError';
+import { DmNotReachableError, PlayerInActiveRoomError, RoomLockedError, RoomNotFoundError } from '../../../src/engine/errors/DomainError';
 import { CANONICAL_MESSAGES } from '../../../src/telegram/presenters/canonicalContent';
 import { Messages } from '../../../src/telegram/presenters/messages';
 
@@ -47,6 +47,13 @@ describe('/join command', () => {
     const ctx = context();
     await handler(ctx);
     expect(ctx.reply).toHaveBeenCalledWith('🔒 Cánh cửa làng đã đóng. Ván chơi đã bắt đầu nên không thể tham gia thêm.');
+  });
+
+  it('uses the dedicated message when the player is active in another room', async () => {
+    const handler = setup(jest.fn().mockRejectedValue(new PlayerInActiveRoomError('42')));
+    const ctx = context();
+    await handler(ctx);
+    expect(ctx.reply).toHaveBeenCalledWith(CANONICAL_MESSAGES.PLAYER_IN_ACTIVE_ROOM.text);
   });
 
   it('still returns the DM prerequisite when a room exists but the player has not opened a DM', async () => {
