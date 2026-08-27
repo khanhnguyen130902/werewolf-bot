@@ -49,6 +49,21 @@ describe('Messages.seerResult', () => {
 });
 
 
+describe('Messages.witchVictimNotice', () => {
+  it('always discloses the werewolf victim to the Witch', () => {
+    expect(Messages.witchVictimNotice(2, 'Khanh Nguyen')).toBe(
+      '🐺 Đêm 2.\n\nSói đã cắn Khanh Nguyen đêm nay.',
+    );
+  });
+
+  it('still sends a Witch notification when there is no werewolf victim', () => {
+    expect(Messages.witchVictimNotice(2, null)).toBe(
+      '🐺 Đêm 2.\n\nĐêm nay không có nạn nhân nào bị Sói cắn.',
+    );
+  });
+});
+
+
 describe('Witch target confirmations', () => {
   it('confirms the save-potion target', () => {
     expect(Messages.witchSaveTargetSelected('Khanh Nguyen')).toBe(
@@ -204,7 +219,7 @@ describe('Messages.nightActionPrompt for Silent Mage', () => {
 describe('Messages.joined', () => {
   it('uses the requested gathering wording and player count', () => {
     expect(Messages.joined('Trung Quach', 7)).toBe(
-      '✨ Trung Quach đã bước vào ngôi làng.\n\n7 người đã tập hợp.\nChỉ còn chờ màn đêm buông xuống.',
+      '✨ Trung Quach đã bước vào ngôi làng.\n\n7 người đang có mặt ở ngôi làng.',
     );
   });
 });
@@ -245,3 +260,21 @@ describe('Messages.nightActionPrompt for Seer', () => {
   });
 });
 
+
+
+describe('Messages.witchSavePrompt', () => {
+  it('combines the wolf victim notice with the Save-potion decision', () => {
+    expect(Messages.witchSavePrompt(1, 'Thanh Nam')).toBe(
+      '🐺 Đêm 1.\n\nThanh Nam đã trở thành mục tiêu của bầy Sói.\n\n🧪 Giờ đây, số phận của Thanh Nam đang nằm trong tay bạn.\n\nBạn có muốn dùng Thuốc Cứu không?',
+    );
+  });
+});
+
+
+describe('Messages.actionRecorded', () => {
+  it('uses the revised action-processing toast wording', () => {
+    expect(Messages.actionRecorded()).toBe(
+      '✅ Lựa chọn đã được ghi nhận.\n\nHành động của bạn sẽ được xử lý khi đêm kết thúc.',
+    );
+  });
+});

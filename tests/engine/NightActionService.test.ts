@@ -238,7 +238,7 @@ describe('NightActionService.submitNightAction', () => {
   });
 
   it('accepts one Witch save action during the Witch phase', async () => {
-    const { roomService, gameService, nightActionService } = setup();
+    const { roomService, gameService, nightActionService, storage } = setup();
     const room = await createAndStartGame(roomService, gameService);
     const witch = findByRole(room, RoleId.WITCH);
 
@@ -252,6 +252,36 @@ describe('NightActionService.submitNightAction', () => {
     });
 
     expect(first.pendingNightActions).toHaveLength(1);
+    expect(first.witchPotions).toEqual({ saveUsed: true, poisonUsed: false });
+    expect((await storage.getRoom('room1'))?.witchPotions).toEqual({
+      saveUsed: true,
+      poisonUsed: false,
+    });
+  });
+
+  it('consumes Witch save potion immediately even when the target is protected by Bodyguard', async () => {
+    const { roomService, gameService, nightActionService, storage } = setup();
+    const room = await createAndStartGame(roomService, gameService);
+    const witch = findByRole(room, RoleId.WITCH);
+    const bodyguard = findByRole(room, RoleId.BODYGUARD);
+    const victim = Object.values(room.players).find(
+      (player) => ![witch.telegramId, bodyguard.telegramId].includes(player.telegramId),
+    )!;
+
+    await nightActionService.beginWitchPhase('room1');
+    const afterSave = await nightActionService.submitNightAction({
+      roomId: 'room1',
+      actionId: 'witch-save-protected-target',
+      actorTelegramId: witch.telegramId,
+      actionType: NightActionType.WITCH_SAVE,
+      targetTelegramId: victim.telegramId,
+    });
+
+    expect(afterSave.witchPotions).toEqual({ saveUsed: true, poisonUsed: false });
+    expect((await storage.getRoom('room1'))?.witchPotions).toEqual({
+      saveUsed: true,
+      poisonUsed: false,
+    });
   });
 
   it('allows Witch to submit both save and poison in the same night when dual potion is enabled', async () => {

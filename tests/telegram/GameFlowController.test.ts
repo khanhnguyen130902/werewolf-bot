@@ -4,6 +4,92 @@ import { GameState, NightActionType, NightPhase, RoleId } from '../../src/engine
 import { TimerJobType } from '../../src/engine/RoomTimerService';
 
 describe('GameFlowController', () => {
+  it('notifies Witch of the victim and hides only exhausted save action', async () => {
+    const sendMessage = jest.fn().mockResolvedValue({ message_id: 101 });
+    const redisSet = jest.fn().mockResolvedValue('OK');
+    const services = {
+      redis: { set: redisSet },
+      storage: {},
+    } as any;
+    const bot = { on: jest.fn(), telegram: { sendMessage } } as any;
+    const controller = new GameFlowController(services, bot);
+    const room = {
+      id: 'room1',
+      chatId: 'chat1',
+      currentRound: 2,
+      players: {
+        witch1: { telegramId: 'witch1', nickname: 'Witch', alive: true, role: RoleId.WITCH },
+        wolf1: { telegramId: 'wolf1', nickname: 'Wolf', alive: true, role: RoleId.WEREWOLF },
+        victim1: { telegramId: 'victim1', nickname: 'Victim', alive: true, role: RoleId.VILLAGER },
+      },
+      pendingNightActions: [{
+        actionId: 'wolf-kill',
+        actorTelegramId: 'wolf1',
+        actionType: NightActionType.WEREWOLF_VOTE_KILL,
+        targetTelegramId: 'victim1',
+        round: 2,
+      }],
+      witchPotions: { saveUsed: true, poisonUsed: false },
+    } as any;
+
+    await (controller as any).promptWitchPhase(room);
+
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage).toHaveBeenNthCalledWith(
+      1,
+      'witch1',
+      Messages.witchVictimNotice(2, 'Victim'),
+      undefined,
+    );
+    expect(sendMessage).toHaveBeenNthCalledWith(
+      2,
+      'witch1',
+      Messages.witchPoisonPrompt(2),
+      expect.objectContaining({ reply_markup: expect.anything() }),
+    );
+    expect(sendMessage).not.toHaveBeenCalledWith(
+      'witch1',
+      expect.stringContaining('Thuốc Cứu'),
+      expect.anything(),
+    );
+  });
+
+  it('sends only victim information when both Witch potions are exhausted', async () => {
+    const sendMessage = jest.fn().mockResolvedValue({ message_id: 102 });
+    const redisSet = jest.fn().mockResolvedValue('OK');
+    const services = { redis: { set: redisSet }, storage: {} } as any;
+    const bot = { on: jest.fn(), telegram: { sendMessage } } as any;
+    const controller = new GameFlowController(services, bot);
+    const room = {
+      id: 'room1',
+      chatId: 'chat1',
+      currentRound: 2,
+      players: {
+        witch1: { telegramId: 'witch1', nickname: 'Witch', alive: true, role: RoleId.WITCH },
+        wolf1: { telegramId: 'wolf1', nickname: 'Wolf', alive: true, role: RoleId.WEREWOLF },
+        victim1: { telegramId: 'victim1', nickname: 'Victim', alive: true, role: RoleId.VILLAGER },
+      },
+      pendingNightActions: [{
+        actionId: 'wolf-kill',
+        actorTelegramId: 'wolf1',
+        actionType: NightActionType.WEREWOLF_VOTE_KILL,
+        targetTelegramId: 'victim1',
+        round: 2,
+      }],
+      witchPotions: { saveUsed: true, poisonUsed: true },
+    } as any;
+
+    await (controller as any).promptWitchPhase(room);
+
+    expect(sendMessage).toHaveBeenCalledTimes(1);
+    expect(sendMessage).toHaveBeenCalledWith(
+      'witch1',
+      Messages.witchVictimNotice(2, 'Victim'),
+      undefined,
+    );
+    expect(redisSet).not.toHaveBeenCalled();
+  });
+
   it('records Skip for a bot when its chosen night-action target is rejected', async () => {
     const submitNightAction = jest
       .fn()
@@ -517,5 +603,42 @@ describe('GameFlowController restart/recovery paths', () => {
     });
 
     expect(resolveExecution).toHaveBeenCalledWith('room1');
+  });
+});
+
+
+describe('Witch prompt order', () => {
+  it('sends the combined victim-and-Save message before the Poison prompt', async () => {
+    const sendMessage = jest.fn().mockResolvedValue({ message_id: 201 });
+    const redisSet = jest.fn().mockResolvedValue('OK');
+    const services = { redis: { set: redisSet }, storage: {} } as any;
+    const bot = { on: jest.fn(), telegram: { sendMessage } } as any;
+    const controller = new GameFlowController(services, bot);
+    const room = {
+      id: 'room-order',
+      chatId: 'chat-order',
+      currentRound: 1,
+      players: {
+        witch1: { telegramId: 'witch1', nickname: 'Witch', alive: true, role: RoleId.WITCH },
+        wolf1: { telegramId: 'wolf1', nickname: 'Wolf', alive: true, role: RoleId.WEREWOLF },
+        victim1: { telegramId: 'victim1', nickname: 'Thanh Nam', alive: true, role: RoleId.VILLAGER },
+      },
+      pendingNightActions: [{
+        actionId: 'wolf-kill-order',
+        actorTelegramId: 'wolf1',
+        actionType: NightActionType.WEREWOLF_VOTE_KILL,
+        targetTelegramId: 'victim1',
+        round: 1,
+      }],
+      witchPotions: { saveUsed: false, poisonUsed: false },
+    } as any;
+
+    await (controller as any).promptWitchPhase(room);
+
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage.mock.calls.map((call: unknown[]) => call[1])).toEqual([
+      Messages.witchSavePrompt(1, 'Thanh Nam'),
+      Messages.witchPoisonPrompt(1),
+    ]);
   });
 });

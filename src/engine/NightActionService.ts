@@ -152,6 +152,22 @@ export class NightActionService {
         throw new WrongRoleForActionError(params.actorTelegramId, requiredRole);
       }
 
+      // Keep duplicate semantics stable even though a confirmed Witch save now
+      // consumes its potion before validation of a later duplicate attempt.
+      // Werewolf votes are intentionally excluded because they may be changed
+      // within the same round.
+      if (
+        params.actionType !== NightActionType.WEREWOLF_VOTE_KILL &&
+        room.pendingNightActions.some(
+          (action) =>
+            action.actorTelegramId === params.actorTelegramId &&
+            action.actionType === params.actionType &&
+            action.round === room.currentRound,
+        )
+      ) {
+        throw new DuplicateActionError(params.actionId);
+      }
+
       const alivePlayerIds = Object.values(room.players)
         .filter((p) => p.alive)
         .map((p) => p.telegramId);
@@ -250,9 +266,20 @@ export class NightActionService {
         ];
       }
 
+      const witchSaveConfirmed =
+        params.actionType === NightActionType.WITCH_SAVE &&
+        params.targetTelegramId !== null;
+      const updatedWitchPotions = witchSaveConfirmed && room.witchPotions
+        ? { ...room.witchPotions, saveUsed: true }
+        : room.witchPotions;
+
       const updated: RoomState = {
         ...room,
         pendingNightActions,
+        // The save potion is consumed at confirmation/persistence time. This
+        // deliberately happens before night resolution so Bodyguard protection
+        // or the final victim outcome cannot refund it.
+        witchPotions: updatedWitchPotions,
         updatedAt: now,
       };
 

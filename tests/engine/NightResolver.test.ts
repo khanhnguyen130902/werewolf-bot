@@ -219,6 +219,136 @@ describe('NightResolver', () => {
     expect(updatedRoom.witchPotions?.saveUsed).toBe(true);
   });
 
+  it('replays a confirmed save action after saveUsed was persisted at submission time', () => {
+    const room = buildRoom({
+      players: [
+        { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'witch1', role: RoleId.WITCH, team: Team.VILLAGE },
+        { id: 'victim1', role: RoleId.VILLAGER, team: Team.VILLAGE },
+      ],
+      witchPotions: { saveUsed: true, poisonUsed: false },
+    });
+    const resolver = new NightResolver(new FirstPickRandom());
+    const { room: updatedRoom, result } = resolver.resolve({
+      room,
+      submissions: [
+        {
+          actionId: 'wolf-kill',
+          actorTelegramId: 'wolf1',
+          actionType: NightActionType.WEREWOLF_VOTE_KILL,
+          targetTelegramId: 'victim1',
+          round: 1,
+        },
+        {
+          actionId: 'confirmed-save',
+          actorTelegramId: 'witch1',
+          actionType: NightActionType.WITCH_SAVE,
+          targetTelegramId: 'victim1',
+          round: 1,
+        },
+      ],
+      getHunterDecision: noHunterDecision,
+    });
+
+    expect(result.deaths).toEqual([]);
+    expect(updatedRoom.witchPotions).toEqual({ saveUsed: true, poisonUsed: false });
+  });
+
+  it('still resolves the werewolf victim when save potion is already exhausted', () => {
+    const room = buildRoom({
+      players: [
+        { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'witch1', role: RoleId.WITCH, team: Team.VILLAGE },
+        { id: 'victim1', role: RoleId.VILLAGER, team: Team.VILLAGE },
+      ],
+      witchPotions: { saveUsed: true, poisonUsed: false },
+    });
+    const resolver = new NightResolver(new FirstPickRandom());
+    const { room: updatedRoom, result } = resolver.resolve({
+      room,
+      submissions: [
+        {
+          actionId: 'wolf-kill',
+          actorTelegramId: 'wolf1',
+          actionType: NightActionType.WEREWOLF_VOTE_KILL,
+          targetTelegramId: 'victim1',
+          round: 1,
+        },
+      ],
+      getHunterDecision: noHunterDecision,
+    });
+
+    expect(result.deaths).toEqual([{ telegramId: 'victim1', cause: 'WEREWOLF_KILL' }]);
+    expect(updatedRoom.witchPotions).toEqual({ saveUsed: true, poisonUsed: false });
+  });
+
+  it('allows poison after save potion is exhausted and consumes poison potion', () => {
+    const room = buildRoom({
+      players: [
+        { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'witch1', role: RoleId.WITCH, team: Team.VILLAGE },
+        { id: 'victim1', role: RoleId.VILLAGER, team: Team.VILLAGE },
+        { id: 'victim2', role: RoleId.VILLAGER, team: Team.VILLAGE },
+      ],
+      witchPotions: { saveUsed: true, poisonUsed: false },
+    });
+    const resolver = new NightResolver(new FirstPickRandom());
+    const { room: updatedRoom, result } = resolver.resolve({
+      room,
+      submissions: [
+        {
+          actionId: 'wolf-kill',
+          actorTelegramId: 'wolf1',
+          actionType: NightActionType.WEREWOLF_VOTE_KILL,
+          targetTelegramId: 'victim1',
+          round: 1,
+        },
+        {
+          actionId: 'poison',
+          actorTelegramId: 'witch1',
+          actionType: NightActionType.WITCH_POISON,
+          targetTelegramId: 'victim2',
+          round: 1,
+        },
+      ],
+      getHunterDecision: noHunterDecision,
+    });
+
+    expect(result.deaths).toEqual([
+      { telegramId: 'victim1', cause: 'WEREWOLF_KILL' },
+      { telegramId: 'victim2', cause: 'WITCH_POISON' },
+    ]);
+    expect(updatedRoom.witchPotions).toEqual({ saveUsed: true, poisonUsed: true });
+  });
+
+  it('keeps victim resolution and exposes no potion effect when both Witch potions are exhausted', () => {
+    const room = buildRoom({
+      players: [
+        { id: 'wolf1', role: RoleId.WEREWOLF, team: Team.WEREWOLF },
+        { id: 'witch1', role: RoleId.WITCH, team: Team.VILLAGE },
+        { id: 'victim1', role: RoleId.VILLAGER, team: Team.VILLAGE },
+      ],
+      witchPotions: { saveUsed: true, poisonUsed: true },
+    });
+    const resolver = new NightResolver(new FirstPickRandom());
+    const { room: updatedRoom, result } = resolver.resolve({
+      room,
+      submissions: [
+        {
+          actionId: 'wolf-kill',
+          actorTelegramId: 'wolf1',
+          actionType: NightActionType.WEREWOLF_VOTE_KILL,
+          targetTelegramId: 'victim1',
+          round: 1,
+        },
+      ],
+      getHunterDecision: noHunterDecision,
+    });
+
+    expect(result.deaths).toEqual([{ telegramId: 'victim1', cause: 'WEREWOLF_KILL' }]);
+    expect(updatedRoom.witchPotions).toEqual({ saveUsed: true, poisonUsed: true });
+  });
+
   it('CONFIRMED RULE: Witch may save herself if she is the werewolf victim', () => {
     const room = buildRoom({
       players: [

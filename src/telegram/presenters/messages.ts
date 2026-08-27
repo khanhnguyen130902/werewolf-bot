@@ -224,10 +224,15 @@ export const Messages = {
     `🚪 ${nickname} đã rời khỏi ngôi làng theo quyết định của host.`,
 
   actionRecorded: () =>
-    '✅ Lựa chọn đã được ghi nhận.\n\nQuản trò sẽ xử lý hành động này khi đêm kết thúc.',
+    '✅ Lựa chọn đã được ghi nhận.\n\nHành động của bạn sẽ được xử lý khi đêm kết thúc.',
+
+  witchVictimNotice: (round: number, victimNickname: string | null) =>
+    victimNickname
+      ? `🐺 Đêm ${round}.\n\nSói đã cắn ${victimNickname} đêm nay.`
+      : `🐺 Đêm ${round}.\n\nĐêm nay không có nạn nhân nào bị Sói cắn.`,
 
   witchSavePrompt: (round: number, victimNickname: string) =>
-    `🧪 Đêm ${round}.\n\n${victimNickname} đang đứng trước ranh giới giữa sống và chết.\n\nBạn có muốn dùng Thuốc Cứu không?`,
+    `🐺 Đêm ${round}.\n\n${victimNickname} đã trở thành mục tiêu của bầy Sói.\n\n🧪 Giờ đây, số phận của ${victimNickname} đang nằm trong tay bạn.\n\nBạn có muốn dùng Thuốc Cứu không?`,
 
   witchPoisonPrompt: (round: number) =>
     `☠️ Đêm ${round}.\n\nMột lọ Thuốc Độc vẫn còn trong tay bạn.\n\nBạn có muốn sử dụng nó không?`,

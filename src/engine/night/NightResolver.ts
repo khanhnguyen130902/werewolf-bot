@@ -140,16 +140,24 @@ export class NightResolver {
 
         case NightActionType.WITCH_SAVE: {
           for (const action of actionsOfType) {
-            if (!action.targetTelegramId) continue;
-            if (!witchPotions || witchPotions.saveUsed) {
+            if (!action.targetTelegramId || action.round !== room.currentRound) continue;
+            if (!witchPotions) {
               rejectedActions.push({
                 actionId: action.actionId,
                 reason: 'NO_POTION_LEFT:save',
               });
               continue;
             }
+
+            // `submitNightAction` consumes saveUsed at confirmation time so
+            // the inventory is persisted immediately. During resolution, a
+            // current-round action already present in pendingNightActions is
+            // therefore a confirmed save, even though saveUsed is now true.
+            // Do not reject it a second time; the potion was already spent.
             savedThisNight.add(action.targetTelegramId);
-            witchPotions = { ...witchPotions, saveUsed: true };
+            witchPotions = witchPotions.saveUsed
+              ? witchPotions
+              : { ...witchPotions, saveUsed: true };
           }
           break;
         }

@@ -599,10 +599,26 @@ export class GameFlowController {
       new Set(wolfChoices.values()).size === 1
         ? wolfChoices.values().next().value ?? null
         : null;
-    const saveKeyboard = victimId && room.witchPotions && !room.witchPotions.saveUsed
+
+    // Victim information is independent of potion inventory. The Witch must
+    // still know the werewolf target even after the save potion is exhausted,
+    // so the poison decision remains available when its potion is unused.
+    const savePotionAvailable = Boolean(
+      victimId && room.witchPotions && !room.witchPotions.saveUsed,
+    );
+    if (!isTestBot(witch.telegramId) && !savePotionAvailable) {
+      await this.safeSendMessage(
+        witch.telegramId,
+        Messages.witchVictimNotice(room.currentRound, victimId ? room.players[victimId]?.nickname ?? victimId : null),
+        undefined,
+        'witch-victim-notice',
+      );
+    }
+
+    const saveKeyboard = savePotionAvailable
       ? buildTargetKeyboard({
           actionType: NightActionType.WITCH_SAVE,
-          targets: [{ telegramId: victimId, nickname: room.players[victimId]?.nickname ?? victimId }],
+          targets: [{ telegramId: victimId!, nickname: room.players[victimId!]?.nickname ?? victimId! }],
         })
       : null;
     const poisonKeyboard = room.witchPotions && !room.witchPotions.poisonUsed
@@ -638,46 +654,37 @@ export class GameFlowController {
       }
       return;
     }
-    const prompts: Array<Promise<unknown>> = [];
     if (saveKeyboard) {
-      prompts.push(
-        (async () => {
-          try {
-            const sentMsg = await this.bot.telegram.sendMessage(
-              witch.telegramId,
-              Messages.witchSavePrompt(room.currentRound, room.players[victimId!]?.nickname ?? victimId),
-              saveKeyboard,
-            );
-            await this.services.redis.set(
-              `witch-save-message:${room.id}:${witch.telegramId}`,
-              String(sentMsg.message_id),
-              'EX',
-              86400
-            );
-          } catch {}
-        })()
-      );
+      try {
+        const sentMsg = await this.bot.telegram.sendMessage(
+          witch.telegramId,
+          Messages.witchSavePrompt(room.currentRound, room.players[victimId!]?.nickname ?? victimId),
+          saveKeyboard,
+        );
+        await this.services.redis.set(
+          `witch-save-message:${room.id}:${witch.telegramId}`,
+          String(sentMsg.message_id),
+          'EX',
+          86400
+        );
+      } catch {}
     }
+
     if (poisonKeyboard) {
-      prompts.push(
-        (async () => {
-          try {
-            const sentMsg = await this.bot.telegram.sendMessage(
-              witch.telegramId,
-              Messages.witchPoisonPrompt(room.currentRound),
-              poisonKeyboard,
-            );
-            await this.services.redis.set(
-              `witch-poison-message:${room.id}:${witch.telegramId}`,
-              String(sentMsg.message_id),
-              'EX',
-              86400
-            );
-          } catch {}
-        })()
-      );
+      try {
+        const sentMsg = await this.bot.telegram.sendMessage(
+          witch.telegramId,
+          Messages.witchPoisonPrompt(room.currentRound),
+          poisonKeyboard,
+        );
+        await this.services.redis.set(
+          `witch-poison-message:${room.id}:${witch.telegramId}`,
+          String(sentMsg.message_id),
+          'EX',
+          86400
+        );
+      } catch {}
     }
-    await Promise.all(prompts);
   }
 
   async promptWitchSaveForVictim(roomId: string, victimTelegramId: string | null): Promise<void> {
