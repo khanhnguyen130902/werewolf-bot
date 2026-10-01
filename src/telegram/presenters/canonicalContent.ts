@@ -62,8 +62,8 @@ export const ACTION_BUTTON_LABELS: Partial<Record<NightActionType, string>> = {
 };
 
 export const CANONICAL_HELP_TEXT = [
-  '🐺 WEREWOLF BOT',
-  'Chào mừng bạn đến với Werewolf Bot!',
+  '🐺 WEREWOLF VN BOT',
+  'Chào mừng bạn đến với Werewolf VN Bot!',
   'Tham gia trò chơi Ma Sói, phối hợp cùng đồng đội, khám phá danh tính các người chơi và tìm cách đưa phe của mình đến chiến thắng.',
   '━━━━━━━━━━━━━━━━━━',
   '',
