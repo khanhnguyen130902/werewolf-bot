@@ -10,6 +10,7 @@ import {
   PlayerNotInRoomError,
   NotHostError,
   RoomLockedError,
+  LeaveNotAllowedError,
 } from '../../src/engine/errors/DomainError';
 import { DomainEvent } from '../../src/engine/events/DomainEvent';
 import { GameState, RoomStatus } from '../../src/engine/domain/enums';
@@ -144,8 +145,9 @@ describe('RoomService', () => {
       chatId: 'chat1',
     });
     await service.joinRoom({ roomId: 'room1', telegramId: 'p2', nickname: 'P2' });
-    const room = await service.leaveRoom({ roomId: 'room1', telegramId: 'p2' });
-    expect(Object.keys(room.players)).toEqual(['host1']);
+    const result = await service.leaveRoom({ roomId: 'room1', telegramId: 'p2' });
+    expect(Object.keys(result.room.players)).toEqual(['host1']);
+    expect(result.roomClosed).toBe(false);
   });
 
   it('rejects leave for a player not in the room', async () => {
@@ -514,5 +516,60 @@ describe('RoomService cross-game session invariant', () => {
     expect(roomA?.players['player-1']).toBeDefined();
     expect(roomB?.players['player-1']).toBeUndefined();
     expect(await storage.getPlayerSession('player-1')).toBe('room-a');
+  });
+});
+
+
+describe('RoomService leave policy', () => {
+  it('closes the waiting room when the Host leaves and clears every player session', async () => {
+    const { service, storage, capturedEvents } = setup();
+    await service.createRoom({
+      roomId: 'room-host-leaves',
+      hostTelegramId: 'host1',
+      hostNickname: 'Host',
+      chatId: 'chat1',
+    });
+    await service.joinRoom({ roomId: 'room-host-leaves', telegramId: 'p2', nickname: 'P2' });
+
+    const result = await service.leaveRoom({ roomId: 'room-host-leaves', telegramId: 'host1' });
+
+    expect(result.roomClosed).toBe(true);
+    expect(result.room.status).toBe(RoomStatus.CLOSED);
+    expect(await storage.getRoom('room-host-leaves')).toBeNull();
+    expect(await storage.getPlayerSession('host1')).toBeNull();
+    expect(await storage.getPlayerSession('p2')).toBeNull();
+    expect(capturedEvents.map((event) => event.type)).toContain('ROOM_CLOSED');
+  });
+
+  it.each([
+    GameState.STARTING,
+    GameState.FIRST_NIGHT,
+    GameState.NIGHT,
+    GameState.DAY,
+    GameState.DISCUSSION,
+    GameState.VOTING,
+    GameState.EXECUTION,
+    GameState.CHECK_WIN,
+    GameState.GAME_OVER,
+  ])('rejects `/leave` during %s and preserves room membership', async (gameState) => {
+    const { service, storage } = setup();
+    await service.createRoom({
+      roomId: `room-active-${gameState}`,
+      hostTelegramId: 'host1',
+      hostNickname: 'Host',
+      chatId: 'chat1',
+    });
+    const room = await storage.getRoom(`room-active-${gameState}`);
+    await storage.saveRoom(
+      { ...room!, status: RoomStatus.LOCKED, gameState },
+      room!.version,
+    );
+
+    await expect(
+      service.leaveRoom({ roomId: `room-active-${gameState}`, telegramId: 'host1' }),
+    ).rejects.toBeInstanceOf(LeaveNotAllowedError);
+
+    const preserved = await storage.getRoom(`room-active-${gameState}`);
+    expect(preserved?.players.host1).toBeDefined();
   });
 });

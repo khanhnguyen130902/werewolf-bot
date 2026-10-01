@@ -15,9 +15,10 @@ export interface RoleDistributionStrategy {
   readonly id: string;
   /**
    * @param playerCount total players in the room.
-   * @param enabledSpecialRoles special roles (Seer/Bodyguard/Hunter/Witch)
-   *   the host has opted into for this match, from GameSettings.enabledRoles.
-   *   If a requested role can't fit, throws TooManyPlayersForRolesError.
+   * @param enabledSpecialRoles special roles configured in GameSettings.enabledRoles.
+   *   An empty list selects the player-count default preset; a non-empty list is
+   *   used exactly as configured. If the requested roles cannot fit, throws
+   *   TooManyPlayersForRolesError.
    */
   computeDistribution(
     playerCount: number,
@@ -25,9 +26,8 @@ export interface RoleDistributionStrategy {
   ): RoleDistributionPlan;
 }
 
-// Default special roles are auto-enabled for 6+ players.
-// Games with 8+ players automatically include Silent Mage alongside the default special roles.
-// Games below 8 players retain the existing distribution unless Silent Mage is explicit.
+// These roles are used by the default presets only. They are not auto-enabled
+// when the Host supplies a non-empty enabledRoles list.
 const DEFAULT_SPECIAL_ROLES: RoleId[] = [
   RoleId.SEER,
   RoleId.BODYGUARD,
@@ -47,10 +47,11 @@ const SUPPORTED_SPECIAL_ROLES: RoleId[] = [
  * Rule set:
  * - Werewolf count is derived from the player count, but it is capped so the
  *   final plan still leaves room for at least one villager.
- * - If the host did not explicitly enable any special roles, then 6+ player
- *   games automatically enable all special roles.
- * - If the host explicitly enabled special roles, those roles are used as-is,
- *   provided the plan still fits the player count.
+ * - If enabledSpecialRoles is empty, use the default preset for the player count.
+ * - If enabledSpecialRoles is non-empty, use exactly those supported special roles;
+ *   never add roles from the default preset.
+ * - The 6-player default preset intentionally omits Hunter; Hunter starts at 7 players.
+ * - The 8+ player default preset adds Silent Mage alongside the other defaults.
  */
 export class DefaultPhase1DistributionStrategy implements RoleDistributionStrategy {
   readonly id = 'default-phase1';
@@ -67,22 +68,20 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
     }
 
 
-    const explicitSpecials = enabledSpecialRoles.filter((r) =>
-      SUPPORTED_SPECIAL_ROLES.includes(r),
+    const requestedSpecialRoles = [...new Set(enabledSpecialRoles)];
+    const unsupportedRoles = requestedSpecialRoles.filter(
+      (roleId) => !SUPPORTED_SPECIAL_ROLES.includes(roleId),
     );
-
-    if (playerCount === 6 && explicitSpecials.length === 0) {
-      return {
-        [RoleId.WEREWOLF]: 2,
-        [RoleId.SEER]: 1,
-        [RoleId.BODYGUARD]: 1,
-        [RoleId.WITCH]: 1,
-        [RoleId.VILLAGER]: 1,
-      };
+    if (unsupportedRoles.length > 0) {
+      throw new Error(
+        `Unsupported special roles configured: ${unsupportedRoles.join(', ')}`,
+      );
     }
-    const uniqueSpecials = [...new Set(explicitSpecials)];
 
-    const selectedSpecialRoles = this.getSelectedSpecialRoles(playerCount, uniqueSpecials);
+    const selectedSpecialRoles = this.getSelectedSpecialRoles(
+      playerCount,
+      requestedSpecialRoles,
+    );
     const minimumVillagerCount = 1;
     const maxWerewolves = Math.max(
       1,
@@ -130,17 +129,17 @@ export class DefaultPhase1DistributionStrategy implements RoleDistributionStrate
     playerCount: number,
     explicitSpecials: RoleId[],
   ): RoleId[] {
-    // Every 8+ player game automatically includes the expected production
-    // preset: all default special roles plus Silent Mage. This takes priority
-    // over the room's explicit list so the role is always present at this size.
-    if (playerCount >= 8) {
-      return [...DEFAULT_SPECIAL_ROLES, RoleId.SILENT_MAGE];
-    }
     if (explicitSpecials.length > 0) {
       return explicitSpecials;
     }
-    if (playerCount >= 6) {
+    if (playerCount === 6) {
+      return [RoleId.SEER, RoleId.BODYGUARD, RoleId.WITCH];
+    }
+    if (playerCount === 7) {
       return [...DEFAULT_SPECIAL_ROLES];
+    }
+    if (playerCount >= 8) {
+      return [...DEFAULT_SPECIAL_ROLES, RoleId.SILENT_MAGE];
     }
     return [];
   }

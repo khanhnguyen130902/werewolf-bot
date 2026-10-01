@@ -16,6 +16,7 @@ import {
   NotHostError,
   ConcurrentModificationError,
   DmNotReachableError,
+  LeaveNotAllowedError,
 } from './errors/DomainError';
 
 // Set high enough to absorb realistic burst contention (e.g. many players
@@ -305,11 +306,40 @@ export class RoomService {
     throw new PlayerInActiveRoomError(telegramId);
   }
 
-  async leaveRoom(params: { roomId: string; telegramId: string }): Promise<RoomState> {
+  async leaveRoom(params: { roomId: string; telegramId: string }): Promise<{
+    room: RoomState;
+    roomClosed: boolean;
+  }> {
+    const currentRoom = await this.storage.getRoom(params.roomId);
+    if (!currentRoom) {
+      throw new RoomNotFoundError(params.roomId);
+    }
+    if (!currentRoom.players[params.telegramId]) {
+      throw new PlayerNotInRoomError(params.telegramId);
+    }
+    if (currentRoom.status !== RoomStatus.OPEN || currentRoom.gameState !== GameState.WAITING) {
+      throw new LeaveNotAllowedError(currentRoom.gameState);
+    }
+
+    if (currentRoom.hostTelegramId === params.telegramId) {
+      await this.closeRoom({
+        roomId: params.roomId,
+        hostTelegramId: params.telegramId,
+        reason: 'host-left-waiting-room',
+      });
+      return {
+        room: { ...currentRoom, status: RoomStatus.CLOSED, updatedAt: this.clock.now() },
+        roomClosed: true,
+      };
+    }
+
     const now = this.clock.now();
     const { room, events } = await this.withRetry(params.roomId, (room) => {
       if (!room.players[params.telegramId]) {
         throw new PlayerNotInRoomError(params.telegramId);
+      }
+      if (room.status !== RoomStatus.OPEN || room.gameState !== GameState.WAITING) {
+        throw new LeaveNotAllowedError(room.gameState);
       }
       const remainingPlayers = { ...room.players };
       delete remainingPlayers[params.telegramId];
@@ -335,7 +365,7 @@ export class RoomService {
 
     await this.storage.clearPlayerSession(params.telegramId, params.roomId);
     await this.eventBus.publishAll(events);
-    return room;
+    return { room, roomClosed: false };
   }
 
   async kickPlayer(params: {

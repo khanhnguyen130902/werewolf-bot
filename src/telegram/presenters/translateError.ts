@@ -9,6 +9,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   PLAYER_ALREADY_IN_ROOM: '🌙 Bạn đã ở trong ngôi làng này rồi.',
   PLAYER_IN_ACTIVE_ROOM: CANONICAL_MESSAGES.PLAYER_IN_ACTIVE_ROOM.text,
   PLAYER_NOT_IN_ROOM: '⚠️ Bạn chưa tham gia ngôi làng này.',
+  LEAVE_NOT_ALLOWED: '🔒 Ván chơi đã bắt đầu. Bạn không thể rời ngôi làng giữa ván.',
   NOT_ENOUGH_PLAYERS: '⏳ Chưa đủ người để bắt đầu ván.',
   TOO_MANY_PLAYERS: '⚠️ Ngôi làng đã vượt quá giới hạn người chơi.',
   NOT_HOST: '⚠️ Chỉ host mới có quyền thực hiện việc này.',

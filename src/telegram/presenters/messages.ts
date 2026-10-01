@@ -177,6 +177,12 @@ export const Messages = {
   roomCreationLocked: () =>
     '⚠️ Nhóm này đang có một ván chơi diễn ra.\n\nKhông thể tạo phòng mới cho đến khi ván hiện tại kết thúc.',
 
+  leaveNotAllowed: () =>
+    '🔒 Ván chơi đã bắt đầu. Bạn không thể rời ngôi làng giữa ván.',
+
+  hostLeftWaitingRoom: () =>
+    '🛑 Host đã rời khỏi ngôi làng.\n\nPhòng chơi đã được đóng lại. Những người còn lại có thể tạo một phòng mới.',
+
   notEnoughPlayers: (current: number, min: number) =>
     `⏳ Ngôi làng vẫn còn quá ít người.\n\nHiện có ${current} người. Cần ít nhất ${min} người để màn đêm bắt đầu.`,
 

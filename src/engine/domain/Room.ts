@@ -24,13 +24,12 @@ export interface GameSettings {
   roleDistributionStrategy: string;
 
   /**
-   * Special roles (Seer/Bodyguard/Hunter/Witch as RoleId strings) the host
-   * has opted into for this match. Villager always fills remaining slots;
-   * Werewolf count is always computed by the distribution strategy. Business
-   * rule (confirmed with product owner): special roles are NOT auto-filled -
-   * only the ones listed here are used, giving the host explicit control.
-   * By default, a fresh room starts with no special roles enabled so small
-   * games such as 3 players can still begin without hitting role-capacity errors.
+   * Special roles (Seer/Bodyguard/Hunter/Witch/Silent Mage as RoleId strings)
+   * configured for this match. When this list is empty, the distribution
+   * strategy selects the default preset for the player count. When non-empty,
+   * the strategy uses exactly these supported special roles and does not add
+   * roles from the default preset. Villager fills remaining slots and the
+   * Werewolf count is computed by the distribution strategy.
    */
   enabledRoles: string[];
 

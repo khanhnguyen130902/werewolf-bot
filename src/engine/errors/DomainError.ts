@@ -51,6 +51,13 @@ export class PlayerNotInRoomError extends DomainError {
   }
 }
 
+/** Policy: membership cannot be voluntarily removed after a match starts. */
+export class LeaveNotAllowedError extends DomainError {
+  constructor(currentState: string) {
+    super('LEAVE_NOT_ALLOWED', `Leaving is not allowed during ${currentState}`);
+  }
+}
+
 export class NotEnoughPlayersError extends DomainError {
   constructor(current: number, min: number) {
     super(

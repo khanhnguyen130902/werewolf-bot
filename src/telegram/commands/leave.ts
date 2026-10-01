@@ -17,8 +17,8 @@ export function registerLeaveCommand(services: BotServices, bot: Telegraf<BotCon
     const nickname = buildFullName(ctx.from);
 
     try {
-      await services.roomService.leaveRoom({ roomId, telegramId });
-      await ctx.reply(Messages.left(nickname));
+      const result = await services.roomService.leaveRoom({ roomId, telegramId });
+      await ctx.reply(result.roomClosed ? Messages.hostLeftWaitingRoom() : Messages.left(nickname));
     } catch (err) {
       await ctx.reply(translateError(err));
     }
